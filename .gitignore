@@ -1,0 +1,22 @@
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# IDE and operating-system files
+.DS_Store
+.idea/
+.vscode/
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+
+# Java build output
+target/
+
+# Local runtime data and logs
+*.log
+/logs/
+/data/
