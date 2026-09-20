@@ -2,7 +2,7 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P2 版本化任务引擎与通用工作区已完成本地实施和验收**：在P1首页、Intake、推荐与账户基础上，新增真实保存/执行/分层提示、暂停切换、草稿恢复及反思闭环。两个本地技术演示不属于AI/DS/BA，也不生成专业报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [工作区视觉验收](docs/24-p2-workspace-visual-direction.md)。专业内容、证据报告及完整MVP仍需P3–P8；不声称公网生产已就绪。
+**P3 AI专业工程闭环已完成本地实施和验收**：在P1账户推荐和P2通用任务引擎上，新增AI固定分类器、公开练习/隐藏集服务端评价、五次配置配额、A1–A6与反思、冻结版本的后台证据。AI内容仍为REVIEW工程预览，尚待真人专业审核及目标用户计时，不计正式完成或生成正式报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [AI工作区视觉验收](docs/26-p3-ai-visual-direction.md)。DS、BA、报告及完整MVP继续按P4–P8推进；不声称公网生产已就绪。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
@@ -47,6 +47,7 @@ sh scripts/test-unit
 sh scripts/test-integration
 sh scripts/test-p1-e2e
 sh scripts/test-p2-e2e
+sh scripts/test-p3-e2e
 sh scripts/verify-secrets
 sh scripts/stop-local
 ```
@@ -56,6 +57,10 @@ sh scripts/stop-local
 `test-p1-e2e` 依次运行真实 HTTP／事件合同和 Chrome／Edge 完整流程；创建并精确清理本轮合成账户、草稿与捕获邮件。不放宽正式限流：重复运行可能触发本地共享 IP 的每小时注册限制，应等待窗口自然恢复，不清空 Redis 绕过。P0 回归需先停止本项目服务，再 `sh scripts/start-local --profile=p0` 并执行 `sh scripts/test-e2e`；完成后停止并以默认 `local` 重启。两个 profile 都保留原数据。
 
 P2演示需要在忽略的 `.env.local` 中显式设置 `MP_P2_DEMO_ENABLED=true`，默认关闭；登录后从个人主页进入“工作区上手演示”。任务AI开关 `MP_EXPERIENCE_AI_ENABLED` 默认false，普通验收保持关闭，使用已审核静态提示；不伪装为模型生成。`test-p2-e2e`顺序运行真实HTTP和Chrome/Edge任务闭环，共创建并精确清理4个合成账户，仍遵守共享IP注册限额。
+
+P3的AI专业内容目前为REVIEW，尚待真人专业审核与目标用户计时。仅本地验证时可在 `.env.local` 显式设置 `MP_CONTENT_PREVIEW_ENABLED=true`，从个人主页打开“内容工程预览”。预览保存真实操作并在关闭后生成后台证据，但不计正式专业完成、不生成NEXT或正式报告。`test-p3-e2e`验证真实HTTP与Chrome/Edge任务闭环，共4个合成账户，仍遵守注册限额；普通测试保持任务AI关闭。`node scripts/test-p3-api.mjs --check`只做静态预检，不创建账户或调用服务。
+
+`build-local`还会从受审共享分类器源码生成忽略的 `executor/dist/classifier-worker.js`；启动与单测校验其源码一致性，执行器再核对提交的manifest哈希。不要提交该生成产物，也不要手改bundle来绕过哈希检查。
 
 `data/tools/node/bin/node scripts/test-p2-recovery.mjs`仅在其他本项目测试结束后单独执行：要求标准项目托管后端、显式关闭任务AI及空闲Redis DB15，实际重启后端并在finally恢复原配置，不清空正常DB0。它不是操作系统断电或完整数据库备份恢复验证。
 

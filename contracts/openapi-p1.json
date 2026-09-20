@@ -2146,7 +2146,7 @@
             "type": "string"
           },
           "availability": {
-            "const": "UNAVAILABLE",
+            "enum": ["UNAVAILABLE", "AVAILABLE"],
             "type": "string"
           }
         },
@@ -2651,7 +2651,7 @@
             "type": "boolean"
           },
           "availability": {
-            "const": "UNAVAILABLE",
+            "enum": ["UNAVAILABLE", "AVAILABLE"],
             "type": "string"
           }
         },
@@ -2794,7 +2794,7 @@
             "format": "date-time"
           },
           "availability": {
-            "const": "UNAVAILABLE",
+            "enum": ["UNAVAILABLE", "AVAILABLE"],
             "type": "string"
           }
         },
@@ -2960,11 +2960,11 @@
                   "type": "string"
                 },
                 "status": {
-                  "const": "NOT_STARTED",
+                  "enum": ["NOT_STARTED", "READY", "IN_PROGRESS", "PAUSED", "TASK_COMPLETED", "CLOSED"],
                   "type": "string"
                 },
                 "availability": {
-                  "const": "UNAVAILABLE",
+                  "enum": ["UNAVAILABLE", "AVAILABLE"],
                   "type": "string"
                 }
               },
@@ -3021,7 +3021,7 @@
             ]
           },
           "nextStep": {
-            "const": "TASK_CONTENT_PREPARING",
+            "enum": ["TASK_CONTENT_PREPARING", "SELECT_EXPERIENCE", "ALL_COMPLETED"],
             "type": "string"
           }
         },

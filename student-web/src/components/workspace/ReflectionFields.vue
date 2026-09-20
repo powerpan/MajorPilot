@@ -1,19 +1,33 @@
 <script setup lang="ts">
-import type { Answer, StepDefinition } from "../../types/workspace";
+import { computed } from "vue";
+import type {
+  Answer,
+  StepDefinition,
+  InputSchema,
+} from "../../types/workspace";
 const props = defineProps<{
   modelValue: Answer;
   steps: StepDefinition[];
   disabled?: boolean;
+  schema?: InputSchema;
+  professional?: boolean;
 }>();
 const emit = defineEmits<{ "update:modelValue": [value: Answer] }>();
-const difficulty = [
+const difficulty = computed(() => [
   { value: "KNOWLEDGE", label: "知识背景" },
   { value: "TOOLS", label: "工具操作" },
   { value: "TIME", label: "时间安排" },
-  { value: "TASK_STYLE", label: "任务方式" },
+  {
+    value: props.schema?.properties.difficultySources?.items?.enum?.includes(
+      "WORK_STYLE",
+    )
+      ? "WORK_STYLE"
+      : "TASK_STYLE",
+    label: "任务方式",
+  },
   { value: "OTHER", label: "其他" },
   { value: "NONE", label: "没有明显困难" },
-];
+]);
 const willingness = [
   { value: "YES", label: "愿意" },
   { value: "UNSURE", label: "还不确定" },
@@ -43,7 +57,12 @@ function toggle(key: string, value: string) {
   update(key, values);
 }
 function limitReached(key: string, value: string) {
-  return value !== "NONE" && !selected(key, value) && Array.isArray(props.modelValue[key]) && (props.modelValue[key] as string[]).length >= 3;
+  return (
+    value !== "NONE" &&
+    !selected(key, value) &&
+    Array.isArray(props.modelValue[key]) &&
+    (props.modelValue[key] as string[]).length >= 3
+  );
 }
 </script>
 <template>
@@ -140,7 +159,9 @@ function limitReached(key: string, value: string) {
           <option value="UNSURE">还不确定</option>
         </select></label
       >
-      <p class="muted">AI追问为选填；技术演示暂不发起追问，不影响完成。</p>
+      <p v-if="!professional" class="muted">
+        AI追问为选填；技术演示暂不发起追问，不影响完成。
+      </p>
     </details>
   </div>
 </template>

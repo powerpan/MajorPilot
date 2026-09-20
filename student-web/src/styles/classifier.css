@@ -1,0 +1,287 @@
+.ai-workspace .workspace-steps {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.classifier-label-reference {
+  margin: 20px 0 28px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.classifier-label-reference h2 {
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+.classifier-label-reference dl {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 14px 20px;
+}
+.classifier-label-reference dt {
+  font-weight: 650;
+}
+.classifier-label-reference dd {
+  margin: 0;
+}
+.classifier-label-reference p {
+  font-size: 14px;
+}
+.ai-workspace .workspace-switch {
+  margin-top: 20px;
+}
+.ai-workspace .workspace-steps nav button {
+  min-height: 67px;
+  font-size: 16px;
+  gap: 12px;
+}
+.ai-workspace .workspace-main-body {
+  padding-top: 32px;
+}
+.ai-workspace .workspace-instructions {
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 14px 0 20px;
+}
+.preview-warning {
+  color: #75402c;
+  font-size: 13px;
+  line-height: 1.7;
+  border-left: 2px solid var(--orange);
+  padding-left: 10px;
+}
+.classifier-config h2,
+.classifier-binding h2,
+.classifier-errors h2 {
+  font-size: 22px;
+  margin: 16px 0 12px;
+}
+.classifier-definition {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 4px 20px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.classifier-definition select {
+  max-width: 330px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #aaadb3;
+  border-radius: 3px;
+  background: #ffffff90;
+  font-size: 16px;
+}
+.classifier-definition small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.classifier-examples {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+.classifier-examples summary {
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.classifier-examples summary span {
+  float: right;
+  color: var(--muted);
+  font-weight: 400;
+}
+.classifier-examples label,
+.classifier-practice-list label {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.classifier-examples input,
+.classifier-practice-list input {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 6px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+}
+.classifier-config .workspace-radios {
+  margin: 16px 0;
+}
+.classifier-rationale {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px !important;
+}
+.classifier-rationale label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+}
+.classifier-rationale textarea {
+  font-size: 16px;
+  min-height: 90px !important;
+  height: 100px;
+  border: 1px solid #b4b6bf;
+  border-radius: 3px;
+  padding: 12px;
+  width: 100%;
+  background: #ffffff80;
+  resize: vertical;
+}
+.classifier-rationale small {
+  text-align: right;
+  color: var(--muted);
+  font-size: 13px;
+}
+.classifier-practice {
+  margin-top: 18px;
+}
+.classifier-practice .button-row > span {
+  font-size: 14px;
+  color: var(--muted);
+}
+.classifier-metrics {
+  margin: 18px 0;
+}
+.classifier-metrics table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 15px;
+  margin: 14px 0;
+}
+.classifier-metrics th,
+.classifier-metrics td {
+  border: 1px solid #b8bab9;
+  padding: 10px;
+  text-align: center;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.classifier-metrics th:first-child {
+  text-align: left;
+}
+.classifier-metrics thead {
+  background: #171a1d06;
+}
+.classifier-metrics thead th {
+  font-weight: 650;
+}
+.classifier-metrics p,
+.classifier-metrics summary {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.classifier-metrics summary {
+  cursor: pointer;
+}
+.classifier-matrix {
+  overflow: auto;
+}
+.classifier-metrics h3 {
+  font-size: 18px;
+  margin: 16px 0 10px;
+}
+.classifier-binding {
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+.classifier-binding h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.classifier-binding p {
+  font-size: 14px;
+  color: var(--muted);
+}
+.classifier-binding details {
+  margin: 12px 0;
+  font-size: 14px;
+}
+.classifier-binding dl {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.classifier-binding dd {
+  margin: 0;
+}
+.classifier-binding .workspace-outline {
+  margin-top: 10px;
+}
+.classifier-practice-list {
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 12px;
+}
+.classifier-practice-list small {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+.classifier-pattern {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+}
+.classifier-pattern fieldset {
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+}
+.classifier-pattern fieldset label {
+  display: inline-flex;
+  gap: 6px;
+  font-size: 14px;
+  margin: 6px 14px 6px 0;
+}
+.classifier-pattern textarea {
+  min-height: 100px !important;
+}
+.classifier-metrics .muted {
+  margin: 8px 0;
+}
+.preview-list-warning {
+  max-width: 850px;
+  margin: 22px 0;
+}
+.ai-workspace .workspace-header > strong {
+  font-size: 23px;
+}
+.ai-workspace .workspace-reflection .workspace-main-body {
+  padding-top: 30px;
+}
+@media (max-width: 1366px) {
+  .ai-workspace .workspace-main-body {
+    padding-left: 36px;
+    padding-right: 36px;
+  }
+  .classifier-definition {
+    grid-template-columns: 115px minmax(0, 1fr);
+  }
+  .ai-workspace .workspace-steps nav button {
+    font-size: 15px;
+    min-height: 65px;
+  }
+  .classifier-definition small {
+    font-size: 12px;
+  }
+  .classifier-rationale {
+    gap: 12px !important;
+  }
+  .classifier-metrics td,
+  .classifier-metrics th {
+    padding: 8px;
+  }
+  .ai-workspace .workspace-header > strong {
+    font-size: 20px;
+  }
+}

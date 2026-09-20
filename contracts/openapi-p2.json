@@ -1256,7 +1256,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JsonObject"
+                  "anyOf": [
+                    { "type": "object", "additionalProperties": true },
+                    { "type": "array", "items": {} }
+                  ]
                 }
               },
               "text/csv": {
@@ -4437,6 +4440,12 @@
               "NOT_APPLICABLE",
               "NOT_REQUESTED"
             ]
+          },
+          "runMode": {
+            "enum": [
+              "STANDARD",
+              "REVIEW_PREVIEW"
+            ]
           }
         },
         "required": [
@@ -4455,7 +4464,8 @@
           "steps",
           "startedAt",
           "closedAt",
-          "reportStatus"
+          "reportStatus",
+          "runMode"
         ]
       },
       "Execution": {
@@ -4526,8 +4536,26 @@
           },
           "appliedToRevision": {
             "anyOf": [
-              { "type": "integer", "minimum": 1 },
-              { "type": "null" }
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions"
+          },
+          "appliedSourceRevisions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceRevisions"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -4543,7 +4571,9 @@
           "durationMs",
           "reused",
           "remainingEvaluations",
-          "appliedToRevision"
+          "appliedToRevision",
+          "sourceRevisions",
+          "appliedSourceRevisions"
         ]
       },
       "PublicStep": {
@@ -4665,6 +4695,13 @@
             "items": {
               "$ref": "#/components/schemas/Execution"
             }
+          },
+          "inputBindings": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/InputBinding"
+            }
           }
         },
         "required": [
@@ -4676,7 +4713,8 @@
           "definition",
           "readOnly",
           "savedAt",
-          "executions"
+          "executions",
+          "inputBindings"
         ]
       },
       "Saved": {
@@ -4899,7 +4937,10 @@
         "additionalProperties": false,
         "properties": {
           "schemaVersion": {
-            "const": "task-manifest-v1"
+            "enum": [
+              "task-manifest-v1",
+              "task-manifest-v2"
+            ]
           },
           "taskVersionId": {
             "type": "string",
@@ -5041,6 +5082,33 @@
                 "maxEvaluations": {
                   "type": "integer",
                   "minimum": 1
+                },
+                "inputBindings": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "parameterKey": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+                      },
+                      "sourceStepKey": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,79}$"
+                      },
+                      "sourceField": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+                      }
+                    },
+                    "required": [
+                      "parameterKey",
+                      "sourceStepKey",
+                      "sourceField"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -5259,6 +5327,48 @@
           "response",
           "canSkip"
         ]
+      },
+      "InputBinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "parameterKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+          },
+          "sourceStepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "sourceField": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+          },
+          "sourceRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "value": {}
+        },
+        "required": [
+          "parameterKey",
+          "sourceStepKey",
+          "sourceField",
+          "sourceRevision",
+          "value"
+        ]
+      },
+      "SourceRevisions": {
+        "type": "object",
+        "maxProperties": 20,
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,79}$"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "parameters": {

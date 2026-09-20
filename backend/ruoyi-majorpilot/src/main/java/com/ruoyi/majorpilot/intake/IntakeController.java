@@ -5,6 +5,7 @@ import java.time.Instant;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.ruoyi.majorpilot.recommendation.RecommendationView;
+import com.ruoyi.majorpilot.recommendation.MajorCatalog;
 import com.ruoyi.majorpilot.security.CsrfService;
 import com.ruoyi.majorpilot.security.RateLimits;
 import com.ruoyi.majorpilot.shared.*;
@@ -15,9 +16,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController @Profile("local")
 public class IntakeController {
     public record Create(String questionnaireVersion) {}
-    private final IntakeService intakes;private final CsrfService csrf;private final RateLimits limits;
-    public IntakeController(IntakeService intakes,CsrfService csrf,RateLimits limits) { this.intakes=intakes;this.csrf=csrf;this.limits=limits; }
-    @GetMapping("/api/public/v1/majors") Object majors(HttpServletRequest req) { return ApiResponses.success(req,RecommendationView.majorDifferencesList()); }
+    private final IntakeService intakes;private final CsrfService csrf;private final RateLimits limits;private final MajorCatalog catalog;
+    public IntakeController(IntakeService intakes,CsrfService csrf,RateLimits limits,MajorCatalog catalog) { this.intakes=intakes;this.csrf=csrf;this.limits=limits;this.catalog=catalog; }
+    @GetMapping("/api/public/v1/majors") Object majors(HttpServletRequest req) { return ApiResponses.success(req,catalog.majors()); }
     @GetMapping("/api/public/v1/questionnaires/current") Object questionnaire(HttpServletRequest req) { return ApiResponses.success(req,QuestionnaireDefinition.current()); }
     @PostMapping("/api/public/v1/intake-sessions") Object create(@RequestBody Create input,HttpServletRequest req,HttpServletResponse res) {
         limits.require("intake-create",req.getRemoteAddr(),30,Duration.ofHours(1));

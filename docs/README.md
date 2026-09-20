@@ -2,7 +2,7 @@
 
 > 更新日期：2026-09-21
 >
-> 当前阶段：P0/P1已交付；P2通用任务引擎与工作区本地验收通过。用户授权继续按顺序推进至P6；专业内容、报告及真实用户试用不因技术演示通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
+> 当前阶段：P0–P2已交付；P3 AI专业工程闭环本地验收通过，内容仍REVIEW。用户授权继续按顺序推进至P6；真实专业审核/用户试用和计时不因自动化通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
 
 ## 阅读顺序
 
@@ -31,7 +31,7 @@
 
 当前实施：[P1 实施与交付记录](./21-p1-implementation-and-delivery.md)、[P1 视觉方向与截图比对](./22-p1-visual-direction.md)。
 
-当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)。
+当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)、[P3实施接缝](./25-p3-engineering-plan.md)、[P3 AI视觉验收](./26-p3-ai-visual-direction.md)。下一阶段准备：[P4 DS实施接缝](./27-p4-engineering-plan.md)、[P4 DS视觉合同](./28-p4-ds-visual-direction.md)。P3工程验收和真人门禁分别记录，P4尚未代码实施。
 
 设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。阅读本轮变化可以先看 `17`，再按其中的问题编号进入专题设计。
 

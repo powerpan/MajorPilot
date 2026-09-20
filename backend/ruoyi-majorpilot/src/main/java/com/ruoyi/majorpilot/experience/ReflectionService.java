@@ -5,11 +5,13 @@ import com.ruoyi.majorpilot.shared.*;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 @Service @Profile("local")
 public class ReflectionService {
-    private final RunService runs;private final RunStore db;
-    public ReflectionService(RunService runs){this.runs=runs;this.db=runs.store();}
+    private final RunService runs;private final RunStore db;private final ClosurePipeline closure;
+    @Autowired public ReflectionService(RunService runs,ClosurePipeline closure){this.runs=runs;this.db=runs.store();this.closure=closure;}
+    public ReflectionService(RunService runs){this(runs,new ClosurePipeline(runs));}
     public RunService runService() {return runs;}
     Map<String,Object> record(Row run) {
         var rows=db.jdbc().queryForList("SELECT * FROM mp_reflection WHERE experience_run_id=?",run.id());if(rows.isEmpty())throw new ApiException(409,"RUN_STATE_INVALID");
@@ -35,12 +37,11 @@ public class ReflectionService {
         var run=db.owned(student,id);writable(run,"TASK_COMPLETED");var row=record(run);valid(run,row,input,true);ObjectNode answers=input.answers().deepCopy();if(!answers.has("nextWorkStyle"))answers.put("nextWorkStyle","SKIPPED");if(!answers.has("aiFollowUp"))answers.put("aiFollowUp","SKIPPED");
         db.jdbc().update("UPDATE mp_reflection SET status='SUBMITTED',draft_json=?,submitted_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=?",db.json(answers),n(row,"id"));
         var fields=answers.fieldNames();while(fields.hasNext()){String field=fields.next();var answer=answers.get(field);db.jdbc().update("INSERT INTO mp_reflection_answer(reflection_id,question_key,answer_json,answer_text,answer_source,ai_question_text) VALUES(?,?,?,?,?,?)",n(row,"id"),field,db.json(answer),answer.isTextual()?answer.asText():null,field.equals("aiFollowUp")?"AI_FOLLOW_UP":"FIXED_QUESTION",field.equals("aiFollowUp")?db.node(row.get("follow_up_json")).path("response").path("question").asText(null):null);}
-        var revisions=db.jdbc().queryForList("SELECT s.step_key,r.id AS revision_id,r.revision_no,r.content_sha256 FROM mp_step_state s JOIN mp_step_response_revision r ON r.step_state_id=s.id AND r.revision_no=s.current_revision WHERE s.experience_run_id=? ORDER BY s.id",run.id());
-        var executionRefs=db.jdbc().queryForList("SELECT DISTINCT e.public_id,e.input_sha256,e.input_revision,e.operation_key FROM mp_execution_record e JOIN mp_response_execution x ON x.execution_record_id=e.id JOIN mp_step_response_revision r ON r.id=x.response_revision_id JOIN mp_step_state s ON s.id=r.step_state_id AND s.current_revision=r.revision_no WHERE s.experience_run_id=? ORDER BY e.public_id",run.id());
-        var frozen=map("schemaVersion","closed-input-v1","runId",run.publicId(),"contentKind",run.kind(),"taskVersionId",run.taskPublicId(),"taskManifestSha256",runs.version(run).manifestSha256(),"decisionProfileId",run.profileId(),"steps",revisions,"executions",executionRefs,"reflectionId",s(row,"public_id"),"reflectionRevision",n(row,"row_version")+1,"reflectionSha256",Secrets.hash(db.json(answers)));
-        String manifest=db.json(frozen),hash=Secrets.hash(manifest);
+        var frozen=closure.freeze(run,row,answers);
+        String manifest=db.json(frozen),hash=closure.hash(db.node(manifest));
         db.jdbc().update("UPDATE mp_experience_run SET status='CLOSED',reflection_completed_at=UTC_TIMESTAMP(3),closed_at=UTC_TIMESTAMP(3),last_activity_at=UTC_TIMESTAMP(3),closed_input_manifest_json=?,closed_input_sha256=?,row_version=row_version+1 WHERE id=?",manifest,hash,run.id());
         db.jdbc().update("INSERT INTO mp_run_closure_request(public_id,experience_run_id,closed_input_sha256,content_kind,status) VALUES(?,?,?,?,?)",PublicIds.next(),run.id(),hash,run.kind(),run.kind().equals("DEMO")?"DEMO_COMPLETE":"PENDING");
+        closure.enqueue(db.internal(run.id()),answers);
         db.event(run,"reflection.submitted",Map.of("answeredCount",answers.size(),"optionalSkippedCount",(answers.path("nextWorkStyle").asText().equals("SKIPPED")?1:0)+(answers.path("aiFollowUp").asText().equals("SKIPPED")?1:0)));
         int max=db.jdbc().queryForObject("SELECT COALESCE(MAX(hint_level),0) FROM mp_hint_request WHERE experience_run_id=?",Integer.class,run.id());db.event(run,"run.closed",Map.of("hintLevelMax",max));return db.view(db.internal(run.id()));
     });}

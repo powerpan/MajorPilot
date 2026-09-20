@@ -1,0 +1,122 @@
+[
+  {
+    "sampleId": "train-1-1",
+    "messageText": "登录失败，请协助处理登录失败。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "train-1-2",
+    "messageText": "页面报错，请协助处理页面报错。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "train-1-3",
+    "messageText": "视频卡顿，请协助处理视频卡顿。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "train-1-4",
+    "messageText": "声音中断，请协助处理声音中断。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "train-1-5",
+    "messageText": "文件上传，请协助处理文件上传。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "train-1-6",
+    "messageText": "提交按钮，请协助处理提交按钮。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "train-2-1",
+    "messageText": "概念定义，请协助处理概念定义。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "train-2-2",
+    "messageText": "原理推导，请协助处理原理推导。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "train-2-3",
+    "messageText": "公式含义，请协助处理公式含义。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "train-2-4",
+    "messageText": "例子理解，请协助处理例子理解。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "train-2-5",
+    "messageText": "题目思路，请协助处理题目思路。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "train-2-6",
+    "messageText": "算法区别，请协助处理算法区别。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "train-3-1",
+    "messageText": "截止日期，请协助处理截止日期。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "train-3-2",
+    "messageText": "课程安排，请协助处理课程安排。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "train-3-3",
+    "messageText": "工作时间，请协助处理工作时间。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "train-3-4",
+    "messageText": "延长期限，请协助处理延长期限。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "train-3-5",
+    "messageText": "学习进度，请协助处理学习进度。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "train-3-6",
+    "messageText": "周末补课，请协助处理周末补课。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "train-4-1",
+    "messageText": "学习信心，请协助处理学习信心。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "train-4-2",
+    "messageText": "坚持动力，请协助处理坚持动力。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "train-4-3",
+    "messageText": "练习挫败，请协助处理练习挫败。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "train-4-4",
+    "messageText": "鼓励支持，请协助处理鼓励支持。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "train-4-5",
+    "messageText": "担心能力，请协助处理担心能力。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "train-4-6",
+    "messageText": "放弃犹豫，请协助处理放弃犹豫。",
+    "goldLabel": "motivation_support"
+  }
+]

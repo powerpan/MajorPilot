@@ -1,0 +1,386 @@
+[
+  {
+    "sampleId": "practice-01",
+    "messageText": "学习信心和坚持动力的页面一直转圈。",
+    "goldLabel": "technical_issue",
+    "baseline": {
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.990489,
+      "logScores": [
+        -55.462211,
+        -56.560823,
+        -55.462211,
+        -49.96915
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-02",
+    "messageText": "截止日期与课程安排的页面显示错误。",
+    "goldLabel": "technical_issue",
+    "baseline": {
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.993188,
+      "logScores": [
+        -55.462211,
+        -56.560823,
+        -49.96915,
+        -56.560823
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-03",
+    "messageText": "学习信心和坚持动力没有问题，但这周来不及学。",
+    "goldLabel": "schedule_constraint",
+    "baseline": {
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.993188,
+      "logScores": [
+        -56.560823,
+        -56.560823,
+        -55.462211,
+        -49.96915
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-04",
+    "messageText": "我遇到课程安排，想了解如何处理。",
+    "goldLabel": "schedule_constraint",
+    "baseline": {
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -27.027649,
+        -23.731812,
+        -27.027649
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-05",
+    "messageText": "登录失败和页面报错都解决了，可我失去动力。",
+    "goldLabel": "motivation_support",
+    "baseline": {
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.993188,
+      "logScores": [
+        -44.451697,
+        -51.04337,
+        -51.04337,
+        -49.944758
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-06",
+    "messageText": "我遇到概念定义，想了解如何处理。",
+    "goldLabel": "concept_confusion",
+    "baseline": {
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -23.731812,
+        -27.027649,
+        -27.027649
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-07",
+    "messageText": "我遇到坚持动力，想了解如何处理。",
+    "goldLabel": "motivation_support",
+    "baseline": {
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -27.027649,
+        -27.027649,
+        -23.731812
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-08",
+    "messageText": "登录失败和页面报错这个例子如何解释？",
+    "goldLabel": "concept_confusion",
+    "baseline": {
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.993188,
+      "logScores": [
+        -49.96915,
+        -55.462211,
+        -56.560823,
+        -56.560823
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-09",
+    "messageText": "学习信心与坚持动力的公式为什么这样？",
+    "goldLabel": "concept_confusion",
+    "baseline": {
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.990489,
+      "logScores": [
+        -62.078276,
+        -60.979664,
+        -60.979664,
+        -55.486602
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-10",
+    "messageText": "概念定义和原理推导会了，却还是想要放弃。",
+    "goldLabel": "motivation_support",
+    "baseline": {
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.993188,
+      "logScores": [
+        -51.04337,
+        -44.451697,
+        -51.04337,
+        -49.944758
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-11",
+    "messageText": "概念定义和原理推导的页面无法打开。",
+    "goldLabel": "technical_issue",
+    "baseline": {
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.993188,
+      "logScores": [
+        -55.462211,
+        -49.96915,
+        -56.560823,
+        -56.560823
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-12",
+    "messageText": "截止日期与课程安排都合适，但我需要鼓励。",
+    "goldLabel": "motivation_support",
+    "baseline": {
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.993188,
+      "logScores": [
+        -51.04337,
+        -51.04337,
+        -44.451697,
+        -49.944758
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-13",
+    "messageText": "关于公式，我意思是什么。",
+    "goldLabel": "concept_confusion",
+    "baseline": {
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "MANUAL_REVIEW",
+      "confidence": 0.5,
+      "logScores": [
+        -28.973559,
+        -27.874947,
+        -28.973559,
+        -28.973559
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-14",
+    "messageText": "关于练习，我失去动力。",
+    "goldLabel": "motivation_support",
+    "baseline": {
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.75,
+      "logScores": [
+        -23.456106,
+        -23.456106,
+        -23.456106,
+        -21.258881
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-15",
+    "messageText": "概念定义和原理推导我理解了，只是没有空闲。",
+    "goldLabel": "schedule_constraint",
+    "baseline": {
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.99863,
+      "logScores": [
+        -56.560823,
+        -48.870537,
+        -56.560823,
+        -56.560823
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-16",
+    "messageText": "我遇到学习信心，想了解如何处理。",
+    "goldLabel": "motivation_support",
+    "baseline": {
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.84375,
+      "logScores": [
+        -32.545102,
+        -32.545102,
+        -31.446489,
+        -29.249265
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-17",
+    "messageText": "我遇到原理推导，想了解如何处理。",
+    "goldLabel": "concept_confusion",
+    "baseline": {
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -23.731812,
+        -27.027649,
+        -27.027649
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-18",
+    "messageText": "截止日期和课程安排这两个概念意思是什么？",
+    "goldLabel": "concept_confusion",
+    "baseline": {
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.993188,
+      "logScores": [
+        -62.078276,
+        -60.979664,
+        -55.486602,
+        -62.078276
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-19",
+    "messageText": "关于工作，我来不及学。",
+    "goldLabel": "schedule_constraint",
+    "baseline": {
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "MANUAL_REVIEW",
+      "confidence": 0.5,
+      "logScores": [
+        -23.456106,
+        -23.456106,
+        -22.357494,
+        -23.456106
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-20",
+    "messageText": "关于视频，我一直转圈。",
+    "goldLabel": "technical_issue",
+    "baseline": {
+      "predictedLabel": "technical_issue",
+      "routedLabel": "MANUAL_REVIEW",
+      "confidence": 0.5,
+      "logScores": [
+        -22.357494,
+        -23.456106,
+        -23.456106,
+        -23.456106
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-21",
+    "messageText": "我遇到页面报错，想了解如何处理。",
+    "goldLabel": "technical_issue",
+    "baseline": {
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.9,
+      "logScores": [
+        -23.731812,
+        -27.027649,
+        -27.027649,
+        -27.027649
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-22",
+    "messageText": "我遇到截止日期，想了解如何处理。",
+    "goldLabel": "schedule_constraint",
+    "baseline": {
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -27.027649,
+        -23.731812,
+        -27.027649
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-23",
+    "messageText": "登录失败和页面报错处理好了，但工作太忙申请延期。",
+    "goldLabel": "schedule_constraint",
+    "baseline": {
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.993188,
+      "logScores": [
+        -53.540692,
+        -60.132366,
+        -59.033754,
+        -60.132366
+      ]
+    }
+  },
+  {
+    "sampleId": "practice-24",
+    "messageText": "我遇到登录失败，想了解如何处理。",
+    "goldLabel": "technical_issue",
+    "baseline": {
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.9,
+      "logScores": [
+        -23.731812,
+        -27.027649,
+        -27.027649,
+        -27.027649
+      ]
+    }
+  }
+]

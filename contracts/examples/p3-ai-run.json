@@ -1,0 +1,26 @@
+{
+  "purpose": "Synthetic local acceptance fixture; not professional review or user-trial evidence",
+  "taskVersionId": "01JA1000000000000000000001",
+  "responseSchemaVersion": "ai-response-v1",
+  "responses": {
+    "a1-task": { "acknowledged": true, "taskGoal": "ROUTE_SUPPORT_REQUESTS" },
+    "a2-metrics": { "priorityMetric": "AUTO_ACCURACY", "errorCostReason": "自动路由错误会使请求交错团队，因此我同时观察准确率和覆盖率。" },
+    "a3-errors": {
+      "inspectedSampleIds": ["practice-01", "practice-02", "practice-03", "practice-04", "practice-05", "practice-06", "practice-07", "practice-08"],
+      "errorPatterns": [
+        { "patternCode": "AMBIGUOUS_WORDING", "sampleIds": ["practice-01", "practice-02"], "explanation": "一句话可能同时出现多个类别的词，需要区分表面措辞与请求目的。" },
+        { "patternCode": "LOW_CONFIDENCE", "sampleIds": ["practice-03", "practice-04"], "explanation": "缺少明确线索时可考虑转人工，而不能把拒绝自动路由当作已经解决问题。" }
+      ]
+    },
+    "a4-configure": {
+      "definitionVariantIds": { "technical_issue": "technical-default", "concept_confusion": "concept-default", "schedule_constraint": "schedule-default", "motivation_support": "motivation-default" },
+      "exampleIds": [], "confidenceThreshold": 0.55, "lowConfidencePolicy": "MANUAL_REVIEW",
+      "modificationReason": "先保存baseline作为同一固定评价集的参照，再逐项尝试有限配置。",
+      "expectedEffect": "观察覆盖率与错误类别变化，不预设调整必然改善结果。"
+    },
+    "a5-evaluate": { "comparisonNotes": "我比较了同一固定评价集上的覆盖率、自动准确率及各标签召回率。", "tradeoff": "转人工与自动误路由有不同代价，小样本合成结果不能保证真实环境表现。" },
+    "a6-decision": { "rolloutDecision": "CONTINUE_EXPERIMENT", "decisionReason": "先检验更多表达方式，并比较不同错误的代价，再决定是否有限试用。", "monitoringItems": ["人工复核量", "不同类别的漏分"], "residualRisk": "48条合成评价消息不代表真实请求分布，仍可能存在未覆盖的表达方式。" }
+  },
+  "reflection": { "questionSetVersion": "ai-reflection-v1", "answers": { "interestingStepKeys": ["a3-errors", "a4-configure"], "difficultySources": ["KNOWLEDGE"], "continueSimilarWork": "YES", "nextWorkStyle": "MODEL_ITERATION", "reflectionNote": "我想继续检验配置修改如何影响模型错误。", "aiFollowUp": "SKIPPED" } },
+  "baselineExpected": { "sampleCount": 48, "autoRoutedCount": 39, "correctAutoRoutedCount": 27, "manualReviewCount": 9, "coverage": 0.8125, "autoAccuracy": 0.692308, "totalCorrectAutoRate": 0.5625 }
+}

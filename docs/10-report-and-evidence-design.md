@@ -45,6 +45,8 @@ Experience Evidence 是从原始事实中提取的结构化、可追溯条目。
 
 `display_summary` 不能包含证据中不存在的解释。
 
+2026-09-21工程澄清：Step Response 保存成功只证明学生做出某项选择或写下某段内容，不验证其中预测、分析或因果命题。提取时将可验证操作/配置与 `STUDENT_ANALYSIS`（UNVERIFIED）分开；未经明确版本化规则判读的分析条目 `allowed_claim_types=[]`，不能仅因有 evidence_id 就作为事实或克制解释发布。需要保留“学生提出了两条假设”时，用可核查条数的独立动作事实，不把假设内容升级成事实。`STUDENT_SELF_REPORT` 仍限定 Reflection 中的个人体验，不用来包容所有学生自由文本。
+
 ### 2.3 Evidence Snapshot
 
 Experience Run 关闭时固定报告输入 manifest（原始 Decision Profile、Task Version、最终步骤 revision、执行记录和 Reflection 引用及校验值），并同事务写入构建作业；关闭不等待快照或模型。随后异步构建 Evidence Snapshot，只读该 manifest。快照失败不撤销完成状态、不丢失输入，重试追加 snapshot_version_no 并保留失败版本；READY 快照不可更改。后续事件、问卷修改和任务升级都不能替换历史输入。

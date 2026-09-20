@@ -11,21 +11,24 @@ import java.util.concurrent.TimeUnit;
 /** Actual hint business adapter, distinct from the P0 synthetic gateway. No model call on construction. */
 public final class HintBailianGateway {
     public record Request(String taskVersionId,String stepKey,int hintLevel,String instructions,String staticHint,JsonNode input) {}
+    public record Outcome(JsonNode response,com.ruoyi.majorpilot.experience.HintProvider.Telemetry telemetry) {}
     private static final ObjectMapper JSON=new ObjectMapper();
     private final String key,model;private final URI endpoint;private final BailianAiGateway.Transport transport;private final long deadlineMs;private final BailianAiGateway.Sleeper sleeper;
     public HintBailianGateway(String key,String baseUrl,String model){this(key,baseUrl,model,new BailianAiGateway.HttpTransport(),30000,Thread::sleep);}
     HintBailianGateway(String key,String baseUrl,String model,BailianAiGateway.Transport transport,long deadlineMs,BailianAiGateway.Sleeper sleeper){endpoint=BailianAiGateway.validateEndpoint(baseUrl);if(key==null||key.isBlank()||key.matches("(?s).*\\s.*")||model==null||!model.matches("qwen[a-z0-9.-]{0,80}")||deadlineMs<1||deadlineMs>45000)throw new AiFailure(AiFailure.Code.CONFIG_INVALID);this.key=key;this.model=model;this.transport=transport;this.deadlineMs=deadlineMs;this.sleeper=sleeper;}
     public String model(){return model;}
-    public JsonNode hint(Request request){validateInput(request);long start=System.nanoTime();boolean repaired=false;int transientRetries=0;
+    public JsonNode hint(Request request){return exchange(request,new int[2]);}
+    public Outcome call(Request request){long start=System.nanoTime();int[] stats=new int[2];List<String> fields=new ArrayList<>();request.input().fieldNames().forEachRemaining(fields::add);Collections.sort(fields);try{return new Outcome(exchange(request,stats),new com.ruoyi.majorpilot.experience.HintProvider.Telemetry(elapsed(start),stats[0],stats[1],null,fields));}catch(AiFailure failure){return new Outcome(null,new com.ruoyi.majorpilot.experience.HintProvider.Telemetry(elapsed(start),stats[0],stats[1],failure.code().name(),fields));}}
+    private JsonNode exchange(Request request,int[] stats){validateInput(request);long start=System.nanoTime();boolean repaired=false;int transientRetries=0;
         for(int attempt=1;attempt<=3;attempt++){
             long remaining=deadlineMs-elapsed(start);if(remaining<=0)throw new AiFailure(AiFailure.Code.TIMEOUT);
-            try{HttpRequest http=HttpRequest.newBuilder(endpoint).timeout(Duration.ofMillis(Math.min(15000,remaining))).header("Authorization","Bearer "+key).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body(request,repaired))).build();var raw=transport.send(http,Math.min(15000,remaining));
+            try{HttpRequest http=HttpRequest.newBuilder(endpoint).timeout(Duration.ofMillis(Math.min(15000,remaining))).header("Authorization","Bearer "+key).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body(request,repaired))).build();stats[0]++;if(repaired)stats[1]++;var raw=transport.send(http,Math.min(15000,remaining));
                 if(raw.status()==401||raw.status()==403)throw new AiFailure(AiFailure.Code.AUTH_FAILED);if(raw.status()==429)throw new AiFailure(AiFailure.Code.RATE_LIMITED);if(raw.status()>=500)throw new AiFailure(AiFailure.Code.UPSTREAM_UNAVAILABLE);if(raw.status()<200||raw.status()>=300)throw new AiFailure(AiFailure.Code.UPSTREAM_REJECTED);if(raw.body().length>32768)throw new AiFailure(AiFailure.Code.OUTPUT_LIMIT);
                 JsonNode envelope=JSON.readTree(raw.body()),choice=envelope.path("choices").path(0);if(!choice.path("finish_reason").asText().equals("stop")||!choice.at("/message/content").isTextual())throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);
                 JsonNode result=JSON.readTree(choice.at("/message/content").asText());validateResult(request,result);return result;
             }catch(AiFailure failure){
                 if(failure.code()==AiFailure.Code.INVALID_OUTPUT&&!repaired){repaired=true;continue;}
-                boolean transientFailure=Set.of(AiFailure.Code.TIMEOUT,AiFailure.Code.RATE_LIMITED,AiFailure.Code.UPSTREAM_UNAVAILABLE).contains(failure.code());if(!transientFailure||transientRetries++>=1||attempt==3)throw failure;
+                boolean transientFailure=Set.of(AiFailure.Code.TIMEOUT,AiFailure.Code.RATE_LIMITED,AiFailure.Code.UPSTREAM_UNAVAILABLE).contains(failure.code());if(repaired||!transientFailure||transientRetries++>=1||attempt==3)throw failure;
                 long delay=java.util.concurrent.ThreadLocalRandom.current().nextLong(100,201);if(elapsed(start)+delay>=deadlineMs)throw new AiFailure(AiFailure.Code.TIMEOUT);try{sleeper.sleep(delay);}catch(InterruptedException e){Thread.currentThread().interrupt();throw new AiFailure(AiFailure.Code.TRANSPORT_FAILED);}
             }catch(Exception ignored){if(!repaired){repaired=true;continue;}throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);}
         }throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);

@@ -29,7 +29,7 @@ if(mode==='--prepare') {
   const fallback='/Users/ericpan/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback/git';
   const git=existsSync(fallback)?fallback:'git';
   const candidates=execFileSync(git,['ls-files','--cached','--others','--exclude-standard','-z'],{cwd:ROOT,encoding:'utf8'}).split('\0').filter(Boolean);
-  const directories=new Set(['backend','admin-web','student-web','contracts','database','scripts','docs','executor','tests','content']);
+  const directories=new Set(['backend','admin-web','student-web','contracts','database','scripts','docs','executor','tests','content','shared']);
   const rootFiles=new Set(['AGENTS.md','README.md','UPSTREAM.md','UPSTREAM-backend.md','UPSTREAM-frontend.md','CONTEXT.md','.env.example','.gitignore','.java-version','.node-version','.nvmrc']);
   // Root runtime data/ is already excluded by the top-level allowlist. A nested
   // source directory such as student-web/src/data must remain in the snapshot.
@@ -64,6 +64,8 @@ if(mode==='--prepare') {
       const buildScripts=project==='admin-web'?['typecheck','build:prod']:project==='student-web'?['build']:project==='contracts'?['check']:[];
       for(const script of buildScripts) run(node,[npm,...common,'run',script],path.join(scratch,project));
     }
+    run(node,['executor/build-classifier.mjs','--write']);
+    run(node,['executor/build-classifier.mjs']);
     run(`${scratch}/backend/mvnw`,['--settings',mavenSettings,`-Dmaven.repo.local=${scratch}/.local/m2`,'-DskipTests','package'],`${scratch}/backend`);
     save({...state,stage:'BUILT',files:files.length,sourceSnapshotSha256:digest.digest('hex'),log,finishedAt:new Date().toISOString(),newIndependentLocalCredentials:true,buildResult:'PASS'});
     console.log(JSON.stringify({...metadata,scratch,files:files.length,newIndependentLocalCredentials:true,buildResult:'PASS',log}));

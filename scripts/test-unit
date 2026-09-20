@@ -1,9 +1,11 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/.."
-data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scripts/ai-spike.test.mjs scripts/runtime-artifact.test.mjs scripts/local-profile.test.mjs scripts/verify-secrets.test.mjs executor/test/worker.test.mjs contracts/tests/contracts.test.mjs contracts/tests/p1-contracts.test.mjs student-web/test/identity-state.test.mjs
+data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scripts/ai-spike.test.mjs scripts/runtime-artifact.test.mjs scripts/local-profile.test.mjs scripts/verify-secrets.test.mjs executor/test/*.test.mjs contracts/tests/contracts.test.mjs contracts/tests/p1-contracts.test.mjs student-web/test/identity-state.test.mjs
 data/tools/node/bin/node docs/validation/check-design.mjs
-data/tools/node/bin/node --test contracts/tests/content.test.mjs contracts/tests/p2-contracts.test.mjs
+data/tools/node/bin/node scripts/generate-ai-content.mjs --check
+data/tools/node/bin/node executor/build-classifier.mjs
+data/tools/node/bin/node --test contracts/tests/content.test.mjs contracts/tests/p2-contracts.test.mjs contracts/tests/p3-contracts.test.mjs contracts/tests/classifier.test.mjs
 data/tools/node/bin/node --test student-web/test/workspace-state.test.mjs
 cd backend
 JAVA_HOME="${MP_JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}" MAVEN_USER_HOME="../data/maven-user" ./mvnw -Dmaven.repo.local=../.local/m2 test

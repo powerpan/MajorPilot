@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { checkContent,validateManifest } from '../check-content.mjs';
 const fixture=()=>JSON.parse(readFileSync(new URL('../../content/demo-table/1.0.0/manifest.json',import.meta.url),'utf8'));
-test('catalogued demos validate hashes without becoming professional tasks',()=>{const result=checkContent();assert.equal(result.bundles.length,2);assert.ok(result.bundles.every(b=>b.contentKind==='DEMO'));});
+test('catalogued demos stay intact alongside a separately reviewed professional bundle',()=>{const result=checkContent();assert.equal(result.bundles.filter(b=>b.contentKind==='DEMO').length,2);assert.equal(result.bundles.filter(b=>b.contentKind==='MAJOR').length,1);});
 test('unknown fields, external paths, traversal, altered hashes and missing hints fail closed',()=>{for(const change of [m=>m.surprise=true,m=>m.assets[0].path='https://example.com/data',m=>m.assets[0].path='../secret',m=>m.assets[0].sha256='0'.repeat(64),m=>m.steps[0].hints.pop()]){const m=fixture();change(m);assert.throws(()=>validateManifest(m));}});
 test('cycles, missing assets and unknown evidence fields cannot publish',()=>{for(const change of [m=>m.steps[0].dependencies=['submit'],m=>m.steps[0].assetKeys=['missing'],m=>m.steps[0].assetKeys=['internal-review'],m=>m.steps[0].evidenceFields=['personality'],m=>m.operations[0].stepKey='missing']){const m=fixture();change(m);assert.throws(()=>validateManifest(m));}});
 test('professional content requires honest time and complete professional review gates',()=>{const m=fixture();m.contentKind='MAJOR';m.majorCode='AI';m.demoKey=null;assert.throws(()=>validateManifest(m));});

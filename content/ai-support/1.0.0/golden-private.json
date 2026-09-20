@@ -1,0 +1,1246 @@
+{
+  "schemaVersion": "classifier-golden-v1",
+  "baselineConfig": {
+    "definitionVariantIds": {
+      "technical_issue": "technical-default",
+      "concept_confusion": "concept-default",
+      "schedule_constraint": "schedule-default",
+      "motivation_support": "motivation-default"
+    },
+    "exampleIds": [],
+    "confidenceThreshold": 0.55,
+    "lowConfidencePolicy": "MANUAL_REVIEW"
+  },
+  "changedConfig": {
+    "definitionVariantIds": {
+      "technical_issue": "technical-clarified",
+      "concept_confusion": "concept-clarified",
+      "schedule_constraint": "schedule-clarified",
+      "motivation_support": "motivation-clarified"
+    },
+    "exampleIds": [
+      "example-technical-1",
+      "example-concept-1",
+      "example-schedule-1",
+      "example-motivation-1"
+    ],
+    "confidenceThreshold": 0.7,
+    "lowConfidencePolicy": "MANUAL_REVIEW"
+  },
+  "baseline": {
+    "schemaVersion": "classifier-result-v1",
+    "baseline": {
+      "sampleCount": 48,
+      "autoRoutedCount": 39,
+      "correctAutoRoutedCount": 27,
+      "manualReviewCount": 9,
+      "coverage": 0.8125,
+      "autoAccuracy": 0.692308,
+      "totalCorrectAutoRate": 0.5625,
+      "perLabel": [
+        {
+          "label": "technical_issue",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "concept_confusion",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "schedule_constraint",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "motivation_support",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        }
+      ],
+      "confusionMatrix": {
+        "labelOrder": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support"
+        ],
+        "columns": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support",
+          "MANUAL_REVIEW"
+        ],
+        "counts": [
+          [
+            6,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            6,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            6,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            1,
+            9,
+            0
+          ]
+        ]
+      },
+      "errorCounts": [
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        }
+      ]
+    },
+    "candidate": {
+      "sampleCount": 48,
+      "autoRoutedCount": 39,
+      "correctAutoRoutedCount": 27,
+      "manualReviewCount": 9,
+      "coverage": 0.8125,
+      "autoAccuracy": 0.692308,
+      "totalCorrectAutoRate": 0.5625,
+      "perLabel": [
+        {
+          "label": "technical_issue",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "concept_confusion",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "schedule_constraint",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "motivation_support",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        }
+      ],
+      "confusionMatrix": {
+        "labelOrder": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support"
+        ],
+        "columns": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support",
+          "MANUAL_REVIEW"
+        ],
+        "counts": [
+          [
+            6,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            6,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            6,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            1,
+            9,
+            0
+          ]
+        ]
+      },
+      "errorCounts": [
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        }
+      ]
+    },
+    "delta": {
+      "coverage": 0,
+      "autoAccuracy": 0,
+      "totalCorrectAutoRate": 0,
+      "manualReviewCount": 0
+    },
+    "errorCategoryChanges": [
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "concept_confusion",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "schedule_constraint",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "motivation_support",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 3,
+        "candidateCount": 3,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "technical_issue",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "schedule_constraint",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "motivation_support",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 3,
+        "candidateCount": 3,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "technical_issue",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "concept_confusion",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "motivation_support",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 3,
+        "candidateCount": 3,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "technical_issue",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "concept_confusion",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "schedule_constraint",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 0,
+        "candidateCount": 0,
+        "change": 0
+      }
+    ]
+  },
+  "changed": {
+    "schemaVersion": "classifier-result-v1",
+    "baseline": {
+      "sampleCount": 48,
+      "autoRoutedCount": 39,
+      "correctAutoRoutedCount": 27,
+      "manualReviewCount": 9,
+      "coverage": 0.8125,
+      "autoAccuracy": 0.692308,
+      "totalCorrectAutoRate": 0.5625,
+      "perLabel": [
+        {
+          "label": "technical_issue",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "concept_confusion",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "schedule_constraint",
+          "precision": 0.666667,
+          "recall": 0.5,
+          "supportCount": 12,
+          "predictedCount": 9,
+          "truePositiveCount": 6
+        },
+        {
+          "label": "motivation_support",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        }
+      ],
+      "confusionMatrix": {
+        "labelOrder": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support"
+        ],
+        "columns": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support",
+          "MANUAL_REVIEW"
+        ],
+        "counts": [
+          [
+            6,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            6,
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            6,
+            1,
+            3
+          ],
+          [
+            1,
+            1,
+            1,
+            9,
+            0
+          ]
+        ]
+      },
+      "errorCounts": [
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 3
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        }
+      ]
+    },
+    "candidate": {
+      "sampleCount": 48,
+      "autoRoutedCount": 48,
+      "correctAutoRoutedCount": 36,
+      "manualReviewCount": 0,
+      "coverage": 1,
+      "autoAccuracy": 0.75,
+      "totalCorrectAutoRate": 0.75,
+      "perLabel": [
+        {
+          "label": "technical_issue",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        },
+        {
+          "label": "concept_confusion",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        },
+        {
+          "label": "schedule_constraint",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        },
+        {
+          "label": "motivation_support",
+          "precision": 0.75,
+          "recall": 0.75,
+          "supportCount": 12,
+          "predictedCount": 12,
+          "truePositiveCount": 9
+        }
+      ],
+      "confusionMatrix": {
+        "labelOrder": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support"
+        ],
+        "columns": [
+          "technical_issue",
+          "concept_confusion",
+          "schedule_constraint",
+          "motivation_support",
+          "MANUAL_REVIEW"
+        ],
+        "counts": [
+          [
+            9,
+            1,
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            9,
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            1,
+            9,
+            1,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            9,
+            0
+          ]
+        ]
+      },
+      "errorCounts": [
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "technical_issue",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "concept_confusion",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "motivation_support",
+          "count": 1
+        },
+        {
+          "trueLabel": "schedule_constraint",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "technical_issue",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "concept_confusion",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "schedule_constraint",
+          "count": 1
+        },
+        {
+          "trueLabel": "motivation_support",
+          "predictedLabel": "MANUAL_REVIEW",
+          "count": 0
+        }
+      ]
+    },
+    "delta": {
+      "coverage": 0.1875,
+      "autoAccuracy": 0.057692,
+      "totalCorrectAutoRate": 0.1875,
+      "manualReviewCount": -9
+    },
+    "errorCategoryChanges": [
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "concept_confusion",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "schedule_constraint",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "motivation_support",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "technical_issue",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 3,
+        "candidateCount": 0,
+        "change": -3
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "technical_issue",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "schedule_constraint",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "motivation_support",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "concept_confusion",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 3,
+        "candidateCount": 0,
+        "change": -3
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "technical_issue",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "concept_confusion",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "motivation_support",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "schedule_constraint",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 3,
+        "candidateCount": 0,
+        "change": -3
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "technical_issue",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "concept_confusion",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "schedule_constraint",
+        "baselineCount": 1,
+        "candidateCount": 1,
+        "change": 0
+      },
+      {
+        "trueLabel": "motivation_support",
+        "predictedLabel": "MANUAL_REVIEW",
+        "baselineCount": 0,
+        "candidateCount": 0,
+        "change": 0
+      }
+    ]
+  },
+  "practicePredictions": [
+    {
+      "sampleId": "practice-01",
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.990489,
+      "logScores": [
+        -55.462211,
+        -56.560823,
+        -55.462211,
+        -49.96915
+      ]
+    },
+    {
+      "sampleId": "practice-02",
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.993188,
+      "logScores": [
+        -55.462211,
+        -56.560823,
+        -49.96915,
+        -56.560823
+      ]
+    },
+    {
+      "sampleId": "practice-03",
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.993188,
+      "logScores": [
+        -56.560823,
+        -56.560823,
+        -55.462211,
+        -49.96915
+      ]
+    },
+    {
+      "sampleId": "practice-04",
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -27.027649,
+        -23.731812,
+        -27.027649
+      ]
+    },
+    {
+      "sampleId": "practice-05",
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.993188,
+      "logScores": [
+        -44.451697,
+        -51.04337,
+        -51.04337,
+        -49.944758
+      ]
+    },
+    {
+      "sampleId": "practice-06",
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -23.731812,
+        -27.027649,
+        -27.027649
+      ]
+    },
+    {
+      "sampleId": "practice-07",
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -27.027649,
+        -27.027649,
+        -23.731812
+      ]
+    },
+    {
+      "sampleId": "practice-08",
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.993188,
+      "logScores": [
+        -49.96915,
+        -55.462211,
+        -56.560823,
+        -56.560823
+      ]
+    },
+    {
+      "sampleId": "practice-09",
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.990489,
+      "logScores": [
+        -62.078276,
+        -60.979664,
+        -60.979664,
+        -55.486602
+      ]
+    },
+    {
+      "sampleId": "practice-10",
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.993188,
+      "logScores": [
+        -51.04337,
+        -44.451697,
+        -51.04337,
+        -49.944758
+      ]
+    },
+    {
+      "sampleId": "practice-11",
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.993188,
+      "logScores": [
+        -55.462211,
+        -49.96915,
+        -56.560823,
+        -56.560823
+      ]
+    },
+    {
+      "sampleId": "practice-12",
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.993188,
+      "logScores": [
+        -51.04337,
+        -51.04337,
+        -44.451697,
+        -49.944758
+      ]
+    },
+    {
+      "sampleId": "practice-13",
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "MANUAL_REVIEW",
+      "confidence": 0.5,
+      "logScores": [
+        -28.973559,
+        -27.874947,
+        -28.973559,
+        -28.973559
+      ]
+    },
+    {
+      "sampleId": "practice-14",
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.75,
+      "logScores": [
+        -23.456106,
+        -23.456106,
+        -23.456106,
+        -21.258881
+      ]
+    },
+    {
+      "sampleId": "practice-15",
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.99863,
+      "logScores": [
+        -56.560823,
+        -48.870537,
+        -56.560823,
+        -56.560823
+      ]
+    },
+    {
+      "sampleId": "practice-16",
+      "predictedLabel": "motivation_support",
+      "routedLabel": "motivation_support",
+      "confidence": 0.84375,
+      "logScores": [
+        -32.545102,
+        -32.545102,
+        -31.446489,
+        -29.249265
+      ]
+    },
+    {
+      "sampleId": "practice-17",
+      "predictedLabel": "concept_confusion",
+      "routedLabel": "concept_confusion",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -23.731812,
+        -27.027649,
+        -27.027649
+      ]
+    },
+    {
+      "sampleId": "practice-18",
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.993188,
+      "logScores": [
+        -62.078276,
+        -60.979664,
+        -55.486602,
+        -62.078276
+      ]
+    },
+    {
+      "sampleId": "practice-19",
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "MANUAL_REVIEW",
+      "confidence": 0.5,
+      "logScores": [
+        -23.456106,
+        -23.456106,
+        -22.357494,
+        -23.456106
+      ]
+    },
+    {
+      "sampleId": "practice-20",
+      "predictedLabel": "technical_issue",
+      "routedLabel": "MANUAL_REVIEW",
+      "confidence": 0.5,
+      "logScores": [
+        -22.357494,
+        -23.456106,
+        -23.456106,
+        -23.456106
+      ]
+    },
+    {
+      "sampleId": "practice-21",
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.9,
+      "logScores": [
+        -23.731812,
+        -27.027649,
+        -27.027649,
+        -27.027649
+      ]
+    },
+    {
+      "sampleId": "practice-22",
+      "predictedLabel": "schedule_constraint",
+      "routedLabel": "schedule_constraint",
+      "confidence": 0.9,
+      "logScores": [
+        -27.027649,
+        -27.027649,
+        -23.731812,
+        -27.027649
+      ]
+    },
+    {
+      "sampleId": "practice-23",
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.993188,
+      "logScores": [
+        -53.540692,
+        -60.132366,
+        -59.033754,
+        -60.132366
+      ]
+    },
+    {
+      "sampleId": "practice-24",
+      "predictedLabel": "technical_issue",
+      "routedLabel": "technical_issue",
+      "confidence": 0.9,
+      "logScores": [
+        -23.731812,
+        -27.027649,
+        -27.027649,
+        -27.027649
+      ]
+    }
+  ]
+}

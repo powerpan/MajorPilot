@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { ROOT, TOOL, JAVA_HOME, PORTS } from './local-config.mjs';
 import { runtimeEnv } from './env.mjs';
 import { startInfra } from './infra.mjs';
@@ -8,6 +9,7 @@ import { selectLocalProfile, requireMatchingProfile } from './local-profile.mjs'
 const profile = selectLocalProfile(process.argv.slice(2));
 await startInfra();
 if (process.argv.includes('--infra-only')) process.exit(0);
+execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-classifier.mjs`], { cwd: ROOT, env: runtimeEnv(), stdio: 'inherit' });
 const running = record('backend');
 requireMatchingProfile(running, profile);
 const jar = `${ROOT}/backend/ruoyi-admin/target/ruoyi-admin.jar`;

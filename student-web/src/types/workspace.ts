@@ -1,11 +1,14 @@
 export type Answer = Record<string, unknown>;
 export interface InputProperty {
-  type: string;
+  type: string | string[];
   enum?: (string | number)[];
   const?: unknown;
   minLength?: number;
   maxLength?: number;
   maxItems?: number;
+  minItems?: number;
+  properties?: Record<string, InputProperty>;
+  required?: string[];
   items?: InputProperty;
 }
 export interface InputSchema {
@@ -60,7 +63,17 @@ export interface DemoTask {
   versionCode: string;
   availability: string;
 }
+export interface PreviewTask {
+  taskVersionId: string;
+  majorCode: string;
+  title: string;
+  versionCode: string;
+  runMode: "REVIEW_PREVIEW";
+  reviewStatus: "REVIEW";
+  warning: string;
+}
 export interface Run {
+  runMode: "STANDARD" | "REVIEW_PREVIEW";
   runId: string;
   contentKind: string;
   majorCode: string | null;
@@ -97,6 +110,15 @@ export interface Execution {
   durationMs: number;
   reused: boolean;
   remainingEvaluations: number;
+  sourceRevisions: Record<string, number>;
+  appliedSourceRevisions: Record<string, number> | null;
+}
+export interface InputBinding {
+  parameterKey: string;
+  sourceStepKey: string;
+  sourceField: string;
+  sourceRevision: number;
+  value: unknown;
 }
 export interface Step {
   stepKey: string;
@@ -108,6 +130,7 @@ export interface Step {
   readOnly: boolean;
   savedAt: string | null;
   executions: Execution[];
+  inputBindings: InputBinding[];
 }
 export interface Saved {
   stepKey: string;

@@ -14,7 +14,7 @@ public final class TaskContentViews {
         JsonNode manifest=version.manifest();ObjectNode result=select(manifest,List.of("schemaVersion","taskVersionId","contentKind","majorCode","demoKey","versionCode","title","scenario","goals","estimatedMinutes","reflection"));
         ArrayNode assets=result.putArray("assets");for(JsonNode asset:manifest.path("assets"))if(asset.path("visibility").asText().equals("PUBLIC"))assets.add(select(asset,List.of("assetKey","mediaType","sha256","byteLength")));
         ArrayNode steps=result.putArray("steps");for(JsonNode step:manifest.path("steps"))steps.add(publicStep(step));
-        ArrayNode operations=result.putArray("operations");for(JsonNode operation:manifest.path("operations"))operations.add(select(operation,List.of("operationKey","stepKey","parametersSchema","resultSchema","maxEvaluations")));
+        ArrayNode operations=result.putArray("operations");for(JsonNode operation:manifest.path("operations"))operations.add(select(operation,List.of("operationKey","stepKey","parametersSchema","resultSchema","maxEvaluations","inputBindings")));
         return result;
     }
     public static JsonNode publicStep(JsonNode step) { return select(step,List.of("stepKey","title","instructions","dependencies","required","responseSchemaVersion","inputSchema","assetKeys","operationKey")); }

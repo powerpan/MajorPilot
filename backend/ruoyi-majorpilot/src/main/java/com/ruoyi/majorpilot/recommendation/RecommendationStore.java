@@ -31,7 +31,7 @@ public class RecommendationStore {
         var normalized=Questionnaire.json(answers);
         normalized.fields().forEachRemaining(field->jdbc.update("INSERT INTO mp_decision_answer(decision_profile_id,question_key,answer_json,answer_text_redacted,schema_version,created_at) VALUES(?,?,?,NULL,?,?)",profile,field.getKey(),json(field.getValue()),Questionnaire.VERSION,Timestamp.from(now)));
         if(supersedes!=null)jdbc.update("UPDATE mp_decision_profile SET status='SUPERSEDED' WHERE id=?",supersedes);
-        RecommendationView view=RecommendationView.create(profileId,recId,version,answers,now,student==null);
+        RecommendationView view=new MajorCatalog(jdbc).project(RecommendationView.create(profileId,recId,version,answers,now,student==null));
         long recommendation=insert("INSERT INTO mp_recommendation(public_id,student_id,decision_profile_id,recommendation_type,source_run_id,completed_major_codes_json,rule_version,primary_major_code,alternative_order_json,tie_detected,tie_break_rule,explanation_status,explanation_version,generated_at,safe_result_json) VALUES(?,?,?,'INITIAL',NULL,'[]',?,?,?,?,?,'STRUCTURED_ONLY',?,?,?)",recId,student,profile,view.ruleVersion(),view.primaryMajor().name(),json(view.alternativeMajors()),view.tieDetected(),view.tieBreakRule().name(),view.explanationVersion(),Timestamp.from(now),json(view));
         int order=0;
         for(var reason:view.reasons())jdbc.update("INSERT INTO mp_recommendation_reason(recommendation_id,reason_code,reason_type,major_code,reason_order,source_question_keys_json,display_text,rule_version) VALUES(?,?,?,?,?,?,?,?)",recommendation,reason.code().name(),reason.reasonType().name(),reason.majorCode().name(),++order,json(reason.sourceQuestionKeys()),reason.text(),view.ruleVersion());
@@ -49,7 +49,7 @@ public class RecommendationStore {
         return decode((String)rows.getFirst().get("safe_result_json"));
     }
     public RecommendationView owned(long student,String publicId) {
-        var rows=jdbc.queryForList("SELECT safe_result_json FROM mp_recommendation WHERE public_id=? AND student_id=?",publicId,student);
+        var rows=jdbc.queryForList("SELECT safe_result_json FROM mp_recommendation WHERE public_id=? AND student_id=? AND recommendation_type='INITIAL'",publicId,student);
         if(rows.isEmpty())throw new ApiException(404,"RECOMMENDATION_NOT_FOUND");
         return decode((String)rows.getFirst().get("safe_result_json")).forStudent();
     }
@@ -64,7 +64,7 @@ public class RecommendationStore {
         },student);
     }
     public String json(Object value) { try{return mapper.writeValueAsString(value);}catch(Exception invalid){throw new IllegalStateException("Domain serialization failed");} }
-    private RecommendationView decode(String value) { try{return mapper.readValue(value,RecommendationView.class);}catch(Exception invalid){throw new IllegalStateException("Stored recommendation invalid");} }
+    private RecommendationView decode(String value) { try{return new MajorCatalog(jdbc).project(mapper.readValue(value,RecommendationView.class));}catch(Exception invalid){throw new IllegalStateException("Stored recommendation invalid");} }
     public long insert(String sql,Object... values) {
         var key=new GeneratedKeyHolder();jdbc.update(connection->{var statement=connection.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);for(int i=0;i<values.length;i++)statement.setObject(i+1,values[i]);return statement;},key);
         if(key.getKey()==null)throw new IllegalStateException("Missing generated key");return key.getKey().longValue();

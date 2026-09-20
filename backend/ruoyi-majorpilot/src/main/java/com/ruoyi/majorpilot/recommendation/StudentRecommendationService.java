@@ -50,17 +50,17 @@ public class StudentRecommendationService {
             jdbc.update("INSERT INTO mp_recommendation_decision(public_id,recommendation_id,student_id,decision_no,decision_type,selected_major_code,override_reason_code,override_text,decided_at) VALUES(?,?,?,?,?,?,?,?,?)",id,internal,student.internalId(),decisionNo,overridden?"OVERRIDDEN":"ACCEPTED",selected.name(),selectedReason,selectedText,Timestamp.from(now));
             var properties=new LinkedHashMap<String,Object>();properties.put("decisionType",overridden?"OVERRIDDEN":"ACCEPTED");properties.put("recommendedMajor",recommendation.primaryMajor().name());properties.put("selectedMajor",selected.name());properties.put("reasonCode",selectedReason);
             events.record(student.internalId(),null,internal,"recommendation.decision.made",properties);
-            return new RecommendationDecision(id,recommendationId,decisionNo,overridden?"OVERRIDDEN":"ACCEPTED",recommendation.primaryMajor(),selected,selectedReason,selectedText,now,"UNAVAILABLE");
+            return new RecommendationDecision(id,recommendationId,decisionNo,overridden?"OVERRIDDEN":"ACCEPTED",recommendation.primaryMajor(),selected,selectedReason,selectedText,now,new MajorCatalog(jdbc).availability(selected.name()));
         }).data();
     }
     @Transactional public RecommendationView get(StudentPrincipal student,String id) { active(student);return store.owned(student.internalId(),id); }
     @Transactional public List<Map<String,Object>> profiles(StudentPrincipal student) { active(student);return store.profiles(student.internalId()); }
     @Transactional public Map<String,Object> dashboard(StudentPrincipal student) {
         active(student);var data=new LinkedHashMap<String,Object>();data.put("recommendation",store.latestStudent(student.internalId()));
-        data.put("majors",RecommendationView.majorDifferencesList().stream().map(major->Map.of("majorCode",major.majorCode(),"name",major.name(),"status","NOT_STARTED","availability","UNAVAILABLE")).toList());
+        var majorStates=new MajorCatalog(jdbc).dashboard(student.internalId());data.put("majors",majorStates);
         var choices=jdbc.queryForList("SELECT d.public_id,d.selected_major_code,d.decision_type,r.public_id AS recommendation_public_id FROM mp_recommendation_decision d JOIN mp_recommendation r ON r.id=d.recommendation_id WHERE d.student_id=? ORDER BY d.decided_at DESC,d.id DESC LIMIT 1",student.internalId());
         data.put("currentDecision",choices.isEmpty()?null:Map.of("decisionId",choices.getFirst().get("public_id"),"recommendationId",choices.getFirst().get("recommendation_public_id"),"selectedMajorCode",choices.getFirst().get("selected_major_code"),"decisionType",choices.getFirst().get("decision_type")));
-        data.put("nextStep","TASK_CONTENT_PREPARING");return data;
+        data.put("nextStep",majorStates.stream().allMatch(m->m.get("status").equals("CLOSED"))?"ALL_COMPLETED":majorStates.stream().anyMatch(m->m.get("availability").equals("AVAILABLE"))?"SELECT_EXPERIENCE":"TASK_CONTENT_PREPARING");return data;
     }
     private void active(StudentPrincipal student) { var rows=jdbc.queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",student.internalId());if(rows.isEmpty())throw new ApiException(401,"AUTH_REQUIRED");if(!"ACTIVE".equals(rows.getFirst().get("status")))throw new ApiException(403,"EMAIL_NOT_VERIFIED"); }
     private static IdempotencyService.Owner owner(StudentPrincipal student) { return new IdempotencyService.Owner(student.internalId(),null,"student:"+student.publicId()); }

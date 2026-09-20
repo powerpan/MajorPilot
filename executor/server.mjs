@@ -10,17 +10,21 @@ const worker = readFileSync(new URL('./worker.js', import.meta.url), 'utf8')
 const workerHash = createHash('sha256').update(worker).digest('hex')
 const manifest = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'))
 if (manifest.engine !== 'fixed-calculator-v1' || manifest.workerSha256 !== workerHash) throw new Error('Executor manifest/worker hash mismatch; review both files before starting')
+const classifierWorker = readFileSync(new URL('./dist/classifier-worker.js',import.meta.url),'utf8')
+const classifierHash = createHash('sha256').update(classifierWorker).digest('hex')
+if (manifest.classifierWorkerSha256 !== classifierHash) throw new Error('Classifier manifest/worker hash mismatch')
 // Assets are embedded by the trusted Node launcher; compute needs no network load.
 const bootstrap = `
 const nonce = location.hash.slice(1);
 const parentOrigin = ${JSON.stringify(parentOrigin)};
-const workerSource = ${JSON.stringify(worker)};
-const expectedHash = ${JSON.stringify(workerHash)};
+const sources = ${JSON.stringify({calculator:{source:worker,hash:workerHash,engine:'fixed-calculator-v1'},classifier:{source:classifierWorker,hash:classifierHash,engine:'classifier-v1'}})};
 let consumed = false;
 function emit(result) { parent.postMessage({type:'MP_EXECUTOR_RESULT', nonce, result}, parentOrigin); }
 addEventListener('message', async event => {
   if(consumed || event.source !== parent || event.origin !== parentOrigin || event.data?.type !== 'MP_EXECUTE' || event.data?.nonce !== nonce) return;
   consumed = true;
+  const classifier = event.data.template === 'classifier-practice-v1';
+  const {source:workerSource,hash:expectedHash,engine} = sources[classifier ? 'classifier' : 'calculator'];
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(workerSource));
   const actualHash = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2,'0')).join('');
   if(actualHash !== expectedHash) return emit({status:'ERROR',code:'ASSET_HASH_MISMATCH',engine:'fixed-calculator-v1'});
@@ -31,8 +35,9 @@ addEventListener('message', async event => {
   worker.onmessage = event => finish(event.data);
   worker.onerror = event => {event.preventDefault(); finish({status:'ERROR',code:'WORKER_FAILURE',engine:'fixed-calculator-v1'});};
   const payload = event.data;
-  if(Object.keys(payload).some(key => !['type','nonce','template','values','parameters'].includes(key))) return finish({status:'ERROR',code:'INVALID_MESSAGE',engine:'fixed-calculator-v1'});
-  worker.postMessage({template:payload.template, values:payload.values, ...(payload.parameters === undefined ? {} : {parameters:payload.parameters})});
+  const allowed = classifier ? ['type','nonce','template','model','config','samples'] : ['type','nonce','template','values','parameters'];
+  if(Object.keys(payload).some(key => !allowed.includes(key))) return finish({status:'ERROR',code:'INVALID_MESSAGE',engine});
+  worker.postMessage(classifier ? {template:payload.template,model:payload.model,config:payload.config,samples:payload.samples} : {template:payload.template, values:payload.values, ...(payload.parameters === undefined ? {} : {parameters:payload.parameters})});
 });
 parent.postMessage({type:'MP_EXECUTOR_READY',nonce},parentOrigin);`
 const scriptHash = createHash('sha256').update(bootstrap).digest('base64')

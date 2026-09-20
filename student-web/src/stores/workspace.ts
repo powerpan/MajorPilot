@@ -9,7 +9,14 @@ import {
   type DraftKey,
   type TaskDraft,
 } from "../lib/task-drafts";
-import { execute } from "../execution";
+import { execute, executeClassifier } from "../execution";
+import type {
+  Model,
+  Config,
+  Sample as PracticeSample,
+  Comparison,
+  Metrics,
+} from "../../../shared/classifier/classifier-v1.mjs";
 import type {
   Answer,
   Execution,
@@ -20,6 +27,7 @@ import type {
   Saved,
   Step,
   TaskManifest,
+  InputProperty,
 } from "../types/workspace";
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -37,6 +45,7 @@ export const useWorkspace = defineStore("workspace", () => {
     loading = ref(false),
     busy = ref(false);
   const dirty = ref(false),
+    selectionReady = ref(true),
     saving = ref(false),
     conflict = ref(false),
     recovered = ref<TaskDraft | null>(null);
@@ -48,6 +57,44 @@ export const useWorkspace = defineStore("workspace", () => {
     hintBusy = ref(false),
     selectedStep = ref("");
   const iterationNotice = ref("");
+  const followUpBusy = ref(false),
+    followUpError = ref("");
+  let followUpAttempt = 0;
+  const publicAssets = ref<Record<string, unknown>>({});
+  const practiceResult = ref<Comparison | null>(null),
+    practiceConfiguration = ref("");
+  const model = computed(
+    () => publicAssets.value["classifier-model"] as Model | undefined,
+  );
+  const practice = computed(
+    () =>
+      publicAssets.value["practice-public"] as
+        | (PracticeSample & {
+            baseline: import("../../../shared/classifier/classifier-v1.mjs").Prediction;
+          })[]
+        | undefined,
+  );
+  const baseline = computed(
+    () => publicAssets.value["baseline-summary"] as Metrics | undefined,
+  );
+  const comparison = computed(() =>
+    execution.value?.result?.schemaVersion === "classifier-result-v1"
+      ? (execution.value.result as unknown as Comparison)
+      : null,
+  );
+  const bindingConfiguration = computed(() =>
+    Object.fromEntries(
+      (step.value?.inputBindings || []).map((value) => [
+        value.parameterKey,
+        value.value,
+      ]),
+    ),
+  );
+  const practiceStale = computed(
+    () =>
+      !!practiceResult.value &&
+      practiceConfiguration.value !== configFingerprint(answer.value),
+  );
   const connectionOnline = ref(navigator.onLine);
   let generation = 0,
     selectionGeneration = 0,
@@ -60,6 +107,7 @@ export const useWorkspace = defineStore("workspace", () => {
   const readOnly = computed(
     () =>
       !run.value ||
+      !selectionReady.value ||
       run.value.readOnly ||
       (reflectionMode.value
         ? reflection.value?.readOnly
@@ -67,23 +115,96 @@ export const useWorkspace = defineStore("workspace", () => {
       conflict.value,
   );
   const saveLabel = computed(() =>
-    conflict.value
-      ? "版本冲突"
-      : saving.value
-        ? "保存中…"
-        : dirty.value
-          ? connectionOnline.value
-            ? "本机待同步"
-            : "离线待同步"
-          : recovered.value
-            ? "发现本机草稿"
-            : "已保存",
+    !selectionReady.value
+      ? error.value ? "步骤尚未就绪" : "正在读取步骤…"
+      : conflict.value
+        ? "版本冲突"
+        : saving.value
+          ? "保存中…"
+          : dirty.value
+            ? connectionOnline.value
+              ? "本机待同步"
+              : "离线待同步"
+            : recovered.value
+              ? "发现本机草稿"
+              : "已保存",
   );
   const resultStale = computed(
     () =>
       !!execution.value &&
-      (dirty.value || execution.value.appliedToRevision !== step.value?.revision),
+      (dirty.value ||
+        execution.value.appliedToRevision !== step.value?.revision ||
+        !step.value ||
+        !matchesSources(execution.value, step.value)),
   );
+  const orderedSources = (value: Record<string, number>) =>
+    Object.fromEntries(
+      Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    );
+  const sourceVector = (value: Step) =>
+    orderedSources(
+      Object.fromEntries(
+        (value.inputBindings || []).map((binding) => [
+          binding.sourceStepKey,
+          binding.sourceRevision,
+        ]),
+      ),
+    );
+  const matchesSources = (value: Execution, current: Step) =>
+    JSON.stringify(orderedSources(value.appliedSourceRevisions || {})) ===
+    JSON.stringify(sourceVector(current));
+  function configuration(value: Answer): Config {
+    return {
+      definitionVariantIds: value.definitionVariantIds,
+      exampleIds: value.exampleIds,
+      confidenceThreshold: value.confidenceThreshold,
+      lowConfidencePolicy: value.lowConfidencePolicy,
+    } as Config;
+  }
+  function configFingerprint(value: Answer) {
+    return JSON.stringify(configuration(value));
+  }
+  function validField(value: unknown, field: InputProperty): boolean {
+    if (field.type === "string")
+      return (
+        typeof value === "string" &&
+        [...value].length >= (field.minLength || 0) &&
+        [...value].length <= (field.maxLength || Infinity)
+      );
+    if (field.type === "array")
+      return (
+        Array.isArray(value) &&
+        value.length >= (field.minItems || 0) &&
+        value.length <= (field.maxItems || Infinity) &&
+        (!field.items || value.every((item) => validField(item, field.items!)))
+      );
+    if (field.type === "object")
+      return (
+        !!value &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        (field.required || []).every((key) => key in value) &&
+        Object.entries(value).every(
+          ([key, item]) =>
+            !!field.properties?.[key] &&
+            validField(item, field.properties[key]!),
+        )
+      );
+    return true;
+  }
+  function draftValid() {
+    const schema = reflectionMode.value
+      ? reflection.value?.definition.inputSchema
+      : step.value?.definition.inputSchema;
+    return (
+      !schema ||
+      Object.entries(answer.value).every(
+        ([key, value]) =>
+          !!schema.properties[key] &&
+          validField(value, schema.properties[key]!),
+      )
+    );
+  }
   function requestKey(operation: string, body: unknown) {
     let keyer = keyers.get(operation);
     if (!keyer) {
@@ -150,11 +271,15 @@ export const useWorkspace = defineStore("workspace", () => {
     step.value = null;
     reflection.value = null;
     sample.value = null;
+    publicAssets.value = {};
+    practiceResult.value = null;
+    practiceConfiguration.value = "";
     answer.value = {};
     recovered.value = null;
     execution.value = null;
     hints.value = [];
     dirty.value = false;
+    selectionReady.value = true;
     conflict.value = false;
     error.value = "";
     storageWarning.value = "";
@@ -166,6 +291,9 @@ export const useWorkspace = defineStore("workspace", () => {
     keyers.clear();
     selectedStep.value = "";
     iterationNotice.value = "";
+    followUpBusy.value = false;
+    followUpError.value = "";
+    followUpAttempt = 0;
   }
   onIdentityChange(clear);
   async function handle(cause: unknown) {
@@ -197,9 +325,11 @@ export const useWorkspace = defineStore("workspace", () => {
   }
   async function load(id: string) {
     clear();
+    const issuedAt = generation;
     loading.value = true;
     try {
       await auth.refresh(true);
+      if (issuedAt !== generation) throw new ApiError(409, "IDENTITY_CHANGED");
       if (!auth.me) throw new ApiError(401, "AUTH_REQUIRED");
       run.value = await request<Run>(`${base}/${encodeURIComponent(id)}`);
       if (run.value.status === "READY" || run.value.status === "REPLACED")
@@ -214,7 +344,54 @@ export const useWorkspace = defineStore("workspace", () => {
     } catch (cause) {
       await handle(cause);
     } finally {
-      loading.value = false;
+      if (issuedAt === generation) loading.value = false;
+    }
+  }
+  async function loadAssets(keys: string[]) {
+    if (!run.value || !manifest.value) return;
+    const runId = run.value.runId,
+      issuedAt = generation,
+      selectedAt = selectionGeneration;
+    const ticket = identityRequest();
+    try {
+      for (const key of keys) {
+        if (publicAssets.value[key]) continue;
+        const asset = manifest.value.assets.find(
+          (value) => value.assetKey === key,
+        );
+        if (!asset || asset.mediaType !== "application/json")
+          throw new Error("当前内容版本未提供所需公开资料。");
+        const response = await fetch(
+          `${base}/${runId}/task/assets/${encodeURIComponent(key)}`,
+          {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: ticket.signal,
+          },
+        );
+        if (!response.ok)
+          throw new ApiError(
+            response.status,
+            response.status === 401 ? "AUTH_REQUIRED" : "CONTENT_UNAVAILABLE",
+          );
+        const bytes = await response.arrayBuffer();
+        if (bytes.byteLength !== asset.byteLength || bytes.byteLength > 1048576)
+          throw new Error("公开资料大小校验未通过。");
+        const digest = [
+          ...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+        ]
+          .map((value) => value.toString(16).padStart(2, "0"))
+          .join("");
+        if (digest !== asset.sha256)
+          throw new Error("公开资料版本校验未通过，请重新加载。");
+        const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
+        ticket.assertCurrent();
+        if (issuedAt !== generation || selectedAt !== selectionGeneration)
+          throw new ApiError(409, "IDENTITY_CHANGED");
+        publicAssets.value = { ...publicAssets.value, [key]: value };
+      }
+    } finally {
+      ticket.finish();
     }
   }
   async function loadSample() {
@@ -223,7 +400,8 @@ export const useWorkspace = defineStore("workspace", () => {
       (value) => value.assetKey === "sample",
     );
     if (!asset || !run.value) return;
-    const issuedAt = generation, selectionAt = selectionGeneration,
+    const issuedAt = generation,
+      selectionAt = selectionGeneration,
       ticket = identityRequest();
     try {
       const response = await fetch(
@@ -262,7 +440,8 @@ export const useWorkspace = defineStore("workspace", () => {
       )
         throw new Error("样本结构不符合当前演示要求。");
       ticket.assertCurrent();
-      if (issuedAt !== generation || selectionAt !== selectionGeneration) throw new ApiError(409, "IDENTITY_CHANGED");
+      if (issuedAt !== generation || selectionAt !== selectionGeneration)
+        throw new ApiError(409, "IDENTITY_CHANGED");
       sample.value = value;
     } finally {
       ticket.finish();
@@ -271,9 +450,16 @@ export const useWorkspace = defineStore("workspace", () => {
   async function select(key: string) {
     if (!run.value) return;
     const selectedAt = ++selectionGeneration;
-    const assertSelected = () => { if (selectedAt !== selectionGeneration) throw new ApiError(409, "IDENTITY_CHANGED"); };
+    const assertSelected = () => {
+      if (selectedAt !== selectionGeneration)
+        throw new ApiError(409, "IDENTITY_CHANGED");
+    };
     if (dirty.value && !(await flush())) return;
     assertSelected();
+    // Do not expose editable controls until both reviewed assets and the
+    // pre-existing local draft have been read. Otherwise a fresh edit can be
+    // read back as a recovered draft and incorrectly gate the primary action.
+    selectionReady.value = false;
     clearTimeout(timer);
     selectedStep.value = key;
     error.value = "";
@@ -292,20 +478,30 @@ export const useWorkspace = defineStore("workspace", () => {
       const next = await request<Reflection>(
         `${base}/${run.value.runId}/reflection`,
       );
-      assertSelected(); reflection.value = next;
+      assertSelected();
+      reflection.value = next;
       answer.value = clone(reflection.value.answers || {});
     } else {
       const next = await request<Step>(
         `${base}/${run.value.runId}/steps/${encodeURIComponent(key)}`,
       );
-      assertSelected(); step.value = next;
+      assertSelected();
+      step.value = next;
       answer.value = clone(step.value.response || {});
       execution.value =
-        [...step.value.executions]
-          .reverse()
-          .find((value) => value.status === "SUCCEEDED") || null;
+        step.value.executions.find(
+          (value) =>
+            value.status === "SUCCEEDED" &&
+            value.appliedToRevision === next.revision &&
+            matchesSources(value, next),
+        ) ||
+        step.value.executions.find((value) => value.status === "SUCCEEDED") ||
+        null;
       if (step.value.definition.assetKeys.includes("sample"))
         await loadSample();
+      await loadAssets(
+        step.value.definition.assetKeys.filter((value) => value !== "sample"),
+      );
     }
     assertSelected();
     dirty.value = false;
@@ -313,19 +509,34 @@ export const useWorkspace = defineStore("workspace", () => {
     if (draft) {
       try {
         const value = (await readTaskDraft(draft)) || null;
-        assertSelected(); recovered.value = value;
+        assertSelected();
+        recovered.value = value;
       } catch (cause) {
         assertSelected();
         storageWarning.value = errorText(cause);
       }
     }
+    assertSelected();
+    selectionReady.value = true;
     if (
       !recovered.value &&
       !readOnly.value &&
-      step.value?.definition.operationKey &&
+      step.value?.definition.operationKey === "demo-summary-v1" &&
       Object.keys(answer.value).length === 0
     )
       edit({ multiplier: 1, include: "ALL" });
+    if (
+      !recovered.value &&
+      !readOnly.value &&
+      key === "a4-configure" &&
+      Object.keys(answer.value).length === 0 &&
+      model.value
+    )
+      edit({
+        ...clone(model.value.baselineConfig),
+        modificationReason: "",
+        expectedEffect: "",
+      });
   }
   function edit(next: Answer) {
     if (readOnly.value) return;
@@ -336,12 +547,7 @@ export const useWorkspace = defineStore("workspace", () => {
     void persist();
     clearTimeout(timer);
     timer = setTimeout(() => {
-      if (
-        navigator.onLine &&
-        (typeof answer.value.observation !== "string" ||
-          [...answer.value.observation].length >= 20)
-      )
-        void flush();
+      if (navigator.onLine && draftValid()) void flush();
     }, 700);
   }
   async function restoreDraft() {
@@ -382,6 +588,12 @@ export const useWorkspace = defineStore("workspace", () => {
       return result && dirty.value ? flush() : result;
     }
     if (!dirty.value) return !conflict.value;
+    if (!draftValid()) {
+      await persist();
+      error.value =
+        "部分内容尚未满足本步骤要求，已保留本机草稿。请补全后保存。";
+      return false;
+    }
     if (readOnly.value || !run.value || !navigator.onLine) {
       await persist();
       return false;
@@ -459,9 +671,18 @@ export const useWorkspace = defineStore("workspace", () => {
     if (!run.value || run.value.revision !== issuedRevision) return;
     const previous = run.value;
     run.value = next;
-    if (step.value && !step.value.definition.dependencies.every(key => next.steps.find(value => value.stepKey === key)?.status === 'COMPLETED')) {
-      workerController?.abort(); step.value.readOnly = true;
-      error.value = "前序步骤已在另一页面修改，当前步骤暂为只读。答案仍保留，请先复核前序步骤。";
+    if (
+      step.value &&
+      !step.value.definition.dependencies.every(
+        (key) =>
+          next.steps.find((value) => value.stepKey === key)?.status ===
+          "COMPLETED",
+      )
+    ) {
+      workerController?.abort();
+      step.value.readOnly = true;
+      error.value =
+        "前序步骤已在另一页面修改，当前步骤暂为只读。答案仍保留，请先复核前序步骤。";
     }
     if (next.status !== previous.status && next.readOnly) {
       workerController?.abort();
@@ -480,7 +701,11 @@ export const useWorkspace = defineStore("workspace", () => {
       readOnly.value
     )
       return;
-    if (step.value.definition.operationKey !== "demo-summary-v1") {
+    if (
+      !["demo-summary-v1", "ai-evaluate"].includes(
+        step.value.definition.operationKey,
+      )
+    ) {
       error.value = "此版本的执行适配器尚未开放，不会运行未审核操作。";
       return;
     }
@@ -491,7 +716,40 @@ export const useWorkspace = defineStore("workspace", () => {
     const controller = workerController,
       issuedAt = generation;
     try {
-      if (!(await flush()) || controller.signal.aborted || issuedAt !== generation) return;
+      if (
+        step.value!.definition.operationKey === "ai-evaluate" &&
+        step.value!.revision === 0 &&
+        !dirty.value
+      )
+        edit({});
+      if (
+        !(await flush()) ||
+        controller.signal.aborted ||
+        issuedAt !== generation
+      )
+        return;
+      if (step.value!.definition.operationKey === "ai-evaluate") {
+        const body = {
+          operationKey: "ai-evaluate",
+          inputRevision: step.value!.revision,
+          parameters: {},
+        };
+        // A5's answer revision can stay unchanged while its saved A4 input
+        // changes. That is a new operation, not an idempotent retry. The source
+        // vector affects only the key; the server still reads its own config.
+        const sourceRevisions = sourceVector(step.value!);
+        execution.value = await request<Execution>(
+          `${base}/${run.value!.runId}/executions`,
+          {
+            method: "POST",
+            body,
+            key: requestKey("execution", { body, sourceRevisions }),
+            signal: controller.signal,
+          },
+        );
+        localEngine.value = "classifier-v1 · 服务端固定隐藏集";
+        return;
+      }
       const params = clone(answer.value) as {
         multiplier: 1 | 2 | 3;
         include: "ALL" | "FIRST_TWO";
@@ -538,12 +796,52 @@ export const useWorkspace = defineStore("workspace", () => {
       if (issuedAt === generation) executing.value = false;
     }
   }
+  async function previewPractice() {
+    if (executing.value || readOnly.value || !model.value || !practice.value)
+      return;
+    executing.value = true;
+    executionError.value = "";
+    workerController = new AbortController();
+    const controller = workerController,
+      issuedAt = generation,
+      selectedAt = selectionGeneration,
+      fingerprint = configFingerprint(answer.value);
+    try {
+      const result = await executeClassifier(
+        clone(model.value),
+        configuration(clone(answer.value)),
+        clone(practice.value),
+        controller.signal,
+      );
+      if (
+        issuedAt !== generation ||
+        selectedAt !== selectionGeneration ||
+        controller.signal.aborted
+      )
+        return;
+      if (result.status !== "SUCCESS" || !result.result)
+        throw new Error(result.code || "WORKER_FAILURE");
+      practiceResult.value = result.result as unknown as Comparison;
+      practiceConfiguration.value = fingerprint;
+      localEngine.value = "classifier-v1 · 公开练习 · 隔离 Worker";
+    } catch (cause) {
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        executionError.value = controller.signal.aborted
+          ? "练习预览已取消，配置保留。"
+          : errorText(cause);
+    } finally {
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        executing.value = false;
+    }
+  }
   function cancelExecution() {
     workerController?.abort();
-    if (executing.value) executionError.value = "本次运行已取消。输入和上次结果仍保留，可以重新运行。";
+    if (executing.value)
+      executionError.value =
+        "本次运行已取消。输入和上次结果仍保留，可以重新运行。";
   }
   async function complete() {
-    if (busy.value || !run.value) return;
+    if (busy.value || !run.value || !selectionReady.value) return;
     busy.value = true;
     const issuedAt = generation;
     error.value = "";
@@ -612,7 +910,8 @@ export const useWorkspace = defineStore("workspace", () => {
   async function hint(level: number) {
     if (!run.value || !step.value || hintBusy.value || readOnly.value) return;
     hintBusy.value = true;
-    const issuedAt = generation, selectedAt = selectionGeneration;
+    const issuedAt = generation,
+      selectedAt = selectionGeneration;
     try {
       const body = { stepKey: step.value.stepKey, hintLevel: level };
       const result = await request<Hint>(`${base}/${run.value.runId}/hints`, {
@@ -628,7 +927,45 @@ export const useWorkspace = defineStore("workspace", () => {
     } catch (cause) {
       await handle(cause);
     } finally {
-      if (issuedAt === generation && selectedAt === selectionGeneration) hintBusy.value = false;
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        hintBusy.value = false;
+    }
+  }
+  async function requestFollowUp() {
+    if (!reflection.value || !run.value || followUpBusy.value || readOnly.value)
+      return;
+    const issuedAt = generation,
+      selectedAt = selectionGeneration;
+    followUpBusy.value = true;
+    followUpError.value = "";
+    try {
+      if (!(await flush())) return;
+      const inputRevision = reflection.value.revision,
+        issuedEdit = edits,
+        body = { expectedRevision: inputRevision };
+      const result = await request<Answer>(
+        `${base}/${run.value.runId}/reflection/follow-up`,
+        {
+          method: "POST",
+          body,
+          key: requestKey("follow-up", { ...body, attempt: ++followUpAttempt }),
+        },
+      );
+      if (
+        issuedAt !== generation ||
+        selectedAt !== selectionGeneration ||
+        issuedEdit !== edits ||
+        reflection.value?.revision !== inputRevision ||
+        run.value?.status !== "TASK_COMPLETED"
+      )
+        return;
+      reflection.value.followUp = result;
+    } catch (cause) {
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        followUpError.value = errorText(cause);
+    } finally {
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        followUpBusy.value = false;
     }
   }
   return {
@@ -637,6 +974,17 @@ export const useWorkspace = defineStore("workspace", () => {
     step,
     reflection,
     sample,
+    model,
+    practice,
+    baseline,
+    comparison,
+    bindingConfiguration,
+    practiceResult,
+    practiceStale,
+    previewPractice,
+    followUpBusy,
+    followUpError,
+    requestFollowUp,
     answer,
     error,
     storageWarning,
@@ -653,11 +1001,14 @@ export const useWorkspace = defineStore("workspace", () => {
     hints,
     hintBusy,
     selectedStep,
+    selectionReady,
     reflectionMode,
     readOnly,
     saveLabel,
     resultStale,
-    connectionChanged: () => { connectionOnline.value = navigator.onLine; },
+    connectionChanged: () => {
+      connectionOnline.value = navigator.onLine;
+    },
     iterationNotice,
     load,
     select,

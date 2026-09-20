@@ -30,13 +30,14 @@ public class HintService {
         });
         String hintId=created.data().hintId();if(created.replayed())return get(student,id,hintId);
         Prepared prepared=runs.transactions().execute(status->{db.activeStudent(student);var run=db.owned(student,id);return new Prepared(run,runs.version(run),runs.stepDefinition(run,input.stepKey()),owned(run,hintId));});
-        String text=staticHint(prepared.definition,input.hintLevel());HintProvider.Result output;
-        try{output=provider.hint(new HintProvider.Context(prepared.version.taskVersionId(),prepared.version.versionCode(),input.stepKey(),input.hintLevel(),"task-hint-v1",db.node(prepared.record.get("request_context_json")),text,prepared.run.kind().equals("DEMO")));if(output==null||output.response()==null||!Set.of("SUCCEEDED","FALLBACK").contains(output.status()))output=fallback(prepared.version,input.stepKey(),input.hintLevel(),text);}
+        String text=staticHint(prepared.definition,input.hintLevel());HintProvider.Result output;long begin=System.nanoTime();
+        try{output=provider.hint(new HintProvider.Context(prepared.version.taskVersionId(),prepared.version.versionCode(),input.stepKey(),input.hintLevel(),"task-hint-v1",db.node(prepared.record.get("request_context_json")),text,prepared.run.kind().equals("DEMO"),prepared.run.mode()));if(output==null||output.response()==null||!Set.of("SUCCEEDED","FALLBACK").contains(output.status()))output=fallback(prepared.version,input.stepKey(),input.hintLevel(),text);}
         catch(RuntimeException unavailable){output=fallback(prepared.version,input.stepKey(),input.hintLevel(),text);}
+        String aiCallId=runs.recordAiCall(prepared.run,"HINT",db.node(prepared.record.get("request_context_json")),output,(System.nanoTime()-begin)/1000000);
         HintProvider.Result finalOutput=output;
         return runs.transactions().execute(status->{db.activeStudent(student);var run=db.owned(student,id);var row=owned(run,hintId);if(!s(row,"status").equals("PENDING"))return view(row);
             boolean stale=!run.status().equals("IN_PROGRESS")||n(runs.stepState(run,input.stepKey()),"current_revision")!=n(row,"input_revision");
-            db.jdbc().update("UPDATE mp_hint_request SET status=?,response_json=?,provider=?,model=?,prompt_version=?,completed_at=UTC_TIMESTAMP(3) WHERE id=? AND status='PENDING'",stale?"FAILED":finalOutput.status(),stale?null:db.json(finalOutput.response()),finalOutput.provider(),finalOutput.model(),finalOutput.promptVersion(),n(row,"id"));db.event(run,"hint.completed",Map.of("stepKey",input.stepKey(),"hintLevel",input.hintLevel(),"status",stale?"FAILED":finalOutput.status()));return view(owned(run,hintId));});
+            db.jdbc().update("UPDATE mp_hint_request SET status=?,response_json=?,provider=?,model=?,prompt_version=?,ai_call_id=?,completed_at=UTC_TIMESTAMP(3) WHERE id=? AND status='PENDING'",stale?"FAILED":finalOutput.status(),stale?null:db.json(finalOutput.response()),finalOutput.provider(),finalOutput.model(),finalOutput.promptVersion(),aiCallId,n(row,"id"));db.event(run,"hint.completed",Map.of("stepKey",input.stepKey(),"hintLevel",input.hintLevel(),"status",stale?"FAILED":finalOutput.status()));return view(owned(run,hintId));});
     }
     String staticHint(JsonNode definition,int level) {for(var hint:definition.path("hints"))if(hint.path("level").asInt()==level)return hint.path("text").asText();throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");}
     HintProvider.Result fallback(TaskContent.Version version,String step,int level,String text) {return new HintProvider.Result(db.mapper().valueToTree(map("schemaVersion","hint-result-v1","taskVersionId",version.taskVersionId(),"stepKey",step,"hintLevel",level,"hintText",text)),"STATIC",null,"task-hint-v1","FALLBACK");}
@@ -49,7 +50,7 @@ public class HintService {
             var accounts=db.jdbc().queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",n(candidate,"student_id"));if(accounts.isEmpty())return;
             var records=db.jdbc().queryForList(RunStore.SELECT+" WHERE r.id=? AND r.student_id=?",n(candidate,"run_id"),n(candidate,"student_id"));if(records.isEmpty())return;
             var run=db.row(records.getFirst());var row=owned(run,s(candidate,"public_id"));if(!s(row,"status").equals("PENDING"))return;
-            if((run.kind().equals("DEMO")&&!db.demoEnabled())||!s(accounts.getFirst(),"status").equals("ACTIVE")||!run.status().equals("IN_PROGRESS")||n(runs.stepState(run,s(row,"step_key")),"current_revision")!=n(row,"input_revision")){failPending(row);return;}
+            if((run.kind().equals("DEMO")&&!db.demoEnabled())||(run.mode().equals("REVIEW_PREVIEW")&&!db.previewEnabled())||!s(accounts.getFirst(),"status").equals("ACTIVE")||!run.status().equals("IN_PROGRESS")||n(runs.stepState(run,s(row,"step_key")),"current_revision")!=n(row,"input_revision")){failPending(row);return;}
             try {
                 var version=runs.version(run);var output=fallback(version,s(row,"step_key"),(int)n(row,"hint_level"),staticHint(runs.stepDefinition(run,s(row,"step_key")),(int)n(row,"hint_level")));db.jdbc().update("UPDATE mp_hint_request SET status='FALLBACK',response_json=?,provider='STATIC',model=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=? AND status='PENDING'",db.json(output.response()),n(row,"id"));
             } catch(ApiException unavailable) {

@@ -1,0 +1,17 @@
+export type Label = 'technical_issue' | 'concept_confusion' | 'schedule_constraint' | 'motivation_support';
+export type Config = { definitionVariantIds: Record<Label, string>; exampleIds: string[]; confidenceThreshold: 0.4 | 0.55 | 0.7; lowConfidencePolicy: 'MANUAL_REVIEW' | 'AUTO_ROUTE' };
+export type Sample = { sampleId: string; messageText: string; goldLabel: Label };
+export type Model = { schemaVersion: 'classifier-model-v1'; labelOrder: Label[]; vocabulary: string[]; baseCounts: Record<Label, Record<string, number>>; definitionVariants: { id: string; label: Label; title: string; description: string; features: string[] }[]; examples: { exampleId: string; messageText: string; goldLabel: Label }[]; baselineConfig: Config };
+export type Prediction = { predictedLabel: Label; routedLabel: Label | 'MANUAL_REVIEW'; confidence: number; logScores: number[] };
+export type Metrics = { sampleCount: number; autoRoutedCount: number; correctAutoRoutedCount: number; manualReviewCount: number; coverage: number; autoAccuracy: number | null; totalCorrectAutoRate: number; perLabel: { label: Label; precision: number | null; recall: number | null; supportCount: number; predictedCount: number; truePositiveCount: number }[]; confusionMatrix: { labelOrder: Label[]; columns: (Label | 'MANUAL_REVIEW')[]; counts: number[][] }; errorCounts: { trueLabel: Label; predictedLabel: Label | 'MANUAL_REVIEW'; count: number }[] };
+export type Comparison = { schemaVersion: 'classifier-result-v1'; baseline: Metrics; candidate: Metrics; delta: { coverage: number; autoAccuracy: number | null; totalCorrectAutoRate: number; manualReviewCount: number }; errorCategoryChanges: { trueLabel: Label; predictedLabel: Label | 'MANUAL_REVIEW'; baselineCount: number; candidateCount: number; change: number }[] };
+export const LABELS: readonly Label[];
+export const MANUAL: 'MANUAL_REVIEW';
+export function halfUp6(value: number): number;
+export function features(text: string): Record<string, number>;
+export function normalizeConfig(model: Model, raw: unknown): Config;
+export function isBaseline(model: Model, config: Config): boolean;
+export function predict(model: Model, config: Config, messageText: string): Prediction;
+export function metrics(goldLabels: Label[], routedLabels: (Label | 'MANUAL_REVIEW')[]): Metrics;
+export function evaluate(model: Model, config: Config, samples: Sample[]): Metrics;
+export function evaluateComparison(model: Model, config: Config, samples: Sample[]): Comparison;

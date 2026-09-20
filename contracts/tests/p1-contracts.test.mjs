@@ -62,3 +62,15 @@ test('health dependency failure is a typed 503 success envelope, not a generic s
   assert.equal(operation.responses['503'](body), true);
   assert.equal(operation.responses['503']({ data: { status: 'UP' }, meta: body.meta }), false);
 });
+test('P3 publication projection accepts formal availability and run states without preview status leakage', () => {
+  const majors = ['AI', 'DATA_SCIENCE', 'BUSINESS_ANALYTICS'].map(majorCode => ({ majorCode, name: majorCode, status: 'NOT_STARTED', availability: 'UNAVAILABLE' }));
+  const dashboard = { recommendation: null, majors, currentDecision: null, nextStep: 'TASK_CONTENT_PREPARING' };
+  valid('Dashboard', dashboard);
+  for (const status of ['READY', 'IN_PROGRESS', 'PAUSED', 'TASK_COMPLETED', 'CLOSED']) {
+    dashboard.majors[0] = { ...majors[0], availability: 'AVAILABLE', status };
+    dashboard.nextStep = 'SELECT_EXPERIENCE'; valid('Dashboard', dashboard);
+  }
+  dashboard.majors.forEach(major => { major.status = 'CLOSED'; });
+  dashboard.nextStep = 'ALL_COMPLETED'; valid('Dashboard', dashboard);
+  dashboard.majors[0].status = 'REVIEW_PREVIEW'; invalid('Dashboard', dashboard);
+});

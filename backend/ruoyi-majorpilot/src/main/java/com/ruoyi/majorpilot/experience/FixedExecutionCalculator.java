@@ -5,11 +5,18 @@ import com.ruoyi.majorpilot.shared.ApiException;
 import java.math.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.ruoyi.majorpilot.classifier.ClassifierEngine;
 @Component @Profile("local")
 public class FixedExecutionCalculator implements ExecutionCalculator {
-    private final TaskContentProvider content;private final ObjectMapper mapper;
-    public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper){this.content=content;this.mapper=mapper;}
+    private final TaskContentProvider content;private final ObjectMapper mapper;private final ClassifierEngine classifier;
+    @Autowired public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper,ClassifierEngine classifier){this.content=content;this.mapper=mapper;this.classifier=classifier;}
+    public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper){this(content,mapper,null);}
+    private boolean classifier(JsonNode operation){return operation.path("engineType").asText().equals("FROZEN_CLASSIFIER");}
+    @Override public JsonNode normalize(TaskContent.Version version,JsonNode operation,JsonNode parameters){return classifier(operation)?classifier.normalize(version,operation,parameters):parameters;}
+    @Override public boolean isBaseline(TaskContent.Version version,JsonNode operation,JsonNode parameters){return classifier(operation)&&classifier.isBaseline(version,operation,parameters);}
     @Override public JsonNode calculate(TaskContent.Version version,JsonNode operation,JsonNode parameters) {
+        if(classifier(operation))return classifier.calculate(version,operation,parameters);
         if(!operation.path("engineType").asText().equals("DEMO_SUMMARY")||!operation.path("engineVersion").asText().equals("demo-summary-v1")||!version.contentKind().equals("DEMO"))throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
         ResponseRules.validate(operation.path("parametersSchema"),parameters,true);
         JsonNode dataset;try{byte[] bytes=content.publicAsset(version,operation.path("datasetAssetKey").asText()).bytes();if(bytes.length>1048576)throw new IllegalArgumentException();dataset=mapper.readTree(bytes);}catch(Exception invalid){throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");}

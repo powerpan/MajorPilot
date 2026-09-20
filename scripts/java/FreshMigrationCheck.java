@@ -42,7 +42,8 @@ public final class FreshMigrationCheck {
             var second=flyway.migrate();require(second.migrationsExecuted==0);
             require(flyway.info().pending().length==0);
             List<Map<String,Object>> history=new ArrayList<>();
-            int after,keyTables,p2Tables=0;
+            int after,keyTables,p2Tables=0,p3Tables=0;
+            boolean studentJobOwnership=false,p0QueuePreserved=false;
             try(Connection connection=DriverManager.getConnection(url,account,password)) {
                 after=tableCount(connection);
                 try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT version,description,type,checksum,success FROM flyway_schema_history ORDER BY installed_rank")) {
@@ -58,8 +59,15 @@ public final class FreshMigrationCheck {
                     try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('mp_major','mp_task_version','mp_experience_run','mp_step_state','mp_step_response_revision','mp_execution_record','mp_response_execution','mp_hint_request','mp_reflection','mp_reflection_answer','mp_run_closure_request','mp_sensitive_audit','mp_step_completion')")) { rows.next();p2Tables=rows.getInt(1); }
                     require(p2Tables==13);
                 }
+                if(expectedVersion>=6) {
+                    try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('mp_p0_background_job','mp_background_job','mp_evidence_snapshot','mp_evidence_item','mp_report','mp_ai_call')")) { rows.next();p3Tables=rows.getInt(1); }
+                    require(p3Tables==6);
+                    try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.key_column_usage WHERE table_schema=DATABASE() AND table_name='mp_background_job' AND column_name='owner_student_id' AND referenced_table_name='mp_student_account' AND referenced_column_name='id'")) { rows.next();studentJobOwnership=rows.getInt(1)==1; }
+                    try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='mp_p0_background_job' AND column_name='owner_student_id' AND data_type='char' AND character_maximum_length=36")) { rows.next();p0QueuePreserved=rows.getInt(1)==1; }
+                    require(studentJobOwnership&&p0QueuePreserved);
+                }
             }
-            Map<String,Object> result=new LinkedHashMap<>();result.put("result","PASS");result.put("emptyTableCount",before);result.put("migratedTableCount",after);result.put("p1TableCount",keyTables);result.put("p2TableCount",p2Tables);result.put("expectedVersion",expectedVersion);result.put("firstMigrationsExecuted",first.migrationsExecuted);result.put("secondMigrationsExecuted",second.migrationsExecuted);result.put("validated",true);result.put("history",history);
+            Map<String,Object> result=new LinkedHashMap<>();result.put("result","PASS");result.put("emptyTableCount",before);result.put("migratedTableCount",after);result.put("p1TableCount",keyTables);result.put("p2TableCount",p2Tables);result.put("p3TableCount",p3Tables);result.put("studentJobOwnership",studentJobOwnership);result.put("p0QueuePreserved",p0QueuePreserved);result.put("expectedVersion",expectedVersion);result.put("firstMigrationsExecuted",first.migrationsExecuted);result.put("secondMigrationsExecuted",second.migrationsExecuted);result.put("validated",true);result.put("history",history);
             System.out.println("MAJORPILOT_MIGRATION_RESULT="+new ObjectMapper().writeValueAsString(result));
         } catch(Exception failure) {
             // JDBC/Flyway diagnostics can contain connection identity or SQL. Do not log them.

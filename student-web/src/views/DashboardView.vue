@@ -7,6 +7,9 @@ import { major } from "../data/majors";
 import { observeRecommendation } from "../lib/events";
 import type { Dashboard, MajorCode, Decision } from "../types";
 import RecommendationDetails from "../components/RecommendationDetails.vue";
+import type { PreviewTask, Run } from "../types/workspace";
+const previewAvailable = ref(false),
+  formalRuns = ref<Run[]>([]);
 const auth = useAuth(),
   router = useRouter(),
   dashboard = ref<Dashboard | null>(null),
@@ -31,6 +34,14 @@ async function load() {
     }
     if (!auth.me.emailVerified) return;
     dashboard.value = await api<Dashboard>("/api/app/v1/dashboard");
+    const [previews, runs] = await Promise.all([
+      api<PreviewTask[]>("/api/app/v1/review-preview-tasks").catch(() => []),
+      api<Run[]>("/api/app/v1/experience-runs").catch(() => []),
+    ]);
+    previewAvailable.value = previews.length > 0;
+    formalRuns.value = runs.filter(
+      (value) => value.contentKind === "MAJOR" && value.runMode === "STANDARD",
+    );
     if (dashboard.value.recommendation) {
       dispose?.();
       dispose = observeRecommendation(
@@ -85,7 +96,61 @@ async function save() {
     );
     dashboard.value!.currentDecision = decision;
     choosing.value = null;
-    success.value = `已保存：${major(decision.selectedMajorCode).name}。专业任务内容准备中，尚未开始正式体验。`;
+    success.value = `已保存：${major(decision.selectedMajorCode).name}。${dashboard.value!.majors.find((value) => value.majorCode === decision.selectedMajorCode)?.availability === "AVAILABLE" ? "内容已发布，可主动开始正式体验。" : "专业任务内容准备中，尚未开始正式体验。"}`;
+  } catch (cause) {
+    error.value = errorText(cause);
+  } finally {
+    busy.value = false;
+  }
+}
+async function startFormal(code: MajorCode) {
+  const decision = dashboard.value?.currentDecision;
+  if (!decision || decision.selectedMajorCode !== code) return;
+  busy.value = true;
+  error.value = "";
+  try {
+    const existing = formalRuns.value.find(
+      (value) => value.majorCode === code && value.status !== "REPLACED",
+    );
+    const body = { decisionId: decision.decisionId };
+    const next =
+      existing ||
+      (await api<Run>("/api/app/v1/experience-runs", {
+        method: "POST",
+        body,
+        key: operation(body),
+      }));
+    if (["READY", "PAUSED"].includes(next.status)) {
+      const runs = await api<Run[]>("/api/app/v1/experience-runs"),
+        active = runs.find(
+          (value) =>
+            value.runId !== next.runId &&
+            ["IN_PROGRESS", "TASK_COMPLETED"].includes(value.status),
+        );
+      if (
+        active &&
+        !window.confirm(
+          "暂停当前活动体验并保留已保存进度，切换到这个专业？未同步内容请先返回原页面保存。",
+        )
+      )
+        return;
+      const transition = {
+        expectedRevision: next.revision,
+        ...(active
+          ? {
+              pauseActiveRunId: active.runId,
+              expectedActiveRunRevision: active.revision,
+            }
+          : {}),
+      };
+      const action = next.status === "PAUSED" ? "resume" : "start";
+      await api<Run>(`/api/app/v1/experience-runs/${next.runId}/${action}`, {
+        method: "POST",
+        body: transition,
+        key: operation({ action, ...transition }),
+      });
+    }
+    await router.push(`/app/runs/${next.runId}`);
   } catch (cause) {
     error.value = errorText(cause);
   } finally {
@@ -151,10 +216,23 @@ onBeforeUnmount(() => dispose?.());
               <h2>{{ item.name }}</h2>
               <p>{{ major(item.majorCode).chinese }}</p>
             </div>
-            <span>未开始</span>
+            <span>{{
+              formalRuns.find((value) => value.majorCode === item.majorCode)
+                ?.status === "CLOSED"
+                ? "体验已完成"
+                : formalRuns.find((value) => value.majorCode === item.majorCode)
+                  ? "已保存进度"
+                  : "未开始"
+            }}</span>
           </div>
           <p>{{ major(item.majorCode).description }}</p>
-          <p class="muted">专业任务内容准备中</p>
+          <p class="muted">
+            {{
+              item.availability === "AVAILABLE"
+                ? "正式内容已发布"
+                : "专业任务内容准备中"
+            }}
+          </p>
           <div class="button-row">
             <button
               class="quiet-button"
@@ -172,9 +250,37 @@ onBeforeUnmount(() => dispose?.());
               >了解任务</RouterLink
             >
           </div>
+          <button
+            v-if="
+              item.availability === 'AVAILABLE' &&
+              dashboard.currentDecision?.selectedMajorCode === item.majorCode
+            "
+            class="workspace-outline"
+            :disabled="busy"
+            @click="startFormal(item.majorCode)"
+          >
+            {{
+              formalRuns.find((value) => value.majorCode === item.majorCode)
+                ? "打开已保存体验"
+                : "开始正式体验"
+            }}
+          </button>
         </article>
       </section>
-      <section class="dashboard-demo-link"><p>想先熟悉保存、运行与暂停操作？技术演示不属于任何专业，也不生成专业报告。</p><RouterLink to="/app/demos" class="text-link">打开工作区上手演示 →</RouterLink></section>
+      <section class="dashboard-demo-link">
+        <p>
+          想先熟悉保存、运行与暂停操作？技术演示不属于任何专业，也不生成专业报告。
+        </p>
+        <RouterLink to="/app/demos" class="text-link"
+          >打开工作区上手演示 →</RouterLink
+        >
+      </section>
+      <section v-if="previewAvailable" class="dashboard-demo-link">
+        <p>仅本地工程预览：尚待专业审核与真实用户计时，不计正式完成。</p>
+        <RouterLink to="/app/review-previews" class="text-link"
+          >打开内容工程预览 →</RouterLink
+        >
+      </section>
       <section
         v-if="choosing"
         class="decision-panel"

@@ -1,0 +1,170 @@
+{
+  "sampleCount": 48,
+  "autoRoutedCount": 39,
+  "correctAutoRoutedCount": 27,
+  "manualReviewCount": 9,
+  "coverage": 0.8125,
+  "autoAccuracy": 0.692308,
+  "totalCorrectAutoRate": 0.5625,
+  "perLabel": [
+    {
+      "label": "technical_issue",
+      "precision": 0.666667,
+      "recall": 0.5,
+      "supportCount": 12,
+      "predictedCount": 9,
+      "truePositiveCount": 6
+    },
+    {
+      "label": "concept_confusion",
+      "precision": 0.666667,
+      "recall": 0.5,
+      "supportCount": 12,
+      "predictedCount": 9,
+      "truePositiveCount": 6
+    },
+    {
+      "label": "schedule_constraint",
+      "precision": 0.666667,
+      "recall": 0.5,
+      "supportCount": 12,
+      "predictedCount": 9,
+      "truePositiveCount": 6
+    },
+    {
+      "label": "motivation_support",
+      "precision": 0.75,
+      "recall": 0.75,
+      "supportCount": 12,
+      "predictedCount": 12,
+      "truePositiveCount": 9
+    }
+  ],
+  "confusionMatrix": {
+    "labelOrder": [
+      "technical_issue",
+      "concept_confusion",
+      "schedule_constraint",
+      "motivation_support"
+    ],
+    "columns": [
+      "technical_issue",
+      "concept_confusion",
+      "schedule_constraint",
+      "motivation_support",
+      "MANUAL_REVIEW"
+    ],
+    "counts": [
+      [
+        6,
+        1,
+        1,
+        1,
+        3
+      ],
+      [
+        1,
+        6,
+        1,
+        1,
+        3
+      ],
+      [
+        1,
+        1,
+        6,
+        1,
+        3
+      ],
+      [
+        1,
+        1,
+        1,
+        9,
+        0
+      ]
+    ]
+  },
+  "errorCounts": [
+    {
+      "trueLabel": "technical_issue",
+      "predictedLabel": "concept_confusion",
+      "count": 1
+    },
+    {
+      "trueLabel": "technical_issue",
+      "predictedLabel": "schedule_constraint",
+      "count": 1
+    },
+    {
+      "trueLabel": "technical_issue",
+      "predictedLabel": "motivation_support",
+      "count": 1
+    },
+    {
+      "trueLabel": "technical_issue",
+      "predictedLabel": "MANUAL_REVIEW",
+      "count": 3
+    },
+    {
+      "trueLabel": "concept_confusion",
+      "predictedLabel": "technical_issue",
+      "count": 1
+    },
+    {
+      "trueLabel": "concept_confusion",
+      "predictedLabel": "schedule_constraint",
+      "count": 1
+    },
+    {
+      "trueLabel": "concept_confusion",
+      "predictedLabel": "motivation_support",
+      "count": 1
+    },
+    {
+      "trueLabel": "concept_confusion",
+      "predictedLabel": "MANUAL_REVIEW",
+      "count": 3
+    },
+    {
+      "trueLabel": "schedule_constraint",
+      "predictedLabel": "technical_issue",
+      "count": 1
+    },
+    {
+      "trueLabel": "schedule_constraint",
+      "predictedLabel": "concept_confusion",
+      "count": 1
+    },
+    {
+      "trueLabel": "schedule_constraint",
+      "predictedLabel": "motivation_support",
+      "count": 1
+    },
+    {
+      "trueLabel": "schedule_constraint",
+      "predictedLabel": "MANUAL_REVIEW",
+      "count": 3
+    },
+    {
+      "trueLabel": "motivation_support",
+      "predictedLabel": "technical_issue",
+      "count": 1
+    },
+    {
+      "trueLabel": "motivation_support",
+      "predictedLabel": "concept_confusion",
+      "count": 1
+    },
+    {
+      "trueLabel": "motivation_support",
+      "predictedLabel": "schedule_constraint",
+      "count": 1
+    },
+    {
+      "trueLabel": "motivation_support",
+      "predictedLabel": "MANUAL_REVIEW",
+      "count": 0
+    }
+  ]
+}

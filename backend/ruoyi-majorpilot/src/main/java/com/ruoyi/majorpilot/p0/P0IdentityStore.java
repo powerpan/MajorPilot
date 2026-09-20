@@ -45,7 +45,7 @@ public class P0IdentityStore {
         if(jdbc.queryForObject("SELECT COUNT(*) FROM mp_p0_receipt WHERE actor_id=? AND state='REQUESTED' AND expires_at>UTC_TIMESTAMP(6)",Integer.class,actor)==0) throw new P0Http.Rejected(409,"RECEIPT_REQUIRED");
         jdbc.update("UPDATE mp_p0_actor SET state='DELETED' WHERE id=?",actor);
         jdbc.update("UPDATE mp_p0_session SET revoked=TRUE WHERE actor_id=?",actor);
-        jdbc.update("UPDATE mp_background_job SET status='CANCELLED' WHERE owner_student_id=? AND status IN ('PENDING','RUNNING','RETRY_WAIT')",actor);
+        jdbc.update("UPDATE mp_p0_background_job SET status='CANCELLED' WHERE owner_student_id=? AND status IN ('PENDING','RUNNING','RETRY_WAIT')",actor);
         jdbc.update("DELETE FROM mp_p0_example WHERE actor_id=?",actor);
         jdbc.update("UPDATE mp_p0_receipt SET state='COMPLETED',actor_id=NULL,expires_at=UTC_TIMESTAMP(6)+INTERVAL 90 DAY WHERE actor_id=?",actor);
         // Synthetic P0 actor retained only to test deletion-race fencing. P7 implements the real deletion job.

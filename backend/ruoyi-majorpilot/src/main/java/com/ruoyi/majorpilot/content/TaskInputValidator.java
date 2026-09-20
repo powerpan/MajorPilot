@@ -13,12 +13,17 @@ public final class TaskInputValidator {
         if(input==null || input.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536 || !matches(schema,input,complete,0))throw new ApiException(422,"STEP_VALIDATION_FAILED");
     }
     public static void validateSchema(JsonNode schema) {
-        if(!validSchema(schema,0))throw new ApiException(422,"CONTENT_SCHEMA_INVALID");
+        validateSchema(schema,false);
     }
-    private static boolean validSchema(JsonNode schema,int depth) {
+    public static void validateSchema(JsonNode schema,boolean allowNullableNumbers) {
+        if(!validSchema(schema,0,allowNullableNumbers))throw new ApiException(422,"CONTENT_SCHEMA_INVALID");
+    }
+    private static String type(JsonNode schema) {return schema.path("type").isArray()?schema.path("type").path(0).asText():schema.path("type").asText();}
+    private static boolean validSchema(JsonNode schema,int depth,boolean allowNullableNumbers) {
         if(depth>8||!schema.isObject())return false;
         for(var fields=schema.fieldNames();fields.hasNext();)if(!KEYS.contains(fields.next()))return false;
-        String type=schema.path("type").asText();
+        String type=type(schema);
+        if(schema.path("type").isArray()&&(!allowNullableNumbers||schema.path("type").size()!=2||!Set.of("number","integer").contains(type)||!schema.path("type").path(1).asText().equals("null")))return false;
         if(!Set.of("object","array","string","integer","number","boolean").contains(type))return false;
         Set<String> typedKeys=switch(type){case "object"->Set.of("properties","required","additionalProperties");case "array"->Set.of("items","minItems","maxItems","uniqueItems");case "string"->Set.of("minLength","maxLength");case "integer","number"->Set.of("minimum","maximum");default->Set.of();};
         for(var fields=schema.fieldNames();fields.hasNext();){String key=fields.next();if(!Set.of("type","enum","const").contains(key)&&!typedKeys.contains(key))return false;}
@@ -27,19 +32,20 @@ public final class TaskInputValidator {
         if(schema.has("uniqueItems")&&!schema.get("uniqueItems").isBoolean())return false;
         if(type.equals("object")) {
             if(!schema.path("properties").isObject()||schema.path("properties").size()>30||!schema.path("required").isArray()||!schema.path("additionalProperties").isBoolean()||schema.path("additionalProperties").asBoolean())return false;
-            for(JsonNode child:schema.path("properties"))if(!validSchema(child,depth+1))return false;
+            for(JsonNode child:schema.path("properties"))if(!validSchema(child,depth+1,allowNullableNumbers))return false;
             Set<String> requiredKeys=new HashSet<>();for(JsonNode required:schema.path("required"))if(!required.isTextual()||!requiredKeys.add(required.asText())||!schema.path("properties").has(required.asText()))return false;
         }
-        if(type.equals("array")&&!validSchema(schema.path("items"),depth+1))return false;
+        if(type.equals("array")&&!validSchema(schema.path("items"),depth+1,allowNullableNumbers))return false;
         if(schema.has("enum")){if(!schema.get("enum").isArray()||schema.get("enum").isEmpty())return false;Set<JsonNode> values=new HashSet<>();for(JsonNode value:schema.get("enum"))if(!values.add(value)||!matches(schema,value,true,depth+1))return false;}
         if(schema.has("const")&&!matches(schema,schema.get("const"),true,depth+1))return false;
         return true;
     }
     private static boolean matches(JsonNode schema,JsonNode value,boolean complete,int depth) {
-        if(depth>8||value==null||value.isNull())return false;
+        if(depth>8||value==null)return false;
         if(schema.has("const")&&!schema.get("const").equals(value))return false;
         if(schema.has("enum")){boolean found=false;for(JsonNode option:schema.get("enum"))if(option.equals(value))found=true;if(!found)return false;}
-        return switch(schema.path("type").asText()) {
+        if(value.isNull())return schema.path("type").isArray()&&schema.path("type").size()==2&&schema.path("type").path(1).asText().equals("null");
+        return switch(type(schema)) {
             case "object" -> {
                 if(!value.isObject()||value.size()>40)yield false;
                 boolean valid=true;
@@ -52,7 +58,7 @@ public final class TaskInputValidator {
                 boolean valid=true;Set<JsonNode> seen=new HashSet<>();for(JsonNode item:value){if(!matches(schema.path("items"),item,complete,depth+1))valid=false;if(schema.path("uniqueItems").asBoolean()&&!seen.add(item))valid=false;}yield valid;
             }
             case "string" -> value.isTextual()&&safeText(value.asText())&&(!complete||value.asText().codePointCount(0,value.asText().length())>=schema.path("minLength").asInt(0))&&value.asText().codePointCount(0,value.asText().length())<=schema.path("maxLength").asInt(10000);
-            case "integer","number" -> value.isNumber()&&Double.isFinite(value.doubleValue())&&(!schema.path("type").asText().equals("integer")||value.isIntegralNumber())&&(!schema.has("minimum")||value.decimalValue().compareTo(schema.get("minimum").decimalValue())>=0)&&(!schema.has("maximum")||value.decimalValue().compareTo(schema.get("maximum").decimalValue())<=0);
+            case "integer","number" -> value.isNumber()&&Double.isFinite(value.doubleValue())&&(!type(schema).equals("integer")||value.isIntegralNumber())&&(!schema.has("minimum")||value.decimalValue().compareTo(schema.get("minimum").decimalValue())>=0)&&(!schema.has("maximum")||value.decimalValue().compareTo(schema.get("maximum").decimalValue())<=0);
             case "boolean" -> value.isBoolean();
             default -> false;
         };

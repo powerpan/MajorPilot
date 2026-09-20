@@ -1,0 +1,242 @@
+[
+  {
+    "sampleId": "sample-001",
+    "messageText": "课程中出现周末补课，希望得到帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-002",
+    "messageText": "课程中出现学习信心，希望得到帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-003",
+    "messageText": "现在登录这部分，我无法打开。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-004",
+    "messageText": "课程中出现声音中断，希望得到帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-005",
+    "messageText": "课程中出现文件上传，希望得到帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-006",
+    "messageText": "现在学习这部分，我想要放弃。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-007",
+    "messageText": "现在坚持这部分，我需要鼓励。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-008",
+    "messageText": "请求描述：概念定义以及原理推导我理解了，只是没有空闲。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-009",
+    "messageText": "课程中出现课程安排，希望得到帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-010",
+    "messageText": "请求描述：登录失败以及页面报错这个例子如何解释？",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-011",
+    "messageText": "课程中出现提交按钮，希望得到帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-012",
+    "messageText": "课程中出现放弃犹豫，希望得到帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-013",
+    "messageText": "请求描述：截止日期及课程安排都合适，不过我需要鼓励。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-014",
+    "messageText": "课程中出现页面报错，希望得到帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-015",
+    "messageText": "请求描述：登录失败以及页面报错处理好了，不过工作太忙申请延期。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-016",
+    "messageText": "请求描述：截止日期以及课程安排这两个概念意思是什么？",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-017",
+    "messageText": "课程中出现题目思路，希望得到帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-018",
+    "messageText": "课程中出现算法区别，希望得到帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-019",
+    "messageText": "请求描述：截止日期及课程安排的页面显示错误。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-020",
+    "messageText": "课程中出现学习进度，希望得到帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-021",
+    "messageText": "现在课程这部分，我申请延期。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-022",
+    "messageText": "现在视频这部分，我一直转圈。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-023",
+    "messageText": "请求描述：学习信心以及坚持动力的页面一直转圈。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-024",
+    "messageText": "课程中出现鼓励支持，希望得到帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-025",
+    "messageText": "课程中出现担心能力，希望得到帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-026",
+    "messageText": "课程中出现延长期限，希望得到帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-027",
+    "messageText": "课程中出现工作时间，希望得到帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-028",
+    "messageText": "课程中出现视频卡顿，希望得到帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-029",
+    "messageText": "现在工作这部分，我来不及学。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-030",
+    "messageText": "课程中出现原理推导，希望得到帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-031",
+    "messageText": "现在公式这部分，我意思是什么。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-032",
+    "messageText": "请求描述：登录失败以及页面报错都解决了，可我失去动力。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-033",
+    "messageText": "课程中出现截止日期，希望得到帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-034",
+    "messageText": "现在原理这部分，我为什么这样。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-035",
+    "messageText": "现在练习这部分，我失去动力。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-036",
+    "messageText": "现在页面这部分，我显示错误。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-037",
+    "messageText": "请求描述：学习信心以及坚持动力没有问题，不过这周来不及学。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "sampleId": "sample-038",
+    "messageText": "课程中出现例子理解，希望得到帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-039",
+    "messageText": "课程中出现坚持动力，希望得到帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-040",
+    "messageText": "课程中出现登录失败，希望得到帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-041",
+    "messageText": "课程中出现公式含义，希望得到帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-042",
+    "messageText": "请求描述：概念定义以及原理推导会了，却还是想要放弃。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-043",
+    "messageText": "请求描述：概念定义以及原理推导的页面无法打开。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "sampleId": "sample-044",
+    "messageText": "现在概念这部分，我如何解释。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-045",
+    "messageText": "课程中出现练习挫败，希望得到帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "sampleId": "sample-046",
+    "messageText": "课程中出现概念定义，希望得到帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-047",
+    "messageText": "请求描述：学习信心及坚持动力的公式为什么这样？",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "sampleId": "sample-048",
+    "messageText": "现在截止这部分，我没有空闲。",
+    "goldLabel": "schedule_constraint"
+  }
+]

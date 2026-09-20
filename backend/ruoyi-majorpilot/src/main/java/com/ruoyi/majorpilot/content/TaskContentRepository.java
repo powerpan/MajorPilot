@@ -29,7 +29,8 @@ public final class TaskContentRepository {
     public byte[] asset(Bundle bundle,String key,boolean publicOnly){for(JsonNode asset:bundle.manifest().path("assets"))if(asset.path("assetKey").asText().equals(key)){if(publicOnly&&!asset.path("visibility").asText().equals("PUBLIC"))throw new ApiException(404,"CONTENT_UNAVAILABLE");return checkedAsset(asset);}throw new ApiException(404,"CONTENT_UNAVAILABLE");}
     private Bundle load(String path)throws Exception {
         byte[] raw=resource(path);JsonNode m=mapper.readTree(raw);TaskManifestValidator.validate(m);List<String> hashes=new ArrayList<>();
-        for(JsonNode asset:m.path("assets")){checkedAsset(asset);hashes.add(asset.path("assetKey").asText()+":"+asset.path("sha256").asText());}Collections.sort(hashes);
+        Map<String,byte[]> loadedAssets=new HashMap<>();for(JsonNode asset:m.path("assets")){loadedAssets.put(asset.path("assetKey").asText(),checkedAsset(asset));hashes.add(asset.path("assetKey").asText()+":"+asset.path("sha256").asText());}Collections.sort(hashes);
+        if(m.path("schemaVersion").asText().equals("task-manifest-v2"))com.ruoyi.majorpilot.classifier.ClassifierAssets.validate(loadedAssets);
         return new Bundle(path,hash(raw),hash(String.join("\n",hashes).getBytes(StandardCharsets.UTF_8)),m);
     }
     private byte[] checkedAsset(JsonNode asset){byte[] raw=resource(asset.path("path").asText());if(raw.length!=asset.path("byteLength").asLong()||!hash(raw).equals(asset.path("sha256").asText()))throw integrity();

@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { Hint } from "../../types/workspace";
-defineProps<{ hints: Hint[]; busy?: boolean; disabled?: boolean }>();
+defineProps<{
+  hints: Hint[];
+  busy?: boolean;
+  disabled?: boolean;
+  boundary?: string;
+}>();
 const emit = defineEmits<{ request: [level: number] }>();
 const titles = ["概念方向", "操作思路", "一个具体线索"];
 const confirmation = ref<HTMLDialogElement | null>(null),
@@ -34,7 +39,15 @@ function confirm() {
                 ?.hintText || "提示正在准备，请稍后重试。"
             }}
           </p>
-          <small>已审核静态提示 · 不扣分</small></template
+          <small
+            >{{
+              hints.find((value) => value.hintLevel === index + 1)?.status ===
+              "STATIC_FALLBACK"
+                ? "静态备用提示"
+                : "任务提示"
+            }}
+            · 不扣分</small
+          ></template
         >
       </div>
     </div>
@@ -54,7 +67,9 @@ function confirm() {
     <p v-if="hints.length" class="hint-boundary">
       提示帮助你理解方向，核心判断仍由你完成。
     </p>
-    <small class="workspace-demo-note">演示不生成专业报告</small>
+    <small class="workspace-demo-note">{{
+      boundary || "演示不生成专业报告"
+    }}</small>
     <dialog
       ref="confirmation"
       class="workspace-dialog"

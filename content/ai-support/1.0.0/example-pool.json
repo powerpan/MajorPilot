@@ -1,0 +1,62 @@
+[
+  {
+    "exampleId": "example-technical-1",
+    "messageText": "登录失败，无法打开，请帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "exampleId": "example-technical-2",
+    "messageText": "页面报错，显示错误，请帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "exampleId": "example-technical-3",
+    "messageText": "视频卡顿，一直转圈，请帮助。",
+    "goldLabel": "technical_issue"
+  },
+  {
+    "exampleId": "example-concept-1",
+    "messageText": "概念定义，如何解释，请帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "exampleId": "example-concept-2",
+    "messageText": "原理推导，为什么这样，请帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "exampleId": "example-concept-3",
+    "messageText": "公式含义，意思是什么，请帮助。",
+    "goldLabel": "concept_confusion"
+  },
+  {
+    "exampleId": "example-schedule-1",
+    "messageText": "截止日期，没有空闲，请帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "exampleId": "example-schedule-2",
+    "messageText": "课程安排，申请延期，请帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "exampleId": "example-schedule-3",
+    "messageText": "工作时间，来不及学，请帮助。",
+    "goldLabel": "schedule_constraint"
+  },
+  {
+    "exampleId": "example-motivation-1",
+    "messageText": "学习信心，想要放弃，请帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "exampleId": "example-motivation-2",
+    "messageText": "坚持动力，需要鼓励，请帮助。",
+    "goldLabel": "motivation_support"
+  },
+  {
+    "exampleId": "example-motivation-3",
+    "messageText": "练习挫败，失去动力，请帮助。",
+    "goldLabel": "motivation_support"
+  }
+]

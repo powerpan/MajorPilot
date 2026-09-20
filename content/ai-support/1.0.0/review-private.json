@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "content-review-v1",
+  "releaseStatus": "REVIEW",
+  "humanProfessionalReview": "PENDING",
+  "targetUserTiming": "PENDING",
+  "intendedMinutes": [
+    45,
+    60
+  ],
+  "seed": 173,
+  "disclosure": "全部消息均为合成；技术与数据检查不能替代专业人工审核或目标用户计时。"
+}

@@ -28,13 +28,13 @@ class P0MySqlTest {
     }
     @BeforeEach void setup() { actor=UUID.randomUUID().toString();jdbc.update("INSERT INTO mp_p0_actor(id) VALUES(?)",actor);jobs=new P0JobStore(jdbc,manager); }
     @AfterEach void cleanup() {
-        jdbc.update("DELETE r FROM mp_p0_job_result r JOIN mp_background_job j ON j.id=r.job_id WHERE j.owner_student_id=?",actor);
-        jdbc.update("DELETE FROM mp_background_job WHERE owner_student_id=?",actor);jdbc.update("DELETE FROM mp_p0_example WHERE actor_id=?",actor);jdbc.update("DELETE FROM mp_p0_actor WHERE id=?",actor);
+        jdbc.update("DELETE r FROM mp_p0_job_result r JOIN mp_p0_background_job j ON j.id=r.job_id WHERE j.owner_student_id=?",actor);
+        jdbc.update("DELETE FROM mp_p0_background_job WHERE owner_student_id=?",actor);jdbc.update("DELETE FROM mp_p0_example WHERE actor_id=?",actor);jdbc.update("DELETE FROM mp_p0_actor WHERE id=?",actor);
     }
     @Test void transactionRollbackRemovesExampleAndJob() {
         new TransactionTemplate(manager).execute(status->{jdbc.update("INSERT INTO mp_p0_example(id,actor_id,label) VALUES(?,?,?)",UUID.randomUUID().toString(),actor,"rollback-probe");jobs.enqueue(actor,"rollback-"+actor);status.setRollbackOnly();return null;});
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mp_p0_example WHERE actor_id=?",Integer.class,actor));
-        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mp_background_job WHERE owner_student_id=?",Integer.class,actor));
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mp_p0_background_job WHERE owner_student_id=?",Integer.class,actor));
     }
     @Test void concurrentClaimHasOneWinner() throws Exception {
         jobs.enqueue(actor,"concurrent-"+actor);
@@ -45,7 +45,7 @@ class P0MySqlTest {
     }
     @Test void expiredLeaseCannotHeartbeatOrPublishAndNewGenerationCan() {
         String id=jobs.enqueue(actor,"fence-"+actor);var old=jobs.claim("old");
-        jdbc.update("UPDATE mp_background_job SET lease_until=UTC_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id=?",id);
+        jdbc.update("UPDATE mp_p0_background_job SET lease_until=UTC_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id=?",id);
         assertFalse(jobs.heartbeat(old));assertFalse(jobs.complete(old));
         var replacement=new P0JobStore(jdbc,manager).claim("new");assertEquals(old.version()+1,replacement.version());
         assertFalse(jobs.complete(old));assertTrue(jobs.heartbeat(replacement));assertTrue(jobs.complete(replacement));assertFalse(jobs.complete(replacement));
@@ -63,8 +63,8 @@ class P0MySqlTest {
         String id=jobs.enqueue(actor,"retry-"+actor);
         for(int attempt=1;attempt<=3;attempt++) {
             var lease=jobs.claim("retry-worker");assertNotNull(lease);assertTrue(jobs.retry(lease));
-            if(attempt<3) jdbc.update("UPDATE mp_background_job SET available_at=UTC_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id=?",id);
+            if(attempt<3) jdbc.update("UPDATE mp_p0_background_job SET available_at=UTC_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id=?",id);
         }
-        assertEquals("FAILED",jdbc.queryForObject("SELECT status FROM mp_background_job WHERE id=?",String.class,id));assertNull(jobs.claim("fourth"));
+        assertEquals("FAILED",jdbc.queryForObject("SELECT status FROM mp_p0_background_job WHERE id=?",String.class,id));assertNull(jobs.claim("fourth"));
     }
 }

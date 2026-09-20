@@ -90,11 +90,21 @@ export function createFixtureScope(prefix = 'p2') {
     const steps = `SELECT id FROM mp_step_state WHERE experience_run_id IN (${runs})`;
     const responses = `SELECT id FROM mp_step_response_revision WHERE step_state_id IN (${steps})`;
     const reflections = `SELECT id FROM mp_reflection WHERE experience_run_id IN (${runs})`;
+    const hasEvidence = mysqlCommand("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='majorpilot' AND table_name='mp_evidence_snapshot';").trim() === '1';
+    const evidenceCleanup = hasEvidence ? `
+      DELETE FROM mp_ai_call WHERE student_id IN (${accounts});
+      DELETE FROM mp_background_job WHERE owner_student_id IN (${accounts});
+      DELETE FROM mp_report WHERE student_id IN (${accounts});
+      DELETE FROM mp_evidence_item WHERE evidence_snapshot_id IN (SELECT id FROM mp_evidence_snapshot WHERE student_id IN (${accounts}));
+      DELETE FROM mp_evidence_snapshot WHERE student_id IN (${accounts});
+      UPDATE mp_recommendation SET source_run_id=NULL WHERE student_id IN (${accounts}) AND source_run_id IN (${runs});` : '';
     // Fail closed on new dependencies: FK errors roll back rather than disabling
     // checks or deleting anything outside this invocation's exact owner set.
     const ownedRuns = mysqlCommand(`USE majorpilot; SELECT id FROM mp_experience_run WHERE student_id IN (${accounts}) ORDER BY attempt_no DESC,id DESC;`).trim().split(/\s+/).filter(Boolean);
     ownedRuns.forEach(id => assert.match(id, /^[0-9]+$/));
     mysqlCommand(`USE majorpilot; START TRANSACTION;
+      SELECT id FROM mp_student_account WHERE email_normalized IN (${list(emails)}) ORDER BY id FOR UPDATE;
+      ${evidenceCleanup}
       DELETE FROM mp_product_event WHERE student_id IN (${accounts}) OR intake_session_id IN (${intakeIds}) OR recommendation_id IN (${recommendations});
       DELETE FROM mp_sensitive_audit WHERE target_type='EXPERIENCE_RUN' AND target_public_id IN (SELECT public_id FROM mp_experience_run WHERE student_id IN (${accounts}));
       DELETE FROM mp_response_execution WHERE response_revision_id IN (${responses});

@@ -10,6 +10,8 @@ public class RunController {
     private final RunService runs;private final ExecutionService execution;private final HintService hints;private final ReflectionService reflections;private final FollowUpService followUps;
     public RunController(RunService runs,ExecutionService execution,HintService hints,ReflectionService reflections,FollowUpService followUps){this.runs=runs;this.execution=execution;this.hints=hints;this.reflections=reflections;this.followUps=followUps;}
     @GetMapping("/demo-tasks") Object demos(HttpServletRequest req){return ApiResponses.success(req,runs.demos(ApiResponses.student(req)));}
+    @GetMapping("/review-preview-tasks") Object previews(HttpServletRequest req){return ApiResponses.success(req,runs.previews(ApiResponses.student(req)));}
+    @PostMapping("/review-preview-runs") Object preview(@RequestBody RunDtos.CreatePreview input,@RequestHeader(value="Idempotency-Key",required=false)String key,HttpServletRequest req){return ResponseEntity.status(201).body(ApiResponses.success(req,runs.createPreview(ApiResponses.student(req),key,input)));}
     @GetMapping("/experience-runs") Object list(HttpServletRequest req){return ApiResponses.success(req,runs.list(ApiResponses.student(req)));}
     @PostMapping("/experience-runs") Object create(@RequestBody RunDtos.Create input,@RequestHeader(value="Idempotency-Key",required=false)String key,HttpServletRequest req){return ResponseEntity.status(201).body(ApiResponses.success(req,runs.create(ApiResponses.student(req),key,input)));}
     @GetMapping("/experience-runs/{id}") Object run(@PathVariable String id,HttpServletRequest req){return ApiResponses.success(req,runs.get(ApiResponses.student(req),id));}

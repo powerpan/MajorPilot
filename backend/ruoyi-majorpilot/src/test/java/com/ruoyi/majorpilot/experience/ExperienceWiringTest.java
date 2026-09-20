@@ -43,7 +43,8 @@ class ExperienceWiringTest {
         context.registerBean(TaskContentProvider.class,()->provider);
         context.registerBean(HintProvider.class,()->mock(HintProvider.class));
         context.registerBean(RateLimits.class,()->mock(RateLimits.class));
-        context.register(RunStore.class,RunService.class,HintService.class);
+        context.registerBean(com.ruoyi.majorpilot.classifier.ClassifierEngine.class,()->mock(com.ruoyi.majorpilot.classifier.ClassifierEngine.class));
+        context.register(RunStore.class,RunService.class,HintService.class,FixedExecutionCalculator.class,ExecutionService.class,ReflectionService.class,FollowUpService.class,ClosurePipeline.class,EvidenceJobs.class,RunController.class);
         context.refresh();assertTrue(AopUtils.isCglibProxy(context.getBean(RunStore.class)),"The production repository proxy boundary must be exercised");
         return context;
     }
@@ -61,4 +62,5 @@ class ExperienceWiringTest {
             verifyNoInteractions(context.getBean(HintProvider.class));
         }
     }
+    @Test void completeProductionExperienceGraphAndEvidenceSchedulerAreWired(){try(var context=context(true)){assertNotNull(context.getBean(RunController.class));assertNotNull(context.getBean(ReflectionService.class));assertNotNull(context.getBean(FixedExecutionCalculator.class));assertDoesNotThrow(()->context.getBean(EvidenceJobs.class).tick());verify(context.getBean(JdbcTemplate.class)).queryForList(startsWith("SELECT id,owner_student_id FROM mp_background_job"));}}
 }

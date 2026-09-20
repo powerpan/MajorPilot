@@ -7,6 +7,9 @@ import StepFields from "../components/workspace/StepFields.vue";
 import ReflectionFields from "../components/workspace/ReflectionFields.vue";
 import HintPanel from "../components/workspace/HintPanel.vue";
 import ArrowIcon from "../components/ArrowIcon.vue";
+import ClassifierConfig from "../components/workspace/ClassifierConfig.vue";
+import ClassifierErrors from "../components/workspace/ClassifierErrors.vue";
+import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace(),
@@ -17,13 +20,38 @@ const help = ref<HTMLDialogElement | null>(null),
 const wide = ref(window.innerWidth >= 1024);
 const number = computed(() =>
   workspace.reflectionMode
-    ? 6
+    ? (workspace.manifest?.steps.length || 5) + 1
     : Math.max(
         1,
         (workspace.manifest?.steps.findIndex(
           (value) => value.stepKey === workspace.selectedStep,
         ) ?? 0) + 1,
       ),
+);
+const isMajor = computed(() => workspace.run?.contentKind === "MAJOR");
+const preview = computed(() => workspace.run?.runMode === "REVIEW_PREVIEW");
+const returnPath = computed(() =>
+  isMajor.value
+    ? preview.value
+      ? "/app/review-previews"
+      : "/app"
+    : "/app/demos",
+);
+const boundary = computed(() =>
+  preview.value
+    ? "工程预览；尚待专业审核与真实用户计时"
+    : isMajor.value
+      ? "任务表现与专业偏好分开理解"
+      : "演示不生成专业报告",
+);
+const followUpQuestion = computed(() =>
+  String(
+    (
+      workspace.reflection?.followUp?.response as
+        | { question?: string }
+        | undefined
+    )?.question || "",
+  ),
 );
 const allCompleted = computed(() =>
   workspace.run?.steps.every((value) => value.status === "COMPLETED"),
@@ -57,7 +85,7 @@ async function select(key: string) {
   }
 }
 async function pause() {
-  if (await workspace.pause()) await router.push("/app/demos");
+  if (await workspace.pause()) await router.push(returnPath.value);
 }
 async function check() {
   workspace.connectionChanged();
@@ -105,9 +133,13 @@ watch(
     void load();
   },
 );
-watch(() => auth.me, (value, previous) => {
-  if (!value && previous) void router.replace(`/login?returnTo=${encodeURIComponent(route.path)}`);
-});
+watch(
+  () => auth.me,
+  (value, previous) => {
+    if (!value && previous)
+      void router.replace(`/login?returnTo=${encodeURIComponent(route.path)}`);
+  },
+);
 onMounted(() => {
   void load();
   window.addEventListener("resize", resized);
@@ -128,14 +160,18 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <div class="task-workspace">
+  <div class="task-workspace" :class="{ 'ai-workspace': isMajor }">
     <header class="workspace-header">
       <RouterLink to="/app" class="brand" aria-label="MajorPilot 个人主页"
         ><svg viewBox="0 0 44 40" aria-hidden="true">
           <path d="M3 28 31 5 23 25Z" fill="#304FFE" />
           <path d="m33 5 10 35-18-12Z" fill="#F45B35" /></svg
         ><span>MajorPilot</span></RouterLink
-      ><strong>{{ workspace.manifest?.title || "工作区上手" }}</strong>
+      ><strong>{{
+        isMajor
+          ? "AI · 支持请求分类"
+          : workspace.manifest?.title || "工作区上手"
+      }}</strong>
       <div class="workspace-header-actions">
         <span aria-live="polite" data-testid="save-status">{{
           workspace.saveLabel
@@ -147,17 +183,18 @@ onBeforeUnmount(() => {
             ['IN_PROGRESS', 'TASK_COMPLETED'].includes(workspace.run.status)
           "
           class="plain-button text-link"
-          :disabled="workspace.busy || workspace.executing"
+          :disabled="workspace.busy || workspace.executing || !workspace.selectionReady"
           @click="pause"
         >
           {{
             workspace.reflectionMode ? "暂停反思并返回" : "暂停并返回"
           }}</button
-        ><RouterLink v-else to="/app/demos" class="text-link">返回</RouterLink>
+        ><RouterLink v-else :to="returnPath" class="text-link">返回</RouterLink>
       </div>
     </header>
     <main v-if="!wide" class="workspace-device">
       <span class="serif">继续之前，<br />换一张更宽的工作台。</span>
+      <p v-if="preview" class="preview-warning">{{ boundary }}</p>
       <p>
         这项任务需要较宽的表格和操作区域。请使用电脑或宽屏平板继续。账户中已保存的进度可以恢复。
       </p>
@@ -166,7 +203,9 @@ onBeforeUnmount(() => {
           workspace.run.status === "PAUSED"
             ? "已暂停"
             : workspace.run.status === "CLOSED"
-              ? "演示已完成"
+              ? isMajor
+                ? "体验已完成"
+                : "演示已完成"
               : "进度已读取"
         }}
       </p>
@@ -196,9 +235,13 @@ onBeforeUnmount(() => {
         >打开恢复后的体验 →</RouterLink
       ><RouterLink
         v-else
-        :to="`/app/demos${workspace.run?.demoKey ? '/' + workspace.run.demoKey : ''}`"
+        :to="
+          isMajor
+            ? returnPath
+            : `/app/demos${workspace.run?.demoKey ? '/' + workspace.run.demoKey : ''}`
+        "
         class="text-link"
-        >返回演示介绍 →</RouterLink
+        >返回任务介绍 →</RouterLink
       ><button class="quiet-button" @click="load">重新加载</button>
     </main>
     <div
@@ -210,7 +253,7 @@ onBeforeUnmount(() => {
         <div class="workspace-number serif">
           {{ String(number).padStart(2, "0") }}
         </div>
-        <h2>{{ workspace.reflectionMode ? '体验反思' : '任务步骤' }}</h2>
+        <h2>{{ workspace.reflectionMode ? "体验反思" : "任务步骤" }}</h2>
         <nav aria-label="任务步骤">
           <button
             v-for="(item, index) in workspace.manifest.steps"
@@ -246,12 +289,21 @@ onBeforeUnmount(() => {
             :class="{ current: workspace.reflectionMode }"
             @click="select('reflection')"
           >
-            <span class="serif">06</span><span>体验反思</span>
+            <span class="serif">{{
+              String(workspace.manifest.steps.length + 1).padStart(2, "0")
+            }}</span
+            ><span>体验反思</span>
           </button>
         </nav>
-        <RouterLink to="/app/demos" class="workspace-switch text-link"
-          >查看其他演示 →</RouterLink
-        ><small>技术演示 · v{{ workspace.manifest.versionCode }}</small>
+        <RouterLink :to="returnPath" class="workspace-switch text-link"
+          >{{ isMajor ? "返回专业入口" : "查看其他演示" }} →</RouterLink
+        ><small
+          >{{
+            isMajor ? (preview ? "AI · 工程预览" : "AI · 专业体验") : "技术演示"
+          }}
+          · v{{ workspace.manifest.versionCode }}</small
+        >
+        <p v-if="preview" class="preview-warning">{{ boundary }}</p>
       </aside>
       <main class="workspace-main" id="workspace-main">
         <div class="workspace-main-body">
@@ -263,7 +315,7 @@ onBeforeUnmount(() => {
             <strong>体验已暂停 · 当前只读</strong>
             <p>已保存进度保留。本机未同步差异可以复制，不会自动恢复任务。</p>
             <RouterLink
-              :to="`/app/demos/${workspace.run.demoKey}`"
+              :to="isMajor ? returnPath : `/app/demos/${workspace.run.demoKey}`"
               class="text-link"
               >主动恢复或切换 →</RouterLink
             >
@@ -273,11 +325,27 @@ onBeforeUnmount(() => {
             class="workspace-closed"
           >
             <span class="serif">完成。</span>
-            <h1>这次演示已完成。</h1>
+            <h1>
+              {{
+                preview
+                  ? "这次工程预览已完成。"
+                  : isMajor
+                    ? "这次体验已完成。"
+                    : "这次演示已完成。"
+              }}
+            </h1>
             <p>任务与反思已经保存。你已走过读取、调整、运行与记录的过程。</p>
-            <p>演示不生成专业报告，也不构成专业适合度结论。</p>
-            <RouterLink to="/app/demos" class="text-link"
-              >返回演示列表 →</RouterLink
+            <p>
+              {{
+                preview
+                  ? "预览记录已保存，不计正式专业完成，不生成正式推荐或专业报告。"
+                  : isMajor
+                    ? "任务与反思已提交，报告状态以账户中实际记录为准。"
+                    : "演示不生成专业报告，也不构成专业适合度结论。"
+              }}
+            </p>
+            <RouterLink :to="returnPath" class="text-link"
+              >返回任务入口 →</RouterLink
             >
           </div>
           <template v-else>
@@ -313,6 +381,20 @@ onBeforeUnmount(() => {
             <div v-if="workspace.error" class="error-notice" role="alert">
               {{ workspace.error }}
             </div>
+            <p
+              v-if="!workspace.selectionReady"
+              class="workspace-notice"
+              role="status"
+            >
+              正在核对步骤资料与本机草稿，核对完成后开放编辑。
+              <button
+                v-if="workspace.error"
+                class="plain-button text-link"
+                @click="select(workspace.selectedStep)"
+              >
+                重新读取本步骤
+              </button>
+            </p>
             <div
               v-if="workspace.storageWarning"
               class="workspace-notice"
@@ -366,13 +448,187 @@ onBeforeUnmount(() => {
                 </tr>
               </tbody>
             </table>
+            <section
+              v-if="workspace.selectedStep === 'a1-task' && workspace.model"
+              class="classifier-label-reference"
+              aria-label="四类基础定义"
+            >
+              <h2>四类支持请求，四种处理方向</h2>
+              <dl>
+                <template
+                  v-for="label in workspace.model.labelOrder"
+                  :key="label"
+                  ><dt>
+                    {{
+                      workspace.model.definitionVariants.find(
+                        (value) =>
+                          value.id ===
+                          workspace.model!.baselineConfig.definitionVariantIds[
+                            label
+                          ],
+                      )?.title
+                    }}
+                  </dt>
+                  <dd>
+                    {{
+                      workspace.model.definitionVariants.find(
+                        (value) =>
+                          value.id ===
+                          workspace.model!.baselineConfig.definitionVariantIds[
+                            label
+                          ],
+                      )?.description
+                    }}
+                  </dd></template
+                >
+              </dl>
+              <p class="muted">
+                这些定义来自本次绑定的内容版本。分类对象是请求，不是学生能力或性格。
+              </p>
+            </section>
             <ReflectionFields
               v-if="workspace.reflectionMode && workspace.reflection"
               :model-value="workspace.answer"
               :steps="workspace.manifest.steps"
+              :schema="workspace.manifest.reflection.inputSchema"
+              :professional="isMajor"
               :disabled="workspace.readOnly || workspace.busy"
               @update:model-value="workspace.edit"
             />
+            <ClassifierConfig
+              v-else-if="
+                workspace.selectedStep === 'a4-configure' &&
+                workspace.model &&
+                workspace.step
+              "
+              :model="workspace.model"
+              :schema="workspace.step.definition.inputSchema"
+              :model-value="workspace.answer"
+              :disabled="
+                workspace.readOnly || workspace.executing || workspace.busy
+              "
+              @update:model-value="workspace.edit"
+            />
+            <ClassifierErrors
+              v-else-if="
+                workspace.selectedStep === 'a3-errors' && workspace.practice
+              "
+              :samples="workspace.practice"
+              :model-value="workspace.answer"
+              :disabled="workspace.readOnly || workspace.busy"
+              @update:model-value="workspace.edit"
+            />
+            <template
+              v-else-if="
+                workspace.selectedStep === 'a5-evaluate' && workspace.step
+              "
+            >
+              <section class="classifier-binding">
+                <h2>
+                  当前配置
+                  <button
+                    class="plain-button text-link"
+                    :disabled="workspace.busy || workspace.executing"
+                    @click="select('a4-configure')"
+                  >
+                    返回修改
+                  </button>
+                </h2>
+                <p>
+                  来自已保存的设计修改。{{
+                    workspace.step.inputBindings
+                      .map(
+                        (value) =>
+                          `${value.sourceStepKey} · r${value.sourceRevision}`,
+                      )
+                      .filter(
+                        (value, index, all) => all.indexOf(value) === index,
+                      )
+                      .join("、")
+                  }}
+                </p>
+                <details>
+                  <summary>查看本次绑定的配置</summary>
+                  <dl>
+                    <template
+                      v-for="binding in workspace.step.inputBindings"
+                      :key="binding.parameterKey"
+                      ><dt>{{ binding.parameterKey }}</dt>
+                      <dd>{{ JSON.stringify(binding.value) }}</dd></template
+                    >
+                  </dl>
+                </details>
+                <button
+                  class="workspace-outline"
+                  :disabled="
+                    workspace.readOnly ||
+                    workspace.busy ||
+                    workspace.executing ||
+                    !!workspace.recovered
+                  "
+                  @click="workspace.executePreview"
+                >
+                  {{
+                    workspace.executing
+                      ? "正在服务端评估…"
+                      : workspace.execution
+                        ? "复用或重新评估"
+                        : "运行正式评估"
+                  }}</button
+                ><button
+                  v-if="workspace.executing"
+                  class="plain-button text-link"
+                  @click="workspace.cancelExecution"
+                >
+                  取消等待
+                </button>
+                <p class="muted">
+                  最多5种成功配置；基线和重复配置不扣次数。{{
+                    workspace.execution
+                      ? `剩余 ${workspace.execution.remainingEvaluations} 种 · ${workspace.execution.reused ? "本次复用了已有结果" : "新结果已记录"}`
+                      : ""
+                  }}
+                </p>
+              </section>
+              <p
+                v-if="workspace.executionError"
+                class="error-notice"
+                role="alert"
+              >
+                {{ workspace.executionError }}
+              </p>
+              <p
+                v-if="workspace.resultStale"
+                class="result-stale"
+                role="status"
+              >
+                结果已过期：保存的回答或来源版本发生变化。请点复用或重新评估，确认当前绑定；相同配置不扣次数。
+              </p>
+              <ClassifierMetrics
+                :value="workspace.comparison"
+                :baseline="workspace.baseline"
+              />
+              <p v-if="workspace.execution" class="muted">
+                {{
+                  workspace.execution.trustLevel === "SERVER_VERIFIED"
+                    ? "服务端已复算确认"
+                    : "结果待确认"
+                }}
+                · 回答 r{{ workspace.execution.inputRevision }} · 来源
+                {{ JSON.stringify(workspace.execution.sourceRevisions) }} ·
+                classifier-v1
+              </p>
+              <h2>你的观察</h2>
+              <StepFields
+                :schema="workspace.step.definition.inputSchema"
+                :model-value="workspace.answer"
+                :disabled="
+                  workspace.readOnly || workspace.executing || workspace.busy
+                "
+                class="classifier-rationale"
+                @update:model-value="workspace.edit"
+              />
+            </template>
             <StepFields
               v-else-if="workspace.step"
               :schema="workspace.step.definition.inputSchema"
@@ -382,7 +638,123 @@ onBeforeUnmount(() => {
               "
               @update:model-value="workspace.edit"
             />
-            <template v-if="workspace.step?.definition.operationKey">
+            <section
+              v-if="workspace.reflectionMode && isMajor && workspace.reflection"
+              class="reflection-optional classifier-followup"
+            >
+              <h2>一个可选的追问</h2>
+              <p>
+                只围绕已选择的兴趣与困难追问一次。可以直接跳过，失败不会阻挡完成。
+              </p>
+              <p v-if="workspace.reflection.followUp?.status === 'SUCCEEDED'">
+                {{ followUpQuestion }}
+              </p>
+              <p
+                v-else-if="workspace.reflection.followUp?.status === 'FAILED'"
+                role="status"
+              >
+                追问暂不可用。你可以重试或直接提交已有反思。
+              </p>
+              <p
+                v-else-if="workspace.reflection.followUp?.status === 'PENDING'"
+                role="status"
+              >
+                追问正在准备；可以稍后重试读取或直接跳过。
+              </p>
+              <button
+                v-if="workspace.reflection.followUp?.status !== 'SUCCEEDED'"
+                class="workspace-outline"
+                :disabled="
+                  workspace.readOnly || workspace.followUpBusy || workspace.busy
+                "
+                @click="workspace.requestFollowUp"
+              >
+                {{ workspace.followUpBusy ? "正在请求…" : "请求可选追问" }}
+              </button>
+              <p
+                v-if="workspace.followUpError"
+                class="error-notice"
+                role="alert"
+              >
+                {{ workspace.followUpError }}
+              </p>
+              <label
+                v-if="workspace.reflection.followUp?.status === 'SUCCEEDED'"
+                class="workspace-textarea"
+                ><span>你的补充（选填，最多500字）</span
+                ><textarea
+                  name="aiFollowUp"
+                  maxlength="500"
+                  rows="3"
+                  :disabled="workspace.readOnly || workspace.busy"
+                  :value="
+                    String(
+                      workspace.answer.aiFollowUp === 'SKIPPED'
+                        ? ''
+                        : workspace.answer.aiFollowUp || '',
+                    )
+                  "
+                  @input="
+                    workspace.edit({
+                      ...workspace.answer,
+                      aiFollowUp: ($event.target as HTMLTextAreaElement).value,
+                    })
+                  "
+                /></label
+              ><button
+                class="plain-button text-link"
+                :disabled="workspace.readOnly || workspace.busy"
+                @click="
+                  workspace.edit({ ...workspace.answer, aiFollowUp: 'SKIPPED' })
+                "
+              >
+                跳过追问
+              </button>
+            </section>
+            <section
+              v-if="workspace.selectedStep === 'a4-configure'"
+              class="classifier-practice"
+            >
+              <div class="button-row">
+                <button
+                  class="workspace-outline"
+                  :disabled="
+                    workspace.readOnly || workspace.busy || workspace.executing
+                  "
+                  @click="workspace.previewPractice"
+                >
+                  {{
+                    workspace.executing ? "正在隔离计算…" : "练习集预览"
+                  }}</button
+                ><button
+                  v-if="workspace.executing"
+                  class="plain-button text-link"
+                  @click="workspace.cancelExecution"
+                >
+                  取消预览</button
+                ><span>只预览公开练习，不占正式评估次数。</span>
+              </div>
+              <p
+                v-if="workspace.executionError"
+                class="error-notice"
+                role="alert"
+              >
+                {{ workspace.executionError }}
+              </p>
+              <p v-if="workspace.practiceStale" class="result-stale">
+                练习预览已过期：当前配置已修改，请重新预览。
+              </p>
+              <ClassifierMetrics
+                v-if="workspace.practiceResult"
+                :value="workspace.practiceResult"
+                practice
+              />
+            </section>
+            <template
+              v-if="
+                workspace.step?.definition.operationKey === 'demo-summary-v1'
+              "
+            >
               <div class="workspace-execution-actions">
                 <button
                   v-if="!workspace.executing"
@@ -498,10 +870,17 @@ mean = total / count</code></pre>
             class="plain-button"
             :disabled="number <= 1 || workspace.busy || workspace.executing"
             @click="
-              select(workspace.manifest.steps[Math.min(4, number - 2)]!.stepKey)
+              select(
+                workspace.manifest.steps[
+                  Math.min(workspace.manifest.steps.length - 1, number - 2)
+                ]!.stepKey,
+              )
             "
           >
-            ← <strong>{{ workspace.reflectionMode ? '返回任务回顾' : '上一步' }}</strong>
+            ←
+            <strong>{{
+              workspace.reflectionMode ? "返回任务回顾" : "上一步"
+            }}</strong>
           </button>
           <div>
             <button
@@ -518,6 +897,7 @@ mean = total / count</code></pre>
                   !(allCompleted && workspace.run.status === 'IN_PROGRESS')) ||
                 workspace.busy ||
                 workspace.executing ||
+                !workspace.selectionReady ||
                 !!workspace.recovered ||
                 workspace.conflict
               "
@@ -527,10 +907,16 @@ mean = total / count</code></pre>
                 workspace.busy
                   ? "正在确认…"
                   : workspace.reflectionMode
-                    ? "提交并完成演示"
+                    ? isMajor
+                      ? preview
+                        ? "提交并完成预览"
+                        : "提交并完成体验"
+                      : "提交并完成演示"
                     : allCompleted
                       ? "提交任务并进入反思"
-                      : "完成此步骤"
+                      : workspace.selectedStep === "a4-configure"
+                        ? "保存并进入评估"
+                        : "完成此步骤"
               }}</span
               ><span class="action-arrow"><ArrowIcon /></span>
             </button>
@@ -541,6 +927,7 @@ mean = total / count</code></pre>
         <HintPanel
           v-if="!workspace.reflectionMode"
           :hints="workspace.hints"
+          :boundary="boundary"
           :busy="workspace.hintBusy"
           :disabled="workspace.readOnly"
           @request="workspace.hint"
@@ -551,7 +938,7 @@ mean = total / count</code></pre>
             任务结果与体验偏好是两回事。诚实记录兴趣、困难与不确定，比选一个“正确答案”更有用。
           </p>
           <p>反思可以暂停，恢复后仍从这里继续。</p>
-          <small>演示不生成专业报告</small>
+          <small>{{ boundary }}</small>
         </div>
       </aside>
     </div>
@@ -560,6 +947,7 @@ mean = total / count</code></pre>
         关闭提示 ×</button
       ><HintPanel
         :hints="workspace.hints"
+        :boundary="boundary"
         :busy="workspace.hintBusy"
         :disabled="workspace.readOnly"
         @request="workspace.hint"

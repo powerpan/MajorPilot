@@ -6,6 +6,7 @@ import App from "./App.vue";
 import "./styles.css";
 import "./styles/editorial.css";
 import "./styles/workspace.css";
+import "./styles/classifier.css";
 import { useAuth } from "./stores/auth";
 const HomeView = () => import("./views/HomeView.vue");
 import IntakeView from "./views/IntakeView.vue";
@@ -19,6 +20,7 @@ import NotFoundView from "./views/NotFoundView.vue";
 const P0View = () => import("./views/P0View.vue");
 const DemoView = () => import("./views/DemoView.vue");
 const WorkspaceView = () => import("./views/WorkspaceView.vue");
+const PreviewView = () => import("./views/PreviewView.vue");
 
 const pinia = createPinia();
 const router = createRouter({
@@ -45,8 +47,21 @@ const router = createRouter({
     ),
     { path: "/app", component: DashboardView, meta: { private: true } },
     { path: "/app/settings", component: SettingsView, meta: { private: true } },
-    { path: "/app/demos/:demoKey?", component: DemoView, meta: { private: true } },
-    { path: "/app/runs/:runId", component: WorkspaceView, meta: { private: true, workspace: true } },
+    {
+      path: "/app/demos/:demoKey?",
+      component: DemoView,
+      meta: { private: true },
+    },
+    {
+      path: "/app/review-previews/:taskVersionId?",
+      component: PreviewView,
+      meta: { private: true },
+    },
+    {
+      path: "/app/runs/:runId",
+      component: WorkspaceView,
+      meta: { private: true, workspace: true },
+    },
     {
       path: "/app/experiences/:major",
       redirect: (to) => `/majors/${String(to.params.major)}`,
