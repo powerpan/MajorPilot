@@ -1,4 +1,4 @@
-# P0 restricted execution experiment
+# Restricted execution runtime (P0 baseline / P2 demo adapter)
 
 This is a **trusted fixed-calculator fallback**, not a Python IDE and not a general-purpose JavaScript sandbox. Only a versioned template identifier and bounded numeric parameters are accepted. The student app shows equivalent **read-only** Python; it never concatenates user text into executable code.
 
@@ -6,8 +6,14 @@ Run `node server.mjs` on `127.0.0.1:15175`; parent is exactly `http://localhost:
 
 Opaque origins require parent-to-frame `postMessage` target `*`; this does **not** broadcast to all windows. Only this iframe's window receives public parameters. The receiver validates the exact parent Origin, source window, message type, and a per-execution random nonce. The parent accepts `origin === 'null'` only together with the exact iframe window, response type, and its current nonce. Parent deadlines remove the frame; frame deadlines terminate the Worker. New execution never reuses the prior Worker.
 
-Limits: 1 MiB encoded input, 10,000 finite numbers with absolute value at most 1e9, 10 seconds, 100 KiB serialized output. There is no portable hard memory quota. Probes are hardcoded P0-only templates, not arbitrary programs. Formal P2/P3 results must still be recomputed/validated by the backend; this page does not claim server-authoritative scoring.
+Limits: 1 MiB encoded input, 10,000 finite numbers with absolute value at most 1e9, 10 seconds, 100 KiB serialized output. There is no portable hard memory quota. Probes are hardcoded technical-verification templates, not arbitrary programs. Formal results must still be recomputed/validated by the backend; the Worker does not produce server-authoritative scoring.
+
+P2 adds `demo-summary-v1`: exactly four public numbers, multiplier `1 | 2 | 3`, and range `ALL | FIRST_TWO`. There is no source-code, account-ID, token, file-path or custom-prompt input. The browser verifies the sample's pinned byte length and SHA-256 before giving these public values to the runtime. The result is then sent as an observation to the authenticated backend, which reads the saved response revision, independently recomputes the result and verifies equality. Only the backend's `SERVER_VERIFIED` binding can unlock a required computation step. `inputRevision` records execution provenance; `appliedToRevision` records the current response binding when a previously reviewed configuration is reused.
+
+Every run creates a new iframe and Worker. Abort removes the iframe; the frame terminates timed-out/crashed Workers and revokes their blob URL. The additional fixed crash probe is used only by regression tests to prove a subsequent computation can start cleanly.
 
 `npm test` checks valid input variation and deterministic rejection. `npm run probe:pyodide` starts a separate **test-only** port 15176 for the real Pyodide candidate. It is not started by normal local startup and must not be deployed. `tests/e2e/pyodide.mjs` measures the upstream loader with boot-time same-origin loading, then proves that the same loader cannot start under compute-time `connect-src 'none'`. This does not prove Pyodide is intrinsically impossible to isolate; a separately reviewed preloaded-asset architecture is deferred. No policy is relaxed to make the candidate pass.
 
 Browser evidence and reproduction commands: [docs/19](../docs/19-p0-browser-execution-spike.md).
+
+P2 verification entry points: `node --test executor/test/worker.test.mjs` and `node tests/e2e/p2.mjs` from the repository root. The latter needs the explicitly enabled local DEMO backend and real local Chrome/Edge; it creates exactly two synthetic verified accounts in memory and cleans only its exact account/mail records. Passing unit tests alone is not browser acceptance; the current phase gate is recorded in [docs/23](../docs/23-p2-to-p6-delivery-ledger.md).

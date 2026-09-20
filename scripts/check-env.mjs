@@ -23,6 +23,7 @@ try {
   const env = readLocalEnv();
   for (const key of ['MP_DB_URL', 'MP_DB_USERNAME', 'MP_DB_PASSWORD', 'MP_REDIS_PASSWORD', 'MP_ADMIN_TOKEN_SECRET', 'MP_CSRF_SECRET', 'MP_P0_ADMIN_PASSWORD', 'MP_P0_STUDENT_PASSWORD']) checks.push({ name: key, pass: !!env[key], value: 'suppressed' });
   checks.push({ name: 'BAILIAN_API_KEY', pass: env.MAJORPILOT_AI_MODE !== 'bailian' || !!env.BAILIAN_API_KEY, configured: !!env.BAILIAN_API_KEY, required: env.MAJORPILOT_AI_MODE === 'bailian', value: 'suppressed' });
+  for (const key of ['MP_P2_DEMO_ENABLED', 'MP_EXPERIENCE_AI_ENABLED']) checks.push({ name: key, pass: env[key] === undefined || ['true', 'false'].includes(env[key]), enabled: env[key] === 'true' });
 } catch (err) { checks.push({ name: '.env.local', pass: false, reason: err.message }); }
 checks.push({ name: 'maven-wrapper', pass: existsSync(`${ROOT}/backend/mvnw`) });
 const ports = [];

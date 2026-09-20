@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes, createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { JAVA_HOME, ROOT } from './local-config.mjs';
 import { mysqlCommand } from './infra.mjs';
@@ -10,6 +10,10 @@ import { mysqlCommand } from './infra.mjs';
 // No server is started/stopped and no provider/application credentials are copied.
 // Usage: node scripts/test-fresh-migrations.mjs [validated-ruoyi-admin.jar]
 const artifact = path.resolve(process.argv[2] || path.join(ROOT, 'backend/ruoyi-admin/target/ruoyi-admin.jar'));
+const sqlVersions = readdirSync(path.join(ROOT, 'database/migration')).map(name => name.match(/^V([0-9]+)__.+\.sql$/)?.[1]).filter(Boolean).map(Number).sort((a, b) => a - b);
+// V1 is the immutable Java upstream bootstrap. SQL migrations must stay contiguous.
+assert.deepEqual(sqlVersions, Array.from({ length: sqlVersions.length }, (_, index) => index + 2), 'Migration versions must remain contiguous after V1');
+const expectedVersion = sqlVersions.at(-1) || 1;
 assert.ok(existsSync(artifact) && lstatSync(artifact).isFile() && !lstatSync(artifact).isSymbolicLink(), 'Expected a regular validated build JAR');
 const scratch = mkdtempSync('/tmp/majorpilot-fresh-migrations-');
 const classes = path.join(scratch, 'classes');mkdirSync(classes);
@@ -48,7 +52,7 @@ try {
   mysqlCommand(`CREATE DATABASE \`${schema}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
     CREATE USER '${account}'@'127.0.0.1' IDENTIFIED BY '${password}';
     GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER,INDEX,REFERENCES ON \`${schema}\`.* TO '${account}'@'127.0.0.1';`);
-  const output = command(java, ['-cp', `${classes}${path.delimiter}${classpath}`, 'FreshMigrationCheck'], 'Empty-schema Flyway V1-V3 check', { MP_MIGRATION_SCHEMA: schema, MP_MIGRATION_ACCOUNT: account, MP_MIGRATION_PASSWORD: password });
+  const output = command(java, ['-cp', `${classes}${path.delimiter}${classpath}`, 'FreshMigrationCheck'], `Empty-schema Flyway V1-V${expectedVersion} check`, { MP_MIGRATION_SCHEMA: schema, MP_MIGRATION_ACCOUNT: account, MP_MIGRATION_PASSWORD: password, MP_MIGRATION_EXPECTED_VERSION: String(expectedVersion) });
   const line = output.split(/\r?\n/).find(value => value.startsWith('MAJORPILOT_MIGRATION_RESULT='));
   assert.ok(line, 'Missing sanitized migration evidence');
   result = JSON.parse(line.slice('MAJORPILOT_MIGRATION_RESULT='.length));assert.equal(result.result, 'PASS');

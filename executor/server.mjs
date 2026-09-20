@@ -29,10 +29,10 @@ addEventListener('message', async event => {
   const finish = result => {clearTimeout(timer); worker.terminate(); URL.revokeObjectURL(url); emit(result)};
   const timer = setTimeout(() => finish({status:'ERROR',code:'EXECUTION_TIMEOUT',engine:'fixed-calculator-v1'}),10000);
   worker.onmessage = event => finish(event.data);
-  worker.onerror = () => finish({status:'ERROR',code:'WORKER_FAILURE',engine:'fixed-calculator-v1'});
+  worker.onerror = event => {event.preventDefault(); finish({status:'ERROR',code:'WORKER_FAILURE',engine:'fixed-calculator-v1'});};
   const payload = event.data;
-  if(Object.keys(payload).some(key => !['type','nonce','template','values'].includes(key))) return finish({status:'ERROR',code:'INVALID_MESSAGE',engine:'fixed-calculator-v1'});
-  worker.postMessage({template:payload.template, values:payload.values});
+  if(Object.keys(payload).some(key => !['type','nonce','template','values','parameters'].includes(key))) return finish({status:'ERROR',code:'INVALID_MESSAGE',engine:'fixed-calculator-v1'});
+  worker.postMessage({template:payload.template, values:payload.values, ...(payload.parameters === undefined ? {} : {parameters:payload.parameters})});
 });
 parent.postMessage({type:'MP_EXECUTOR_READY',nonce},parentOrigin);`
 const scriptHash = createHash('sha256').update(bootstrap).digest('base64')

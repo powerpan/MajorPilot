@@ -13,7 +13,7 @@ test('reviewed manifest pins the exact worker asset', () => {
 async function execute(data) {
   let result
   const self = {postMessage: value => {result = value}}
-  const context = vm.createContext({self, TextEncoder})
+  const context = vm.createContext({self, TextEncoder, setTimeout: callback => callback()})
   new vm.Script(source).runInContext(context)
   await self.onmessage({data})
   return JSON.parse(JSON.stringify(result))
@@ -21,6 +21,19 @@ async function execute(data) {
 test('fixed calculator varies with valid input', async () => {
   assert.equal((await execute({template: 'summary-v1', values: [2, 4]})).result.mean, 3)
   assert.equal((await execute({template: 'summary-v1', values: [4, 8]})).result.mean, 6)
+})
+test('P2 demo accepts only fixed multipliers and range, matching server arithmetic', async () => {
+  const input = {template:'demo-summary-v1',values:[2,5,8,11],parameters:{multiplier:2,include:'ALL'}}
+  assert.deepEqual((await execute(input)).result,{count:4,sum:52,mean:13,multiplier:2,include:'ALL'})
+  assert.equal((await execute({...input,parameters:{multiplier:3,include:'FIRST_TWO'}})).result.sum,21)
+  for (const parameters of [{multiplier:4,include:'ALL'},{multiplier:2,include:'http://localhost'},{multiplier:2,include:'ALL',code:'alert(1)'}])
+    assert.equal((await execute({...input,parameters})).code,'INVALID_PARAMETERS')
+  assert.equal((await execute({...input,values:[1,2]})).code,'INVALID_PARAMETERS')
+  assert.equal((await execute({template:'summary-v1',values:[1],parameters:{code:'x'}})).code,'INVALID_PARAMETERS')
+})
+test('controlled worker crash can be followed by a clean computation', async () => {
+  await assert.rejects(execute({template:'crash-probe-v1',values:[1]}),/Controlled worker recovery probe/)
+  assert.equal((await execute({template:'summary-v1',values:[2,4]})).result.mean,3)
 })
 test('reject source injection, unknown template, oversized values and output', async () => {
   assert.equal((await execute({template: 'summary-v1', values: [2], code: 'fetch(1)'})).status, 'ERROR')

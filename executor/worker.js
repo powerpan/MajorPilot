@@ -8,10 +8,11 @@ self.onmessage = async ({data}) => {
     const result = {...payload, engine: 'fixed-calculator-v1'}
     self.postMessage(bytes(result) > MAX_OUTPUT ? {status: 'ERROR', code: 'OUTPUT_LIMIT', engine: 'fixed-calculator-v1'} : result)
   }
-  if (!data || Object.keys(data).some(key => !['template', 'values'].includes(key)) || bytes(data) > MAX_INPUT) {
+  if (!data || Object.keys(data).some(key => !['template', 'values', 'parameters'].includes(key)) || bytes(data) > MAX_INPUT) {
     return reply({status: 'ERROR', code: 'INPUT_LIMIT_OR_SCHEMA'})
   }
   const {template, values} = data
+  if (template !== 'demo-summary-v1' && data.parameters !== undefined) return reply({status:'ERROR',code:'INVALID_PARAMETERS'})
   if (!Array.isArray(values) || values.length < 1 || values.length > 10000 || values.some(value => typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1e9)) {
     return reply({status: 'ERROR', code: 'INVALID_PARAMETERS'})
   }
@@ -19,8 +20,16 @@ self.onmessage = async ({data}) => {
     const total = values.reduce((sum, value) => sum + value, 0)
     return reply({status: 'SUCCESS', result: {count: values.length, mean: total / values.length, minimum: Math.min(...values), maximum: Math.max(...values)}})
   }
+  if (template === 'demo-summary-v1') {
+    const params = data.parameters
+    if (values.length !== 4 || !params || Object.keys(params).length !== 2 || ![1,2,3].includes(params.multiplier) || !['ALL','FIRST_TWO'].includes(params.include)) return reply({status:'ERROR',code:'INVALID_PARAMETERS'})
+    const selected = (params.include === 'FIRST_TWO' ? values.slice(0,2) : values).map(value => value * params.multiplier)
+    const sum = selected.reduce((total, value) => total + value, 0)
+    return reply({status:'SUCCESS',result:{count:selected.length,sum,mean:sum/selected.length,multiplier:params.multiplier,include:params.include}})
+  }
   // P0 probes are fixed reviewed code, never supplied by a user.
   if (template === 'timeout-probe-v1') {while (true) { /* terminated by host after 10 s */ }}
+  if (template === 'crash-probe-v1') { setTimeout(() => { throw new Error('Controlled worker recovery probe') }, 0); return }
   if (template === 'output-limit-probe-v1') return reply({status: 'SUCCESS', result: {probe: 'x'.repeat(MAX_OUTPUT + 1)}})
   if (template === 'isolation-probe-v1') {
     const violations = []

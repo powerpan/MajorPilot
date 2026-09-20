@@ -16,6 +16,20 @@ public class IdempotencyService {
     public record Result<T>(T data,boolean replayed) {}
     private final JdbcTemplate jdbc;private final TransactionTemplate tx;private final Secrets secrets;private final ObjectMapper mapper;
     public IdempotencyService(JdbcTemplate jdbc,TransactionTemplate tx,Secrets secrets,ObjectMapper mapper) { this.jdbc=jdbc;this.tx=tx;this.secrets=secrets;this.mapper=mapper.copy().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS,true); }
+    /** Short completed-result lookup before a non-transactional external/calculation phase.
+     * Caller must authenticate and verify resource ownership first; misses are not reservations. */
+    public <T> Optional<T> replay(Owner owner,String method,String resourcePath,String key,Object request,Class<T> responseType) {
+        if(key==null||!key.matches("[A-Za-z0-9_-]{16,128}"))throw new ApiException(422,"IDEMPOTENCY_KEY_REQUIRED");
+        String scope=Secrets.hash(owner.subject()+"\0"+method+"\0"+resourcePath),keyHash=Secrets.hash(key),fingerprint=secrets.hmac("idempotency",json(request));
+        return tx.execute(status->{
+            if(owner.studentId()!=null){var account=jdbc.queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",owner.studentId());if(account.isEmpty())throw new ApiException(401,"AUTH_REQUIRED");if(!Set.of("ACTIVE","PENDING_VERIFICATION").contains(account.getFirst().get("status")))throw new ApiException(403,"ACCOUNT_LOCKED");}
+            var rows=jdbc.queryForList("SELECT request_hmac,status,safe_response_json,expires_at FROM mp_idempotency_record WHERE scope_hash=? AND key_hash=?",scope,keyHash);
+            if(rows.isEmpty()||DbTimes.instant(rows.getFirst().get("expires_at")).isBefore(Instant.now()))return Optional.empty();
+            var row=rows.getFirst();if(!Secrets.equal(fingerprint,(String)row.get("request_hmac")))throw new ApiException(409,"IDEMPOTENCY_KEY_REUSED");
+            if(!"COMPLETED".equals(row.get("status")))throw new ApiException(409,"REQUEST_IN_PROGRESS");
+            try{return Optional.of(mapper.readValue((String)row.get("safe_response_json"),responseType));}catch(Exception invalid){throw new IllegalStateException("Stored result invalid");}
+        });
+    }
     public <T> Result<T> execute(Owner owner,String method,String resourcePath,String key,Object request,Class<T> responseType,Supplier<T> action) {
         if(key==null||!key.matches("[A-Za-z0-9_-]{16,128}"))throw new ApiException(422,"IDEMPOTENCY_KEY_REQUIRED");
         String scope=Secrets.hash(owner.subject()+"\0"+method+"\0"+resourcePath),keyHash=Secrets.hash(key),fingerprint=secrets.hmac("idempotency",json(request));
@@ -25,6 +39,14 @@ public class IdempotencyService {
             String lock="mp-idem-"+Secrets.hash(scope+keyHash).substring(0,48);
             if(!Integer.valueOf(1).equals(jdbc.queryForObject("SELECT GET_LOCK(?,0)",Integer.class,lock)))throw new ApiException(409,"REQUEST_IN_PROGRESS");
             try {
+                // Acquire the same parent-row lock used by all student state transitions
+                // before INSERT's FK shared lock. Concurrent keys must not deadlock while
+                // upgrading their shared parent locks later inside the business action.
+                if(owner.studentId()!=null) {
+                    var accounts=jdbc.queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",owner.studentId());
+                    if(accounts.isEmpty())throw new ApiException(401,"AUTH_REQUIRED");
+                    if(!Set.of("ACTIVE","PENDING_VERIFICATION").contains(accounts.getFirst().get("status")))throw new ApiException(403,"ACCOUNT_LOCKED");
+                }
                 var rows=jdbc.queryForList("SELECT request_hmac,status,safe_response_json,expires_at FROM mp_idempotency_record WHERE scope_hash=? AND key_hash=? FOR UPDATE",scope,keyHash);
                 if(!rows.isEmpty()) {
                     var row=rows.getFirst();

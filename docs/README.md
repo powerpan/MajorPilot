@@ -1,7 +1,8 @@
 # MajorPilot 设计文档索引
 
-> 更新日期：2026-09-20  
-> 当前阶段：P0 已完成本地验证并推送；P1 已完成本地实施与约定范围验收。2026-09-20 用户确认本轮使用规则解释，AI 润色单列后续增强。Git 交付、公网部署和完整 MVP 验收分别记录。
+> 更新日期：2026-09-21
+>
+> 当前阶段：P0/P1已交付；P2通用任务引擎与工作区本地验收通过。用户授权继续按顺序推进至P6；专业内容、报告及真实用户试用不因技术演示通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
 
 ## 阅读顺序
 
@@ -29,6 +30,8 @@
 实施新增记录：[百炼与契约验证](./18-p0-ai-spike.md)、[浏览器执行验证](./19-p0-browser-execution-spike.md)、[P0 实施与验证汇总](./20-p0-implementation-evidence.md)。本地启动入口见 [根 README](../README.md)，固定来源与补丁见 [UPSTREAM](../UPSTREAM.md)。
 
 当前实施：[P1 实施与交付记录](./21-p1-implementation-and-delivery.md)、[P1 视觉方向与截图比对](./22-p1-visual-direction.md)。
+
+当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)。
 
 设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。阅读本轮变化可以先看 `17`，再按其中的问题编号进入专题设计。
 

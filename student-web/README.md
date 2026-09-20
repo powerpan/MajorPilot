@@ -64,3 +64,22 @@ The accepted references and latest browser captures were viewed together, not in
 | Responsive behaviour | Inspected 1200, 1265, 1440 and 1536px desktop widths plus 390px mobile. Mid-width lead text is constrained and naturally wraps clear of the lens; no horizontal overflow. Mobile navigation remains available, forms stack and long recommendations remain readable. |
 
 Known non-blocking visual differences: local system font metrics differ from raster concept typography; dynamic recommendation reason count changes vertical spacing; mobile paper artwork is proportionally cropped to keep native text readable. The two original PNG production assets currently total roughly 3.6 MB; delivery-format compression is still a deployment optimization, not a completed claim. Image source files are preserved.
+
+## P2 generic workspace
+
+`/app/demos` and `/app/demos/:demoKey` expose authenticated technical demonstrations only when the backend explicitly enables them in its local profile. `/app/runs/:runId` is the version-bound workspace. DEMO_TABLE and DEMO_COMPARE are not a fourth major; their completion does not produce a professional report. AI/DS/BA availability remains unchanged.
+
+The workspace uses the [P2 reference](../docs/design/p2-workspace-v1.png) and [reflection reference](../docs/design/p2-reflection-v1.png): three fine-line-separated desktop columns, an open sample table and result strip, three user-requested hint levels, and a separate concentrated reflection form. Existing brand components and system typography are reused. At 1024–1199px help moves into a native dialog; narrower viewports receive an honest device restriction rather than a partial task editor. The task header and step action remain visible while longer content scrolls.
+
+`stores/workspace.ts` keeps server revisions separate from edits and from trusted execution bindings. Saves are serialized; dependent operations wait until all queued edits have drained. Completed steps remain editable only while the Run is IN_PROGRESS; changes retain historical answers while invalidating the affected completion chain. TASK_COMPLETED locks task inputs and opens independent reflection. Pause and switch never implicitly submit reflection. Other-tab pauses lock the old editor, and conflicts require explicit draft copying or adoption of server state.
+
+Unsynced task/reflection content is stored in the exact IndexedDB namespace `majorpilot-task-drafts-v1`, keyed by verified student public ID, Run, step and Task Version, with a seven-day TTL. Successful sync removes its local copy. Cache reads require a successful current account verification. Ordinary session expiry locks this namespace; the same verified account can recover it. Explicit logout clears it, while logging into a different verified account removes the former account's drafts. Both logout and potentially switching accounts warn about unsynced content. Identity epochs, AbortSignals and step-selection generations reject stale async responses; no credentials enter storage or cross-tab notifications.
+
+Verification commands from the root:
+
+```sh
+data/tools/node/bin/node --test student-web/test/identity-state.test.mjs student-web/test/workspace-state.test.mjs executor/test/worker.test.mjs
+data/tools/node/bin/node tests/e2e/p2.mjs
+```
+
+The complete phase entry is `sh scripts/test-p2-e2e` (real HTTP contracts followed by Chrome and Edge). The browser test reuses two synthetic accounts for the whole matrix; credentials remain in memory, and cleanup is limited to those accounts and their exact mail records. It covers actual Worker/server computations, source-vs-current execution revision, iteration, two-tab conflict, offline recovery, owner/TTL boundaries, atomic switching, reflection pause and completion, and Worker cancellation/timeout/crash recovery. Screenshots are written to `/tmp/majorpilot-p2-evidence`. The authoritative acceptance state and any remaining gate are in [the delivery ledger](../docs/23-p2-to-p6-delivery-ledger.md), not implied by the presence of these commands.

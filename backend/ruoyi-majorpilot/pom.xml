@@ -19,6 +19,7 @@
       <resource><directory>src/main/resources</directory></resource>
       <resource><directory>../../database/baseline</directory><targetPath>upstream-baseline</targetPath></resource>
       <resource><directory>../../database/migration</directory><targetPath>db/migration</targetPath></resource>
+      <resource><directory>../../content</directory><targetPath>task-content</targetPath></resource>
     </resources>
     <plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.3</version></plugin></plugins>
   </build>

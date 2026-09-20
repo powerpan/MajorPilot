@@ -7,6 +7,7 @@ import ts from 'typescript';
 
 // Execute the current TypeScript stores, not a reimplementation of their state logic.
 // The only substitutes are transport, Vue refs/Pinia registration and browser surfaces.
+// IndexedDB ownership behavior has a real-browser matrix; here we observe auth's boundary calls.
 const sources = Object.fromEntries(['auth', 'intake'].map(name => [name,
   ts.transpileModule(readFileSync(new URL(`../src/stores/${name}.ts`, import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -28,7 +29,8 @@ function browser({ channels = true } = {}) {
   function tab() {
     const window = new EventTarget(), own = new Map(), channelListeners = [];
     let handler = (path) => Promise.resolve(copy(path.includes('questionnaires') ? definition : path.endsWith('/me') || path.endsWith('/login') ? me : path.endsWith('/recommendation') || path.endsWith('/submit') ? recommendation : view));
-    const calls = [], modules = {};
+    const calls = [], modules = {}, draftCalls = [];
+    const taskDrafts = { lockTaskDrafts() { draftCalls.push('lock'); }, async purgeTaskDrafts() { draftCalls.push('purge'); }, async verifyTaskDraftOwner(owner) { draftCalls.push(['verify',owner]); }, async hasTaskDrafts() { return false; } };
     const storage = (map, broadcast) => ({
       getItem: key => map.get(key) ?? null,
       setItem(key, value) { map.set(key, String(value)); if (broadcast) notify(key, String(value)); },
@@ -51,11 +53,11 @@ function browser({ channels = true } = {}) {
       const require = path => path === 'pinia' ? { defineStore: (_, setup) => { let instance; return () => instance ||= setup(); } } : path === 'vue' ? { ref: value => ({ value }), computed: getter => ({ get value() { return getter(); } }) } : path === './auth' ? load('auth') : path === '../lib/api' ? {
         api, ApiError,
         stableOperation: () => { let previous, key; return body => { const next = JSON.stringify(body); if (next !== previous) { previous = next; key = randomUUID(); } return key; }; },
-      } : (() => { throw new Error(`Unexpected test import: ${path}`); })();
+      } : path === '../lib/task-drafts' ? taskDrafts : (() => { throw new Error(`Unexpected test import: ${path}`); })();
       vm.runInContext(`(function(require,module,exports){${sources[name]}\n})`, context)(require, module, module.exports);
       return module.exports;
     }
-    const value = { window, channelListeners, localStorage, sessionStorage, calls, setApi(next) { handler = next; }, auth: load('auth').useAuth(), intake: load('intake').useIntake() };
+    const value = { window, channelListeners, localStorage, sessionStorage, calls, draftCalls, setApi(next) { handler = next; }, auth: load('auth').useAuth(), intake: load('intake').useIntake() };
     tabs.push(value);
     return value;
   }
@@ -126,4 +128,16 @@ test('failed intake authentication clears cached answers instead of displaying t
 test('failed login never clears or broadcasts before authentication succeeds', async () => {
   const bus = browser(), tab = bus.tab(); await tab.intake.init(true); tab.setApi(() => Promise.reject(new ApiError(401, 'AUTH_INVALID')));
   await assert.rejects(tab.auth.login('synthetic@example.invalid', 'wrong passphrase')); assert.equal(tab.intake.view.value.intakeSessionId, view.intakeSessionId); assert.equal(bus.sent.length, 0);
+});
+test('natural authenticated session expiry locks drafts without deleting same-account recovery', async () => {
+  const tab = browser().tab(); await tab.auth.refresh(); tab.draftCalls.length = 0;
+  tab.setApi(() => Promise.reject(new ApiError(401,'AUTH_REQUIRED')));
+  await tab.auth.refresh(true);
+  assert.equal(tab.auth.me.value,null); assert.ok(tab.draftCalls.includes('lock')); assert.equal(tab.draftCalls.includes('purge'),false);
+});
+test('explicit logout purges task drafts but failed login does not touch ownership', async () => {
+  const tab = browser().tab(); tab.auth.clear(); await settle(); assert.ok(tab.draftCalls.includes('purge'));
+  tab.draftCalls.length = 0; tab.setApi(() => Promise.reject(new ApiError(401,'AUTH_INVALID')));
+  await assert.rejects(tab.auth.login('synthetic@example.invalid','incorrect'));
+  assert.deepEqual(tab.draftCalls,[]);
 });

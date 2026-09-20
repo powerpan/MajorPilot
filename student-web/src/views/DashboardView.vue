@@ -174,6 +174,7 @@ onBeforeUnmount(() => dispose?.());
           </div>
         </article>
       </section>
+      <section class="dashboard-demo-link"><p>想先熟悉保存、运行与暂停操作？技术演示不属于任何专业，也不生成专业报告。</p><RouterLink to="/app/demos" class="text-link">打开工作区上手演示 →</RouterLink></section>
       <section
         v-if="choosing"
         class="decision-panel"

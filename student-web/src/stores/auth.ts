@@ -2,8 +2,9 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { api, ApiError } from "../lib/api";
 import type { Me } from "../types";
+import { lockTaskDrafts, purgeTaskDrafts, verifyTaskDraftOwner, hasTaskDrafts } from "../lib/task-drafts";
 
-type IdentityReason = "LOGIN" | "LOGOUT" | "CLAIM";
+type IdentityReason = "LOGIN" | "LOGOUT" | "CLAIM" | "SESSION_EXPIRED";
 interface IdentityMessage { version: 1; reason: IdentityReason; nonce: string }
 interface IdentityNotice { reason: IdentityReason; remote: boolean }
 const SIGNAL = "mp:identity-signal:v1";
@@ -29,6 +30,8 @@ function invalidate(notice: IdentityNotice) {
   for (const controller of requests) controller.abort();
   requests.clear();
   clearLocalDraft();
+  if (notice.reason !== "CLAIM") lockTaskDrafts();
+  if (notice.reason === "LOGOUT") void purgeTaskDrafts().catch(() => { /* Locked even if browser storage is denied. */ });
   for (const listener of listeners) listener(notice);
   window.dispatchEvent(new Event("mp:logout"));
   window.dispatchEvent(new CustomEvent("mp:identity-cleared", { detail: notice }));
@@ -36,7 +39,7 @@ function invalidate(notice: IdentityNotice) {
 function receive(value: unknown) {
   if (!value || typeof value !== "object") return;
   const message = value as Partial<IdentityMessage>;
-  if (message.version !== 1 || !["LOGIN", "LOGOUT", "CLAIM"].includes(message.reason || "") ||
+  if (message.version !== 1 || !["LOGIN", "LOGOUT", "CLAIM", "SESSION_EXPIRED"].includes(message.reason || "") ||
       typeof message.nonce !== "string" || !/^[a-f0-9-]{36}$/.test(message.nonce) || !remember(message.nonce)) return;
   invalidate({ reason: message.reason!, remote: true });
 }
@@ -60,7 +63,7 @@ export function identityChanged(reason: IdentityReason) {
   // Also send the fallback so mixed supported/blocked tabs remain coherent.
   try { localStorage.setItem(SIGNAL, JSON.stringify(message)); localStorage.removeItem(SIGNAL); } catch { /* Storage denied. */ }
 }
-export function onIdentityChange(listener: (notice: IdentityNotice) => void) { listeners.add(listener); }
+export function onIdentityChange(listener: (notice: IdentityNotice) => void) { listeners.add(listener); return () => listeners.delete(listener); }
 export function identityRequest() {
   const issuedAt = epoch;
   const controller = new AbortController();
@@ -85,7 +88,7 @@ export const useAuth = defineStore("auth", () => {
     // Claim ends the anonymous credential, not an already logged-in account.
     if (notice.reason !== "CLAIM") {
       me.value = null;
-      checked.value = notice.reason === "LOGOUT";
+      checked.value = notice.reason === "LOGOUT" || notice.reason === "SESSION_EXPIRED";
     }
   });
   async function refresh(force = false) {
@@ -98,10 +101,12 @@ export const useAuth = defineStore("auth", () => {
         const next = await api<Me>("/api/app/v1/me", { signal: ticket.signal });
         ticket.assertCurrent();
         me.value = next;
+        await verifyTaskDraftOwner(next.studentId).catch(() => { /* Task view reports persistence failure; auth stays usable. */ });
+        ticket.assertCurrent();
       } catch (cause) {
         ticket.assertCurrent();
         if (!(cause instanceof ApiError) || cause.status !== 401) throw cause;
-        if (me.value) identityChanged("LOGOUT");
+        if (me.value) identityChanged("SESSION_EXPIRED");
         me.value = null;
       } finally {
         if (ticket.current()) checked.value = true;
@@ -122,10 +127,18 @@ export const useAuth = defineStore("auth", () => {
       identityChanged("LOGIN");
       me.value = next;
       checked.value = true;
+      const completed = identityRequest();
+      try {
+        await verifyTaskDraftOwner(next.studentId).catch(() => { /* Never grant a cache read on storage failure. */ });
+        completed.assertCurrent();
+      } finally { completed.finish(); }
     } catch (cause) { ticket.assertCurrent(); throw cause; }
     finally { ticket.finish(); }
   }
   async function logout() {
+    if (await hasTaskDrafts().catch(() => false)) {
+      if (!window.confirm("退出将清除这台设备上的未同步草稿。取消后可先返回任务保存，确定退出吗？")) throw new Error("已取消退出，未同步草稿仍保留在这台设备。");
+    }
     const ticket = identityRequest();
     try {
       await api<void>("/api/app/v1/auth/logout", { method: "POST", body: {}, signal: ticket.signal });
@@ -136,5 +149,6 @@ export const useAuth = defineStore("auth", () => {
     finally { ticket.finish(); }
   }
   function clear() { identityChanged("LOGOUT"); }
-  return { me, checked, refresh, login, logout, clear };
+  function expire() { identityChanged("SESSION_EXPIRED"); }
+  return { me, checked, refresh, login, logout, clear, expire };
 });

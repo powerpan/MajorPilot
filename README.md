@@ -2,7 +2,9 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P1 身份、Intake 与首次推荐已完成本地实施和约定范围验收**：新版首页、12 页问卷、注册前推荐、注册认领、邮箱验证／找回、接受与改选均可使用。见 [P1 验证记录](docs/21-p1-implementation-and-delivery.md) 和 [已确认视觉方向](docs/22-p1-visual-direction.md)。按用户 2026-09-20 确认，本轮使用确定性规则解释，AI 润色单列后续增强。专业任务、反思、报告仍属 P2–P8，不声称完整 MVP 或公网生产已就绪。
+**P2 版本化任务引擎与通用工作区已完成本地实施和验收**：在P1首页、Intake、推荐与账户基础上，新增真实保存/执行/分层提示、暂停切换、草稿恢复及反思闭环。两个本地技术演示不属于AI/DS/BA，也不生成专业报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [工作区视觉验收](docs/24-p2-workspace-visual-direction.md)。专业内容、证据报告及完整MVP仍需P3–P8；不声称公网生产已就绪。
+
+P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
 产品事实与设计入口见 [docs/README.md](docs/README.md)，实施范围见 [P0–P8 路线](docs/16-implementation-roadmap-and-traceability.md)，历史技术底座见 [P0 记录](docs/20-p0-implementation-evidence.md)。
 
@@ -29,7 +31,7 @@ Codex 的 macOS 沙箱可能禁止 MySQL 的 `hw.cachelinesize` 查询以及 `ps
 | 学生产品首页 | http://localhost:15173 | 新视觉、正式 Intake、推荐和账户流程 |
 | P0 技术验证页 | http://localhost:15173/p0 | 固定执行器探针；合成身份需独立 p0 profile |
 | 管理端 | http://localhost:15174 | RuoYi 管理登录；本地随机密码 |
-| 后端 | 127.0.0.1:18080 | 默认 `local` profile，正式 P1 身份与 API |
+| 后端 | 127.0.0.1:18080 | 默认 `local` profile，正式身份与任务引擎 API |
 | 执行器 | 127.0.0.1:15175 | 不同 hostname、无凭证的固定计算器 |
 | MySQL 8.4.11 | 127.0.0.1:13306 | `data/mysql/`，majorpilot / majorpilot_test |
 | Redis 7.2.16 | 127.0.0.1:16380 | `data/redis/`，独立认证与 AOF |
@@ -44,6 +46,7 @@ sh scripts/check-env
 sh scripts/test-unit
 sh scripts/test-integration
 sh scripts/test-p1-e2e
+sh scripts/test-p2-e2e
 sh scripts/verify-secrets
 sh scripts/stop-local
 ```
@@ -51,6 +54,10 @@ sh scripts/stop-local
 `test-integration` 只使用独立 `majorpilot_test` 库；`test-infra.mjs` 会重启本项目的 MySQL／Redis，需在没有其他本项目测试进行时单独执行。停止脚本核对 PID 的启动时间与完整命令，只关闭本项目记录的进程并保留数据。日志位于忽略的 `logs/`；不要发布未经检查的完整日志。
 
 `test-p1-e2e` 依次运行真实 HTTP／事件合同和 Chrome／Edge 完整流程；创建并精确清理本轮合成账户、草稿与捕获邮件。不放宽正式限流：重复运行可能触发本地共享 IP 的每小时注册限制，应等待窗口自然恢复，不清空 Redis 绕过。P0 回归需先停止本项目服务，再 `sh scripts/start-local --profile=p0` 并执行 `sh scripts/test-e2e`；完成后停止并以默认 `local` 重启。两个 profile 都保留原数据。
+
+P2演示需要在忽略的 `.env.local` 中显式设置 `MP_P2_DEMO_ENABLED=true`，默认关闭；登录后从个人主页进入“工作区上手演示”。任务AI开关 `MP_EXPERIENCE_AI_ENABLED` 默认false，普通验收保持关闭，使用已审核静态提示；不伪装为模型生成。`test-p2-e2e`顺序运行真实HTTP和Chrome/Edge任务闭环，共创建并精确清理4个合成账户，仍遵守共享IP注册限额。
+
+`data/tools/node/bin/node scripts/test-p2-recovery.mjs`仅在其他本项目测试结束后单独执行：要求标准项目托管后端、显式关闭任务AI及空闲Redis DB15，实际重启后端并在finally恢复原配置，不清空正常DB0。它不是操作系统断电或完整数据库备份恢复验证。
 
 全新空库迁移可用 `data/tools/node/bin/node scripts/test-fresh-migrations.mjs` 验证；脚本检查项目实例，为本轮创建隔离 schema／最小权限账号，最终精确删除这两个临时资源，不清空主库或测试库。
 

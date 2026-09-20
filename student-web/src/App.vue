@@ -41,13 +41,13 @@ onBeforeUnmount(() =>
 </script>
 <template>
   <RouterView v-if="p0" /><template v-else
-    ><a class="skip-link" href="#main-content">跳到主要内容</a><SiteHeader />
+    ><a class="skip-link" href="#main-content">跳到主要内容</a><SiteHeader v-if="!route.meta.workspace" />
     <div id="main-content" tabindex="-1">
       <p v-if="identityTransition" class="loading-state" role="status">
         会话已在其他页面更新，正在清理当前页面…
       </p>
       <RouterView v-else />
     </div>
-    <SiteFooter
+    <SiteFooter v-if="!route.meta.workspace"
   /></template>
 </template>

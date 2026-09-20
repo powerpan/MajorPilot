@@ -1,0 +1,437 @@
+{
+  "schemaVersion": "task-manifest-v1",
+  "taskVersionId": "01JDEM00000000000000000002",
+  "contentKind": "DEMO",
+  "majorCode": null,
+  "demoKey": "DEMO_COMPARE",
+  "versionCode": "1.0.0",
+  "title": "工作区上手：切换与比较",
+  "scenario": "这是使用合成数字熟悉保存、运行、提示和切换的技术演示，不是专业体验，也不用于判断能力或专业适合度。",
+  "goals": [
+    "熟悉分步保存与服务端运行",
+    "尝试暂停切换并恢复进度",
+    "用自己的话记录观察"
+  ],
+  "estimatedMinutes": {
+    "minimum": 6,
+    "maximum": 10
+  },
+  "assets": [
+    {
+      "assetKey": "sample",
+      "path": "demo-compare/1.0.0/sample.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "0c153d2473833c104a92a15b89fa57e985bc94b42eea4fd7922ad042e8a062af",
+      "byteLength": 112
+    },
+    {
+      "assetKey": "internal-review",
+      "path": "demo-compare/1.0.0/review.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "0e3f2c6369fb80a61a87678cda705a41e7f8a5ff254b9c41a276bf3ca83494d3",
+      "byteLength": 122
+    }
+  ],
+  "steps": [
+    {
+      "stepKey": "prepare",
+      "title": "准备工作区",
+      "instructions": "阅读演示说明。这里的数字完全合成，完成演示不会生成专业报告。",
+      "dependencies": [],
+      "required": true,
+      "responseSchemaVersion": "demo-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "acknowledged"
+        ]
+      },
+      "assetKeys": [],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先确认这是工作区练习，不是专业测评。"
+        },
+        {
+          "level": 2,
+          "text": "了解保存、提示和暂停的位置，然后确认继续。"
+        },
+        {
+          "level": 3,
+          "text": "勾选已了解演示说明，再完成此步。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "acknowledged"
+      ]
+    },
+    {
+      "stepKey": "read-sample",
+      "title": "读取合成样本",
+      "instructions": "查看四行合成数字。每行只有编号和数值，不包含个人信息。",
+      "dependencies": [
+        "prepare"
+      ],
+      "required": true,
+      "responseSchemaVersion": "demo-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "acknowledged"
+        ]
+      },
+      "assetKeys": [
+        "sample"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先看行数和列名。"
+        },
+        {
+          "level": 2,
+          "text": "逐行查看 value，不需要查找额外资料。"
+        },
+        {
+          "level": 3,
+          "text": "确认已经查看四行样本，然后完成此步。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "acknowledged"
+      ]
+    },
+    {
+      "stepKey": "adjust",
+      "title": "调整参数并预览",
+      "instructions": "选择倍数与范围，保存后点击运行。服务端按当前样本计算行数、总和与均值。改变输入后需要重新运行。",
+      "dependencies": [
+        "read-sample"
+      ],
+      "required": true,
+      "responseSchemaVersion": "demo-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "multiplier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "include": {
+            "type": "string",
+            "enum": [
+              "ALL",
+              "FIRST_TWO"
+            ]
+          }
+        },
+        "required": [
+          "multiplier",
+          "include"
+        ]
+      },
+      "assetKeys": [
+        "sample"
+      ],
+      "operationKey": "demo-summary-v1",
+      "hints": [
+        {
+          "level": 1,
+          "text": "一次只改一个参数，更容易看到它的影响。"
+        },
+        {
+          "level": 2,
+          "text": "范围决定参与计算的行；倍数会作用到选中行的数值。"
+        },
+        {
+          "level": 3,
+          "text": "先保存参数再运行，对照结果中的行数、总和与均值；不要直接照抄他人的结论。"
+        }
+      ],
+      "hintContextFields": [
+        "multiplier",
+        "include"
+      ],
+      "evidenceFields": [
+        "multiplier",
+        "include"
+      ]
+    },
+    {
+      "stepKey": "observe",
+      "title": "记录观察",
+      "instructions": "用20至500字记录一次参数变化及你观察到的结果。可以写仍不确定的地方，没有唯一标准表述。",
+      "dependencies": [
+        "adjust"
+      ],
+      "required": true,
+      "responseSchemaVersion": "demo-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "observation": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "observation"
+        ]
+      },
+      "assetKeys": [],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "从你实际改变的那个参数开始。"
+        },
+        {
+          "level": 2,
+          "text": "说清改了什么，以及哪个结果发生了变化。"
+        },
+        {
+          "level": 3,
+          "text": "按“我把某参数从原值改为新值，观察到某结果变化；仍想确认……”组织自己的观察。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "observation"
+      ]
+    },
+    {
+      "stepKey": "submit",
+      "title": "提交任务",
+      "instructions": "确认已记录自己的观察。完成此步后提交任务，并填写简短反思。",
+      "dependencies": [
+        "observe"
+      ],
+      "required": true,
+      "responseSchemaVersion": "demo-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "acknowledged"
+        ]
+      },
+      "assetKeys": [],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "检查前面各步是否完成。"
+        },
+        {
+          "level": 2,
+          "text": "可以返回查看已保存的观察，提交前补充自己的想法。"
+        },
+        {
+          "level": 3,
+          "text": "确认完成后，点击提交任务进入反思。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "acknowledged"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "operationKey": "demo-summary-v1",
+      "stepKey": "adjust",
+      "engineType": "DEMO_SUMMARY",
+      "engineVersion": "demo-summary-v1",
+      "parametersSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "multiplier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "include": {
+            "type": "string",
+            "enum": [
+              "ALL",
+              "FIRST_TWO"
+            ]
+          }
+        },
+        "required": [
+          "multiplier",
+          "include"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "sum": {
+            "type": "number"
+          },
+          "mean": {
+            "type": "number"
+          },
+          "multiplier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "include": {
+            "type": "string",
+            "enum": [
+              "ALL",
+              "FIRST_TWO"
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "sum",
+          "mean",
+          "multiplier",
+          "include"
+        ]
+      },
+      "maxEvaluations": 6,
+      "publicAssetKeys": [
+        "sample"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "sample"
+    }
+  ],
+  "reflection": {
+    "questionSetVersion": "demo-reflection-v1",
+    "instructions": "回顾工作方式，仅用于演示，不生成专业结论。",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "interestingStepKeys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "prepare",
+              "read-sample",
+              "adjust",
+              "observe",
+              "submit",
+              "NONE"
+            ]
+          }
+        },
+        "difficultySources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "KNOWLEDGE",
+              "TOOLS",
+              "TIME",
+              "TASK_STYLE",
+              "OTHER",
+              "NONE"
+            ]
+          }
+        },
+        "continueSimilarWork": {
+          "type": "string",
+          "enum": [
+            "YES",
+            "UNSURE",
+            "NO"
+          ]
+        },
+        "reflectionNote": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "aiFollowUp": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "nextWorkStyle": {
+          "type": "string",
+          "enum": [
+            "MODEL_ITERATION",
+            "DATA_REASONING",
+            "BUSINESS_ACTION",
+            "UNSURE",
+            "SKIPPED"
+          ]
+        }
+      },
+      "required": [
+        "interestingStepKeys",
+        "difficultySources",
+        "continueSimilarWork"
+      ]
+    }
+  },
+  "review": {
+    "kind": "TECHNICAL_DEMO",
+    "checkKeys": [
+      "SCHEMA",
+      "ASSET_HASHES",
+      "NO_REAL_PII",
+      "STATIC_HINTS",
+      "NO_PROFESSIONAL_CLAIMS"
+    ],
+    "professionalReviewRequired": false
+  }
+}

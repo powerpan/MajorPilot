@@ -9,6 +9,7 @@ import {
   stableOperation,
 } from "../lib/api";
 import { useAuth } from "../stores/auth";
+import { hasTaskDrafts } from "../lib/task-drafts";
 import { useIntake } from "../stores/intake";
 import type { Consent } from "../types";
 import ArrowIcon from "../components/ArrowIcon.vue";
@@ -86,6 +87,8 @@ async function submit() {
     !window.confirm("登录后将清除本机未同步的匿名草稿。确定继续吗？")
   )
     return;
+  if (mode.value === "login" && await hasTaskDrafts().catch(() => false) &&
+      !window.confirm("这台设备上有未同步的任务草稿。登录原账户可以恢复；登录另一个账户将清除原账户的本机草稿。确定继续吗？")) return;
   busy.value = true;
   try {
     if (mode.value === "login") {
