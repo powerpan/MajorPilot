@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "ds-python-examples-v1",
+  "executionNotice": "以下是与当前分支统计定义等价的只读Python核心公式示例，不在浏览器执行Python，也不是完整执行器。cleaned_rows、当前字段和固定分组顺序来自已保存方案及数据字典；示例省略输入校验、质量计数、结果哈希和最终六位舍入。实际计算由固定JavaScript计算器预览并由Java服务端重算；不接受用户代码。",
+  "snippets": [
+    {
+      "operationKey": "ds-quality-clean",
+      "title": "去重、缺失与缩尾顺序",
+      "code": "fields = [\"avg_session_minutes\", \"days_to_first_lesson\", \"assignment_submit_rate\"]\ndef missing(row, field):\n    return row[field] is None and (field == \"assignment_submit_rate\" or row[\"lessons_started\"] > 0)\n# 先按全部原始列精确去重并保留第一行；如选择KEEP则跳过此步。\n# DROP_MISSING只删除any(missing(row, f) for f in fields)的行。\n# MEDIAN_NUMERIC各列先从同一去重后快照计算中位数，再仅填补missing。\n# CAP_P95最后对非空会话时长取Type7的0.95分位，并用min(value, cap)缩尾。"
+    },
+    {
+      "operationKey": "ds-profile",
+      "title": "分位数与完成率的不同分母",
+      "code": "def quantile_type7(values, p):\n    a = sorted(values)\n    if not a: return None\n    h = (len(a) - 1) * p\n    lo = int(h)\n    return a[lo] + (h - lo) * (a[min(lo + 1, len(a) - 1)] - a[lo])\ncompletion_rate = sum(row[\"completed\"] for row in cleaned_rows) / len(cleaned_rows) if cleaned_rows else None\nvalid = [row[field] for row in cleaned_rows if row[field] is not None]\n# 变量统计的分母为len(valid)，完成率分母为len(cleaned_rows)。"
+    },
+    {
+      "operationKey": "ds-relationship",
+      "relationshipMode": "GROUP_COMPLETION",
+      "title": "分组完成率与Wilson区间（只读公式）",
+      "code": "from math import sqrt\ndef group_key(row, field):\n    if field == \"cohort_period\":\n        return \"EARLY\" if row[\"cohort_week\"] <= 6 else \"LATE\"\n    if field == \"days_to_first_lesson_band\":\n        day = row[\"days_to_first_lesson\"]\n        if day is None: return None  # 缺失和不适用都不进入等待时间分组\n        return \"SAME_DAY\" if day < 1 else \"DAYS_1_2\" if day < 3 else \"DAYS_3_6\" if day < 7 else \"DAYS_7_PLUS\"\n    return row[field]\n\ndef grouped_completion(rows, group_by, group_order):\n    result = []\n    for key in group_order:  # 数据字典的固定顺序；空组也保留\n        group = [row for row in rows if group_key(row, group_by) == key]\n        n = len(group)\n        k = sum(row[\"completed\"] for row in group)\n        p = k / n if n else None\n        if n:\n            z = 1.959963984540054\n            den = 1 + z*z/n\n            center = (p + z*z/(2*n)) / den\n            half = z * sqrt((p*(1-p) + z*z/(4*n))/n) / den\n            interval = (max(0, center-half), min(1, center+half))\n        else:\n            interval = (None, None)\n        result.append({\"key\": key, \"n\": n, \"completed_count\": k,\n                       \"completion_rate\": p, \"wilson_95\": interval})\n    return result\n\nresult = grouped_completion(cleaned_rows, group_by, group_order)\n# 每组分母为该组有效记录数，不是所有报名者，也不计算Pearson。\n# 区间不能消除重复、缺失、非随机样本或混杂的影响。"
+    },
+    {
+      "operationKey": "ds-relationship",
+      "relationshipMode": "SCATTER",
+      "title": "成对有效的Pearson（只读公式）",
+      "code": "from math import sqrt\ndef paired_summary(rows, x_field, y_field):\n    pairs = [(row[x_field], row[y_field]) for row in rows\n             if row[x_field] is not None and row[y_field] is not None]\n    n = len(pairs)  # 0 是有效数值，不能用 if row[field] 来筛选\n    if not n: return {\"n\": 0, \"mean_x\": None, \"mean_y\": None, \"r\": None}\n    mean_x = sum(x for x, y in pairs) / n\n    mean_y = sum(y for x, y in pairs) / n\n    xx = sum((x-mean_x)**2 for x, y in pairs)\n    yy = sum((y-mean_y)**2 for x, y in pairs)\n    xy = sum((x-mean_x)*(y-mean_y) for x, y in pairs)\n    r = max(-1, min(1, xy/sqrt(xx*yy))) if n >= 2 and xx > 0 and yy > 0 else None\n    return {\"n\": n, \"mean_x\": mean_x, \"mean_y\": mean_y, \"r\": r}\n\nresult = paired_summary(cleaned_rows, x_field, y_field)\n# 两项均值和r使用同一个成对有效集合；相关不代表因果。"
+    },
+    {
+      "operationKey": "ds-stratify",
+      "relationshipMode": "GROUP_COMPLETION",
+      "title": "分层后的分组完成率（只读公式）",
+      "code": "from math import sqrt\ndef group_key(row, field):\n    if field == \"cohort_period\":\n        return \"EARLY\" if row[\"cohort_week\"] <= 6 else \"LATE\"\n    if field == \"days_to_first_lesson_band\":\n        day = row[\"days_to_first_lesson\"]\n        if day is None: return None  # 缺失和不适用都不进入等待时间分组\n        return \"SAME_DAY\" if day < 1 else \"DAYS_1_2\" if day < 3 else \"DAYS_3_6\" if day < 7 else \"DAYS_7_PLUS\"\n    return row[field]\n\ndef grouped_completion(rows, group_by, group_order):\n    result = []\n    for key in group_order:  # 数据字典的固定顺序；空组也保留\n        group = [row for row in rows if group_key(row, group_by) == key]\n        n = len(group)\n        k = sum(row[\"completed\"] for row in group)\n        p = k / n if n else None\n        if n:\n            z = 1.959963984540054\n            den = 1 + z*z/n\n            center = (p + z*z/(2*n)) / den\n            half = z * sqrt((p*(1-p) + z*z/(4*n))/n) / den\n            interval = (max(0, center-half), min(1, center+half))\n        else:\n            interval = (None, None)\n        result.append({\"key\": key, \"n\": n, \"completed_count\": k,\n                       \"completion_rate\": p, \"wilson_95\": interval})\n    return result\n\noverall = grouped_completion(cleaned_rows, group_by, group_order)\nlayers = []\nfor stratum in stratum_order:\n    part = [row for row in cleaned_rows if group_key(row, stratify_by) == stratum]\n    layers.append({\"key\": stratum, \"retained_rows\": len(part),\n                   \"groups\": grouped_completion(part, group_by, group_order)})\n# 每层重新计数k和n并计算Wilson区间；不平均各层比例或区间。\n# stratify_by只允许课程或早晚批次，且不能与group_by相同。"
+    },
+    {
+      "operationKey": "ds-stratify",
+      "relationshipMode": "SCATTER",
+      "title": "分层后的成对相关（只读公式）",
+      "code": "from math import sqrt\ndef paired_summary(rows, x_field, y_field):\n    pairs = [(row[x_field], row[y_field]) for row in rows\n             if row[x_field] is not None and row[y_field] is not None]\n    n = len(pairs)  # 0 是有效数值，不能用 if row[field] 来筛选\n    if not n: return {\"n\": 0, \"mean_x\": None, \"mean_y\": None, \"r\": None}\n    mean_x = sum(x for x, y in pairs) / n\n    mean_y = sum(y for x, y in pairs) / n\n    xx = sum((x-mean_x)**2 for x, y in pairs)\n    yy = sum((y-mean_y)**2 for x, y in pairs)\n    xy = sum((x-mean_x)*(y-mean_y) for x, y in pairs)\n    r = max(-1, min(1, xy/sqrt(xx*yy))) if n >= 2 and xx > 0 and yy > 0 else None\n    return {\"n\": n, \"mean_x\": mean_x, \"mean_y\": mean_y, \"r\": r}\n\ndef layer_key(row, field):\n    return (\"EARLY\" if row[\"cohort_week\"] <= 6 else \"LATE\") if field == \"cohort_period\" else row[field]\n\noverall = paired_summary(cleaned_rows, x_field, y_field)\nlayers = []\nfor stratum in stratum_order:\n    part = [row for row in cleaned_rows if layer_key(row, stratify_by) == stratum]\n    layers.append({\"key\": stratum, \"retained_rows\": len(part),\n                   \"summary\": paired_summary(part, x_field, y_field)})\n# 每层重新建立成对有效集合；不能平均各层r得到整体r。\n# 这里只报告成对n、均值与r，不生成未定义的相关区间或因果结论。"
+    }
+  ]
+}

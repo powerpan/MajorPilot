@@ -1,0 +1,3027 @@
+{
+  "schemaVersion": "task-manifest-v3",
+  "taskVersionId": "01JD1000000000000000000001",
+  "contentKind": "MAJOR",
+  "majorCode": "DATA_SCIENCE",
+  "demoKey": null,
+  "versionCode": "1.0.0",
+  "title": "数据科学：从学习记录到有限结论",
+  "scenario": "LumenLearn近期课程完成率下降。你要检查合成学习记录的质量，探索关系并说明不确定性，形成可复核的分析摘要。本内容为工程预览，专业人工审核和目标用户计时仍待完成。",
+  "goals": [
+    "区分重复、缺失、不适用与合理极端值",
+    "比较分布、分组完成率或散点关系",
+    "通过分层与明确分母检查解释",
+    "表达发现、因果限制与下一步问题"
+  ],
+  "estimatedMinutes": {
+    "minimum": 45,
+    "maximum": 60
+  },
+  "assets": [
+    {
+      "assetKey": "learner-activity",
+      "path": "ds-learning/1.0.0/learner-activity.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+      "byteLength": 137793
+    },
+    {
+      "assetKey": "learner-activity-csv",
+      "path": "ds-learning/1.0.0/learner-activity-csv.csv",
+      "visibility": "PUBLIC",
+      "mediaType": "text/csv",
+      "sha256": "0419aa91bf871af028c438c266d34faf5360b904006b0eddaf7322b8ab90755b",
+      "byteLength": 20645
+    },
+    {
+      "assetKey": "canonical-events-private",
+      "path": "ds-learning/1.0.0/canonical-events-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "9f09364c467d56256b66c9a2da25bf051f0c784bad22795418fd541a7f199cf6",
+      "byteLength": 249151
+    },
+    {
+      "assetKey": "data-dictionary",
+      "path": "ds-learning/1.0.0/data-dictionary.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "cfb9ea3c330f07b3de91d24682b18610f837b3926df372f31ce1f70da3e7deb3",
+      "byteLength": 4518
+    },
+    {
+      "assetKey": "python-examples",
+      "path": "ds-learning/1.0.0/python-examples.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "9035a15b1cd23d112473aaff9d56f6847f859c6d694e5e54d83c122eb9142e43",
+      "byteLength": 8024
+    },
+    {
+      "assetKey": "review-private",
+      "path": "ds-learning/1.0.0/review-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "a69792742bca904cf4af603dd63aae7e00bcf84c86c39c41d181301098aa2625",
+      "byteLength": 257
+    },
+    {
+      "assetKey": "golden-private",
+      "path": "ds-learning/1.0.0/golden-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "e3647095720ae901c2a7c4891083b57f2a5a6e79d5a3438dde60fb90ea7e947e",
+      "byteLength": 69303
+    }
+  ],
+  "steps": [
+    {
+      "stepKey": "d1-context",
+      "title": "理解数据与分析问题",
+      "instructions": "你是LumenLearn的初级数据分析师，要理解完成率下降时有哪些关系值得进一步检查。每行是一条合成学员记录，不是一天或一个班级。先阅读数据字典，尤其是观察截止时间、完成定义、重复与空值。目标是形成可复核的发现与限制，不是证明单一原因。",
+      "dependencies": [],
+      "required": true,
+      "responseSchemaVersion": "ds-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "acknowledged": {
+            "type": "boolean",
+            "const": true
+          },
+          "observationUnit": {
+            "type": "string",
+            "enum": [
+              "LEARNER",
+              "COURSE",
+              "DAY"
+            ]
+          },
+          "targetField": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "support_contacts",
+              "device_group"
+            ]
+          }
+        },
+        "required": [
+          "acknowledged",
+          "observationUnit",
+          "targetField"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "learner-activity",
+        "data-dictionary"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先确认一行代表什么，再解释比例。"
+        },
+        {
+          "level": 2,
+          "text": "完成率的分母和字段有效数可能不同；批次都应有同样的观察机会。"
+        },
+        {
+          "level": 3,
+          "text": "查看learner_id与cohort_week：同一行不是每周重复测量，且一条完全重复记录可能改变计数。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "acknowledged",
+        "observationUnit",
+        "targetField"
+      ]
+    },
+    {
+      "stepKey": "d2-quality",
+      "title": "检查并处理数据质量",
+      "instructions": "检查缺失、重复和合理极端值，选择处理策略，并分别解释重复与缺失的处理理由。不适用不等于缺失，0不等于空值。缩尾会改动测量值但不证明原值错误。运行后比较处理前后的记录数；你可以修改方案，后续图表需要重新核验。",
+      "dependencies": [
+        "d1-context"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ds-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "identifiedIssues": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "EXACT_DUPLICATE",
+                "MISSING_RECORD",
+                "REASONABLE_EXTREME",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "minItems": 2,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "duplicatePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "DROP_EXACT"
+            ]
+          },
+          "missingPolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP_NULL",
+              "DROP_MISSING",
+              "MEDIAN_NUMERIC"
+            ]
+          },
+          "extremePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "CAP_P95"
+            ]
+          },
+          "duplicateReason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "missingReason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "identifiedIssues",
+          "duplicatePolicy",
+          "missingPolicy",
+          "extremePolicy",
+          "duplicateReason",
+          "missingReason"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "learner-activity",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": "ds-quality-clean",
+      "hints": [
+        {
+          "level": 1,
+          "text": "先分别计数重复、缺失和不适用，不急着删除所有空格。"
+        },
+        {
+          "level": 2,
+          "text": "用lessons_started判断会话和首课字段是否适用；作业提交率对全部报名者适用。"
+        },
+        {
+          "level": 3,
+          "text": "对一条未开始学习记录检查空值，再对一条已开始但缺少首课日期的记录检查空值：它们不应被同样填补。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "identifiedIssues",
+        "duplicatePolicy",
+        "missingPolicy",
+        "extremePolicy",
+        "duplicateReason",
+        "missingReason"
+      ]
+    },
+    {
+      "stepKey": "d3-profile",
+      "title": "查看分布与统计分母",
+      "instructions": "选择一个数值字段，比较均值、中位数、四分位数与完整直方图。完成率使用清洗后所有保留记录，变量分布只用该字段有效记录。请解释为什么这两个分母可能不同；不要只用平均数描述全部学员。",
+      "dependencies": [
+        "d2-quality"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ds-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "distributionField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          },
+          "sampleInterpretation": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 600
+          }
+        },
+        "required": [
+          "distributionField",
+          "sampleInterpretation"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": "ds-profile",
+      "hints": [
+        {
+          "level": 1,
+          "text": "查看计数、单位和空值说明，再读图。"
+        },
+        {
+          "level": 2,
+          "text": "对比均值与中位数，看看长尾是否影响平均值。"
+        },
+        {
+          "level": 3,
+          "text": "选择平均会话时长，核对直方图各格之和是否等于有效记录数，而不是直接等于保留记录数。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "distributionField",
+        "sampleInterpretation"
+      ]
+    },
+    {
+      "stepKey": "d4-relationship",
+      "title": "探索两个变量的关系",
+      "instructions": "选择分组完成率或散点关系。前者明确以completed为因变量；后者选择两个不同数值字段，只计算两轴同时有效的记录。结果由固定计算器产生，不执行Python。写出你观察到的关系及可能的反例，避免把相关说成原因。",
+      "dependencies": [
+        "d3-profile"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ds-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "relationshipMode": {
+            "type": "string",
+            "enum": [
+              "GROUP_COMPLETION",
+              "SCATTER"
+            ]
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "signup_source",
+              "device_group",
+              "cohort_period",
+              "days_to_first_lesson_band"
+            ]
+          },
+          "xField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          },
+          "yField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          },
+          "observation": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          }
+        },
+        "required": [
+          "relationshipMode",
+          "observation"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": "ds-relationship",
+      "hints": [
+        {
+          "level": 1,
+          "text": "先确认你想比较群体比例，还是看两个数值变量怎样共同变化。"
+        },
+        {
+          "level": 2,
+          "text": "散点的两项均值与r来自同一个成对有效集合；缺失一轴的记录不能参与计算。"
+        },
+        {
+          "level": 3,
+          "text": "可以比较首课等待天数与提交率，但即使相关明显，也应检查批次、课程或选择偏差是否提供其他解释。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "relationshipMode",
+        "groupBy",
+        "xField",
+        "yField",
+        "observation"
+      ]
+    },
+    {
+      "stepKey": "d5-stratify",
+      "title": "分层检查解释与不确定性",
+      "instructions": "保持D4关系定义不变，按课程方向或早晚批次分层。各层重新计算，不把各层r平均成整体r。分组比例有Wilson区间，散点只有成对n、均值和r，不虚构相关区间。说明分层后的变化与仍然不知道的内容。",
+      "dependencies": [
+        "d4-relationship"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ds-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "stratifyBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "cohort_period"
+            ]
+          },
+          "uncertaintyComment": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 800
+          },
+          "causalJudgment": {
+            "type": "string",
+            "enum": [
+              "INSUFFICIENT_FOR_CAUSAL_CLAIM",
+              "OBSERVATIONAL_ASSOCIATION_ONLY",
+              "CLAIMS_CAUSAL_SUPPORT"
+            ]
+          }
+        },
+        "required": [
+          "stratifyBy",
+          "uncertaintyComment",
+          "causalJudgment"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": "ds-stratify",
+      "hints": [
+        {
+          "level": 1,
+          "text": "先核对每层分母是否变小，再比较整体与层内结果。"
+        },
+        {
+          "level": 2,
+          "text": "相同整体关系可能在不同课程或批次内变弱、变强或不一致。"
+        },
+        {
+          "level": 3,
+          "text": "若选设备分组，尝试按早晚批次分层；写出数据支持的观察和仍需收集的信息，而不是要求区间替你证明原因。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "stratifyBy",
+        "uncertaintyComment",
+        "causalJudgment"
+      ]
+    },
+    {
+      "stepKey": "d6-conclusion",
+      "title": "写出有限且可复核的结论",
+      "instructions": "整理两到三个发现，各自引用D3、D4或D5，区分支持、不支持和证据不足。再写一个不能由这些观察推出的因果结论、当前限制和下一步可验证问题。系统记录你的分析，不自动把自由文本当作经过证明的事实，也不输出专业适配分数。",
+      "dependencies": [
+        "d5-stratify"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ds-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "statement": {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 500
+                },
+                "evidenceStepKey": {
+                  "type": "string",
+                  "enum": [
+                    "d3-profile",
+                    "d4-relationship",
+                    "d5-stratify"
+                  ]
+                },
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "SUPPORTED",
+                    "NOT_SUPPORTED",
+                    "INSUFFICIENT_EVIDENCE"
+                  ]
+                }
+              },
+              "required": [
+                "statement",
+                "evidenceStepKey",
+                "verdict"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 2,
+            "maxItems": 3
+          },
+          "unsupportedCausalClaim": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "limitations": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          },
+          "nextQuestion": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "findings",
+          "unsupportedCausalClaim",
+          "limitations",
+          "nextQuestion"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "每个发现先指出它引用哪次分析。"
+        },
+        {
+          "level": 2,
+          "text": "把观测、可能解释和仍未知的事项分别写清楚。"
+        },
+        {
+          "level": 3,
+          "text": "即使看到首课延迟与完成有关，也不能断言缩短延迟一定提高完成率；你可以提出一个能进一步检验的设计。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "findings",
+        "unsupportedCausalClaim",
+        "limitations",
+        "nextQuestion"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "operationKey": "ds-quality-clean",
+      "stepKey": "d2-quality",
+      "engineType": "DATA_ANALYSIS",
+      "engineVersion": "ds-stats-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "duplicatePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "DROP_EXACT"
+            ]
+          },
+          "missingPolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP_NULL",
+              "DROP_MISSING",
+              "MEDIAN_NUMERIC"
+            ]
+          },
+          "extremePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "CAP_P95"
+            ]
+          }
+        },
+        "required": [
+          "duplicatePolicy",
+          "missingPolicy",
+          "extremePolicy"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ds-result-v1"
+          },
+          "operationKey": {
+            "type": "string",
+            "enum": [
+              "ds-quality-clean",
+              "ds-profile",
+              "ds-relationship",
+              "ds-stratify"
+            ]
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "cleaningConfigSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "inputRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "retainedRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "uniqueLearners": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "analysisRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "exclusions": {
+            "type": "object",
+            "properties": {
+              "missingOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "notApplicableOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "both": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "missingOnly",
+              "notApplicableOnly",
+              "both",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "duplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "duplicateGroups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "learnerId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 30
+                    },
+                    "rowNumbers": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "minItems": 2,
+                      "maxItems": 360
+                    }
+                  },
+                  "required": [
+                    "learnerId",
+                    "rowNumbers"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 360
+              },
+              "removedDuplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "removedMissingRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "before": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "after": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "imputations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "median": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "count",
+                    "median"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "cappedRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "capValue": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "duplicateRows",
+              "duplicateGroups",
+              "removedDuplicateRows",
+              "removedMissingRows",
+              "before",
+              "after",
+              "imputations",
+              "cappedRows",
+              "capValue"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "operationKey",
+          "datasetSha256",
+          "cleaningConfigSha256",
+          "inputRows",
+          "retainedRows",
+          "uniqueLearners",
+          "analysisRows",
+          "exclusions",
+          "quality"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "learner-activity",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "learner-activity",
+      "inputBindings": [],
+      "ownResponseBindings": [
+        {
+          "parameterKey": "duplicatePolicy",
+          "sourceField": "duplicatePolicy"
+        },
+        {
+          "parameterKey": "missingPolicy",
+          "sourceField": "missingPolicy"
+        },
+        {
+          "parameterKey": "extremePolicy",
+          "sourceField": "extremePolicy"
+        }
+      ]
+    },
+    {
+      "operationKey": "ds-profile",
+      "stepKey": "d3-profile",
+      "engineType": "DATA_ANALYSIS",
+      "engineVersion": "ds-stats-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "duplicatePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "DROP_EXACT"
+            ]
+          },
+          "missingPolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP_NULL",
+              "DROP_MISSING",
+              "MEDIAN_NUMERIC"
+            ]
+          },
+          "extremePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "CAP_P95"
+            ]
+          },
+          "distributionField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          }
+        },
+        "required": [
+          "duplicatePolicy",
+          "missingPolicy",
+          "extremePolicy",
+          "distributionField"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ds-result-v1"
+          },
+          "operationKey": {
+            "type": "string",
+            "enum": [
+              "ds-quality-clean",
+              "ds-profile",
+              "ds-relationship",
+              "ds-stratify"
+            ]
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "cleaningConfigSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "inputRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "retainedRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "uniqueLearners": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "analysisRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "exclusions": {
+            "type": "object",
+            "properties": {
+              "missingOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "notApplicableOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "both": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "missingOnly",
+              "notApplicableOnly",
+              "both",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "duplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "duplicateGroups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "learnerId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 30
+                    },
+                    "rowNumbers": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "minItems": 2,
+                      "maxItems": 360
+                    }
+                  },
+                  "required": [
+                    "learnerId",
+                    "rowNumbers"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 360
+              },
+              "removedDuplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "removedMissingRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "before": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "after": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "imputations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "median": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "count",
+                    "median"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "cappedRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "capValue": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "duplicateRows",
+              "duplicateGroups",
+              "removedDuplicateRows",
+              "removedMissingRows",
+              "before",
+              "after",
+              "imputations",
+              "cappedRows",
+              "capValue"
+            ],
+            "additionalProperties": false
+          },
+          "profile": {
+            "type": "object",
+            "properties": {
+              "distributionField": {
+                "type": "string",
+                "enum": [
+                  "avg_session_minutes",
+                  "days_to_first_lesson",
+                  "assignment_submit_rate"
+                ]
+              },
+              "completion": {
+                "type": "object",
+                "properties": {
+                  "n": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "completedCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "completionRate": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "ciLower": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "ciUpper": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "n",
+                  "completedCount",
+                  "completionRate",
+                  "ciLower",
+                  "ciUpper"
+                ],
+                "additionalProperties": false
+              },
+              "validCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "missingCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "notApplicableCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "mean": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "minimum": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "q25": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "median": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "q75": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "maximum": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "histogram": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "lower": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 240
+                    },
+                    "upper": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 240
+                    },
+                    "upperInclusive": {
+                      "type": "boolean"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "lower",
+                    "upper",
+                    "upperInclusive",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 4,
+                "maxItems": 5
+              }
+            },
+            "required": [
+              "distributionField",
+              "completion",
+              "validCount",
+              "missingCount",
+              "notApplicableCount",
+              "mean",
+              "minimum",
+              "q25",
+              "median",
+              "q75",
+              "maximum",
+              "histogram"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "operationKey",
+          "datasetSha256",
+          "cleaningConfigSha256",
+          "inputRows",
+          "retainedRows",
+          "uniqueLearners",
+          "analysisRows",
+          "exclusions",
+          "quality",
+          "profile"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "learner-activity",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "learner-activity",
+      "inputBindings": [
+        {
+          "parameterKey": "duplicatePolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "duplicatePolicy"
+        },
+        {
+          "parameterKey": "missingPolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "missingPolicy"
+        },
+        {
+          "parameterKey": "extremePolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "extremePolicy"
+        }
+      ],
+      "ownResponseBindings": [
+        {
+          "parameterKey": "distributionField",
+          "sourceField": "distributionField"
+        }
+      ]
+    },
+    {
+      "operationKey": "ds-relationship",
+      "stepKey": "d4-relationship",
+      "engineType": "DATA_ANALYSIS",
+      "engineVersion": "ds-stats-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "duplicatePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "DROP_EXACT"
+            ]
+          },
+          "missingPolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP_NULL",
+              "DROP_MISSING",
+              "MEDIAN_NUMERIC"
+            ]
+          },
+          "extremePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "CAP_P95"
+            ]
+          },
+          "relationshipMode": {
+            "type": "string",
+            "enum": [
+              "GROUP_COMPLETION",
+              "SCATTER"
+            ]
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "signup_source",
+              "device_group",
+              "cohort_period",
+              "days_to_first_lesson_band"
+            ]
+          },
+          "xField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          },
+          "yField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          }
+        },
+        "required": [
+          "duplicatePolicy",
+          "missingPolicy",
+          "extremePolicy",
+          "relationshipMode"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ds-result-v1"
+          },
+          "operationKey": {
+            "type": "string",
+            "enum": [
+              "ds-quality-clean",
+              "ds-profile",
+              "ds-relationship",
+              "ds-stratify"
+            ]
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "cleaningConfigSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "inputRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "retainedRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "uniqueLearners": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "analysisRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "exclusions": {
+            "type": "object",
+            "properties": {
+              "missingOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "notApplicableOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "both": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "missingOnly",
+              "notApplicableOnly",
+              "both",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "duplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "duplicateGroups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "learnerId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 30
+                    },
+                    "rowNumbers": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "minItems": 2,
+                      "maxItems": 360
+                    }
+                  },
+                  "required": [
+                    "learnerId",
+                    "rowNumbers"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 360
+              },
+              "removedDuplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "removedMissingRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "before": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "after": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "imputations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "median": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "count",
+                    "median"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "cappedRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "capValue": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "duplicateRows",
+              "duplicateGroups",
+              "removedDuplicateRows",
+              "removedMissingRows",
+              "before",
+              "after",
+              "imputations",
+              "cappedRows",
+              "capValue"
+            ],
+            "additionalProperties": false
+          },
+          "relationship": {
+            "type": "object",
+            "properties": {
+              "relationshipMode": {
+                "type": "string",
+                "enum": [
+                  "GROUP_COMPLETION",
+                  "SCATTER"
+                ]
+              },
+              "analysisRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "exclusions": {
+                "type": "object",
+                "properties": {
+                  "missingOnly": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "notApplicableOnly": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "both": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
+                },
+                "required": [
+                  "missingOnly",
+                  "notApplicableOnly",
+                  "both",
+                  "total"
+                ],
+                "additionalProperties": false
+              },
+              "groupBy": {
+                "type": "string",
+                "enum": [
+                  "course_track",
+                  "signup_source",
+                  "device_group",
+                  "cohort_period",
+                  "days_to_first_lesson_band"
+                ]
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "n": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "completedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "completionRate": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "ciLower": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "ciUpper": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "n",
+                    "completedCount",
+                    "completionRate",
+                    "ciLower",
+                    "ciUpper"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 5
+              },
+              "xField": {
+                "type": "string",
+                "enum": [
+                  "avg_session_minutes",
+                  "days_to_first_lesson",
+                  "assignment_submit_rate"
+                ]
+              },
+              "yField": {
+                "type": "string",
+                "enum": [
+                  "avg_session_minutes",
+                  "days_to_first_lesson",
+                  "assignment_submit_rate"
+                ]
+              },
+              "scatter": {
+                "type": "object",
+                "properties": {
+                  "n": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "meanX": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "meanY": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "r": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": -1,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "n",
+                  "meanX",
+                  "meanY",
+                  "r"
+                ],
+                "additionalProperties": false
+              },
+              "points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "rowNumber": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 240
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 240
+                    }
+                  },
+                  "required": [
+                    "rowNumber",
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 360
+              }
+            },
+            "required": [
+              "relationshipMode",
+              "analysisRows",
+              "exclusions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "operationKey",
+          "datasetSha256",
+          "cleaningConfigSha256",
+          "inputRows",
+          "retainedRows",
+          "uniqueLearners",
+          "analysisRows",
+          "exclusions",
+          "quality",
+          "relationship"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "learner-activity",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "learner-activity",
+      "inputBindings": [
+        {
+          "parameterKey": "duplicatePolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "duplicatePolicy"
+        },
+        {
+          "parameterKey": "missingPolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "missingPolicy"
+        },
+        {
+          "parameterKey": "extremePolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "extremePolicy"
+        }
+      ],
+      "ownResponseBindings": [
+        {
+          "parameterKey": "relationshipMode",
+          "sourceField": "relationshipMode"
+        },
+        {
+          "parameterKey": "groupBy",
+          "sourceField": "groupBy"
+        },
+        {
+          "parameterKey": "xField",
+          "sourceField": "xField"
+        },
+        {
+          "parameterKey": "yField",
+          "sourceField": "yField"
+        }
+      ]
+    },
+    {
+      "operationKey": "ds-stratify",
+      "stepKey": "d5-stratify",
+      "engineType": "DATA_ANALYSIS",
+      "engineVersion": "ds-stats-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "duplicatePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "DROP_EXACT"
+            ]
+          },
+          "missingPolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP_NULL",
+              "DROP_MISSING",
+              "MEDIAN_NUMERIC"
+            ]
+          },
+          "extremePolicy": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "CAP_P95"
+            ]
+          },
+          "relationshipMode": {
+            "type": "string",
+            "enum": [
+              "GROUP_COMPLETION",
+              "SCATTER"
+            ]
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "signup_source",
+              "device_group",
+              "cohort_period",
+              "days_to_first_lesson_band"
+            ]
+          },
+          "xField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          },
+          "yField": {
+            "type": "string",
+            "enum": [
+              "avg_session_minutes",
+              "days_to_first_lesson",
+              "assignment_submit_rate"
+            ]
+          },
+          "stratifyBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "cohort_period"
+            ]
+          }
+        },
+        "required": [
+          "duplicatePolicy",
+          "missingPolicy",
+          "extremePolicy",
+          "relationshipMode",
+          "stratifyBy"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ds-result-v1"
+          },
+          "operationKey": {
+            "type": "string",
+            "enum": [
+              "ds-quality-clean",
+              "ds-profile",
+              "ds-relationship",
+              "ds-stratify"
+            ]
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "cleaningConfigSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "inputRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "retainedRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "uniqueLearners": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "analysisRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "exclusions": {
+            "type": "object",
+            "properties": {
+              "missingOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "notApplicableOnly": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "both": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "missingOnly",
+              "notApplicableOnly",
+              "both",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "duplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "duplicateGroups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "learnerId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 30
+                    },
+                    "rowNumbers": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "minItems": 2,
+                      "maxItems": 360
+                    }
+                  },
+                  "required": [
+                    "learnerId",
+                    "rowNumbers"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 360
+              },
+              "removedDuplicateRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "removedMissingRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "before": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "after": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "validCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "missingCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "notApplicableCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "validCount",
+                    "missingCount",
+                    "notApplicableCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "imputations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string",
+                      "enum": [
+                        "avg_session_minutes",
+                        "days_to_first_lesson",
+                        "assignment_submit_rate"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "median": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "fieldKey",
+                    "count",
+                    "median"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "cappedRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "capValue": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "duplicateRows",
+              "duplicateGroups",
+              "removedDuplicateRows",
+              "removedMissingRows",
+              "before",
+              "after",
+              "imputations",
+              "cappedRows",
+              "capValue"
+            ],
+            "additionalProperties": false
+          },
+          "stratified": {
+            "type": "object",
+            "properties": {
+              "stratifyBy": {
+                "type": "string",
+                "enum": [
+                  "course_track",
+                  "cohort_period"
+                ]
+              },
+              "overall": {
+                "type": "object",
+                "properties": {
+                  "relationshipMode": {
+                    "type": "string",
+                    "enum": [
+                      "GROUP_COMPLETION",
+                      "SCATTER"
+                    ]
+                  },
+                  "analysisRows": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "exclusions": {
+                    "type": "object",
+                    "properties": {
+                      "missingOnly": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "notApplicableOnly": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "both": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      }
+                    },
+                    "required": [
+                      "missingOnly",
+                      "notApplicableOnly",
+                      "both",
+                      "total"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "groupBy": {
+                    "type": "string",
+                    "enum": [
+                      "course_track",
+                      "signup_source",
+                      "device_group",
+                      "cohort_period",
+                      "days_to_first_lesson_band"
+                    ]
+                  },
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "n": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "completedCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "completionRate": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "ciLower": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "ciUpper": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "n",
+                        "completedCount",
+                        "completionRate",
+                        "ciLower",
+                        "ciUpper"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0,
+                    "maxItems": 5
+                  },
+                  "xField": {
+                    "type": "string",
+                    "enum": [
+                      "avg_session_minutes",
+                      "days_to_first_lesson",
+                      "assignment_submit_rate"
+                    ]
+                  },
+                  "yField": {
+                    "type": "string",
+                    "enum": [
+                      "avg_session_minutes",
+                      "days_to_first_lesson",
+                      "assignment_submit_rate"
+                    ]
+                  },
+                  "scatter": {
+                    "type": "object",
+                    "properties": {
+                      "n": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "meanX": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "meanY": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "r": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "minimum": -1,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "n",
+                      "meanX",
+                      "meanY",
+                      "r"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "points": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "rowNumber": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 240
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 240
+                        }
+                      },
+                      "required": [
+                        "rowNumber",
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0,
+                    "maxItems": 360
+                  }
+                },
+                "required": [
+                  "relationshipMode",
+                  "analysisRows",
+                  "exclusions"
+                ],
+                "additionalProperties": false
+              },
+              "strata": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "retainedRows": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "relationshipMode": {
+                          "type": "string",
+                          "enum": [
+                            "GROUP_COMPLETION",
+                            "SCATTER"
+                          ]
+                        },
+                        "analysisRows": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "exclusions": {
+                          "type": "object",
+                          "properties": {
+                            "missingOnly": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "notApplicableOnly": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "both": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "missingOnly",
+                            "notApplicableOnly",
+                            "both",
+                            "total"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "groupBy": {
+                          "type": "string",
+                          "enum": [
+                            "course_track",
+                            "signup_source",
+                            "device_group",
+                            "cohort_period",
+                            "days_to_first_lesson_band"
+                          ]
+                        },
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "n": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "completedCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "completionRate": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ],
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "ciLower": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ],
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "ciUpper": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ],
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "n",
+                              "completedCount",
+                              "completionRate",
+                              "ciLower",
+                              "ciUpper"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 0,
+                          "maxItems": 5
+                        },
+                        "xField": {
+                          "type": "string",
+                          "enum": [
+                            "avg_session_minutes",
+                            "days_to_first_lesson",
+                            "assignment_submit_rate"
+                          ]
+                        },
+                        "yField": {
+                          "type": "string",
+                          "enum": [
+                            "avg_session_minutes",
+                            "days_to_first_lesson",
+                            "assignment_submit_rate"
+                          ]
+                        },
+                        "scatter": {
+                          "type": "object",
+                          "properties": {
+                            "n": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "meanX": {
+                              "type": [
+                                "number",
+                                "null"
+                              ],
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "meanY": {
+                              "type": [
+                                "number",
+                                "null"
+                              ],
+                              "minimum": 0,
+                              "maximum": 10000
+                            },
+                            "r": {
+                              "type": [
+                                "number",
+                                "null"
+                              ],
+                              "minimum": -1,
+                              "maximum": 1
+                            }
+                          },
+                          "required": [
+                            "n",
+                            "meanX",
+                            "meanY",
+                            "r"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "points": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rowNumber": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "x": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 240
+                              },
+                              "y": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 240
+                              }
+                            },
+                            "required": [
+                              "rowNumber",
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 0,
+                          "maxItems": 360
+                        }
+                      },
+                      "required": [
+                        "relationshipMode",
+                        "analysisRows",
+                        "exclusions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "retainedRows",
+                    "summary"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": [
+              "stratifyBy",
+              "overall",
+              "strata"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "operationKey",
+          "datasetSha256",
+          "cleaningConfigSha256",
+          "inputRows",
+          "retainedRows",
+          "uniqueLearners",
+          "analysisRows",
+          "exclusions",
+          "quality",
+          "stratified"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "learner-activity",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "learner-activity",
+      "inputBindings": [
+        {
+          "parameterKey": "duplicatePolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "duplicatePolicy"
+        },
+        {
+          "parameterKey": "missingPolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "missingPolicy"
+        },
+        {
+          "parameterKey": "extremePolicy",
+          "sourceStepKey": "d2-quality",
+          "sourceField": "extremePolicy"
+        },
+        {
+          "parameterKey": "relationshipMode",
+          "sourceStepKey": "d4-relationship",
+          "sourceField": "relationshipMode"
+        },
+        {
+          "parameterKey": "groupBy",
+          "sourceStepKey": "d4-relationship",
+          "sourceField": "groupBy"
+        },
+        {
+          "parameterKey": "xField",
+          "sourceStepKey": "d4-relationship",
+          "sourceField": "xField"
+        },
+        {
+          "parameterKey": "yField",
+          "sourceStepKey": "d4-relationship",
+          "sourceField": "yField"
+        }
+      ],
+      "ownResponseBindings": [
+        {
+          "parameterKey": "stratifyBy",
+          "sourceField": "stratifyBy"
+        }
+      ]
+    }
+  ],
+  "reflection": {
+    "questionSetVersion": "ds-reflection-v1",
+    "instructions": "回顾本次处理数据、探索关系和说明限制的感受，不把一次任务当成长期能力判断。可选AI追问只在主动请求时生成，失败可跳过。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "interestingStepKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "d1-context",
+              "d2-quality",
+              "d3-profile",
+              "d4-relationship",
+              "d5-stratify",
+              "d6-conclusion",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "difficultySources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "KNOWLEDGE",
+              "TOOLS",
+              "TIME",
+              "WORK_STYLE",
+              "OTHER",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "continueSimilarWork": {
+          "type": "string",
+          "enum": [
+            "YES",
+            "UNSURE",
+            "NO"
+          ]
+        },
+        "reflectionNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "nextWorkStyle": {
+          "type": "string",
+          "enum": [
+            "MODEL_ITERATION",
+            "DATA_REASONING",
+            "BUSINESS_ACTION",
+            "UNSURE",
+            "SKIPPED"
+          ]
+        },
+        "aiFollowUp": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "interestingStepKeys",
+        "difficultySources",
+        "continueSimilarWork"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "review": {
+    "kind": "PROFESSIONAL",
+    "checkKeys": [
+      "PROFESSIONAL_CORE",
+      "BEGINNER_ACCESS",
+      "DATA_CORRECTNESS",
+      "EVIDENCE_SOURCES",
+      "HINT_NO_FINAL_ANSWER",
+      "FAIRNESS",
+      "CHROME_EDGE",
+      "TIMING_45_60",
+      "RECOVERY",
+      "VERSION_CONSISTENCY"
+    ],
+    "professionalReviewRequired": true
+  }
+}

@@ -1,6 +1,6 @@
 # P4 Data Science 实施接缝
 
-> 2026-09-21：P3 浏览器收尾期间完成设计准备；本文不代表 P4 已实现。按用户离线期间自主推进授权，锁定下述实现细节。依据 [任务设计](./09-three-major-task-designs.md)、[工程设计](./15-engineering-and-test-design.md) 和 [阶段路线](./16-implementation-roadmap-and-traceability.md)，P3 工程门禁通过并推送后再实施。
+> 2026-09-21：P3 推送后按本文实施；DS后端、真实HTTP、Chrome/Edge闭环及AI/演示回归已通过，Git交付单独记录。准确证据见 [P2–P6交付记录](./23-p2-to-p6-delivery-ledger.md)。用户离线期间按已确认设计自主选择实现细节，依据 [任务设计](./09-three-major-task-designs.md)、[工程设计](./15-engineering-and-test-design.md) 和 [阶段路线](./16-implementation-roadmap-and-traceability.md)。
 
 ## 1. 产品边界
 

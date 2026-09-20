@@ -4184,6 +4184,10 @@
               }
             ]
           },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions",
+            "description": "Required for task-manifest-v3 (including empty object); optional for v1/v2. Must exactly equal saved ancestor revisions. Current-step revision remains inputRevision."
+          },
           "observedResult": {
             "anyOf": [
               {
@@ -4939,7 +4943,8 @@
           "schemaVersion": {
             "enum": [
               "task-manifest-v1",
-              "task-manifest-v2"
+              "task-manifest-v2",
+              "task-manifest-v3"
             ]
           },
           "taskVersionId": {
@@ -5078,6 +5083,19 @@
                 },
                 "resultSchema": {
                   "$ref": "#/components/schemas/JsonObject"
+                },
+                "ownResponseBindings": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "parameterKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,79}$" },
+                      "sourceField": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,79}$" }
+                    },
+                    "required": ["parameterKey", "sourceField"]
+                  }
                 },
                 "maxEvaluations": {
                   "type": "integer",

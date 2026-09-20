@@ -95,6 +95,14 @@ class ExperienceMySqlTest {
         error("IDEMPOTENCY_KEY_REUSED",()->service.execute(student,run.runId(),requestKey,new RunDtos.Execute("demo-summary-v1",2L,json("{}"),null,null)));
         verify(calculator,times(1)).calculate(any(),any(),any());verify(limit,times(1)).require(anyString(),anyString(),anyInt(),any());
     }
+    record LegacyExecute(String operationKey,Long inputRevision,JsonNode parameters,String inputSha256,JsonNode observedResult) {}
+    @Test void preV3FiveFieldExecutionReceiptStillReplaysAfterUpgradeWithoutRecalculation(){
+        var run=toExecution();var saved=save(run,"adjust","{\"multiplier\":1,\"include\":\"ALL\"}");
+        var input=new RunDtos.Execute("demo-summary-v1",saved.revision(),json("{}"),null,null);var result=executions.execute(student,run.runId(),key(),input);String legacyKey=key();
+        idem.execute(runs.owner(student),"POST","/api/app/v1/experience-runs/"+run.runId()+"/executions",legacyKey,new LegacyExecute(input.operationKey(),input.inputRevision(),input.parameters(),null,null),ExecutionService.Outcome.class,()->new ExecutionService.Outcome(result,null));
+        runs.transition(student,run.runId(),"pause",key(),new RunDtos.Transition(current(run).revision(),null,null));var calculator=mock(ExecutionCalculator.class);var limiter=mock(RateLimits.class);
+        assertEquals(result,new ExecutionService(runs,calculator,limiter).execute(student,run.runId(),legacyKey,input));verifyNoInteractions(calculator,limiter);
+    }
     @Test void reopeningCompletedStepInvalidatesTransitiveDependentsButPreservesHistory(){
         var run=toExecution();var saved=save(run,"adjust","{\"multiplier\":1,\"include\":\"ALL\"}");executions.execute(student,run.runId(),key(),new RunDtos.Execute("demo-summary-v1",saved.revision(),json("{}"),null,null));
         runs.completeStep(student,run.runId(),"adjust",key(),new RunDtos.Revision(saved.revision()));complete(run,"observe","{\"observation\":\"我先记录了原始数据的总和与均值，然后准备修改倍数继续验证。\"}");

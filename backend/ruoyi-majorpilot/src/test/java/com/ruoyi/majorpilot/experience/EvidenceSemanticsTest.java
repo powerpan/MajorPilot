@@ -34,4 +34,10 @@ class EvidenceSemanticsTest {
         assertEquals("evidence-v99",ClosurePipeline.frozenRule(mapper.readTree("{\"schemaVersion\":\"closed-input-v3\",\"evidenceRuleVersion\":\"evidence-v99\"}")));
         assertEquals("unsupported",ClosurePipeline.frozenRule(mapper.readTree("{\"schemaVersion\":\"closed-input-v3\"}")));
     }
+    @Test void dsAnalysisAndAggregateProjectionDoNotPromoteCausalClaimsOrExposeRowDetails()throws Exception{
+        var input=mapper.readTree("{\"stratifyBy\":\"course_track\",\"uncertaintyComment\":\"设备导致完成率变化\",\"causalJudgment\":\"CLAIMS_CAUSAL_SUPPORT\"}");
+        var items=worker().stepItems("DATA_SCIENCE","d5-stratify",51,input,Instant.EPOCH);assertEquals("course_track",items.getFirst().value().path("stratifyBy").asText());assertFalse(items.getFirst().value().toString().contains("CLAIMS_CAUSAL"));assertTrue(items.getLast().claims().isEmpty());
+        var original=mapper.readTree("{\"schemaVersion\":\"ds-result-v1\",\"operationKey\":\"ds-relationship\",\"quality\":{\"duplicateRows\":1,\"duplicateGroups\":[{\"learnerId\":\"synthetic\"}]},\"relationship\":{\"scatter\":{\"n\":2,\"r\":1},\"points\":[{\"rowNumber\":1,\"x\":1,\"y\":1}]},\"unexpectedText\":\"exclude\"}");
+        var selected=worker().selectedExecution("DATA_SCIENCE",original);assertFalse(selected.path("quality").has("duplicateGroups"));assertFalse(selected.path("relationship").has("points"));assertFalse(selected.has("unexpectedText"));assertEquals(2,selected.path("relationship").path("scatter").path("n").asInt());assertTrue(original.path("relationship").has("points"),"Projection must not mutate the verified execution source");
+    }
 }

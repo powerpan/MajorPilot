@@ -1,0 +1,2815 @@
+{
+  "schemaVersion": "ds-golden-v1",
+  "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+  "cases": [
+    {
+      "name": "quality-keep",
+      "operationKey": "ds-quality-clean",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-quality-clean",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 359,
+        "exclusions": {
+          "missingOnly": 0,
+          "notApplicableOnly": 0,
+          "both": 0,
+          "total": 0
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        }
+      }
+    },
+    {
+      "name": "quality-drop",
+      "operationKey": "ds-quality-clean",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "DROP_MISSING",
+        "extremePolicy": "KEEP"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-quality-clean",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "86252c014675f06926279062cfc65ff2403f555417b415cd62e2e8d00c58aa7d",
+        "inputRows": 360,
+        "retainedRows": 335,
+        "uniqueLearners": 335,
+        "analysisRows": 335,
+        "exclusions": {
+          "missingOnly": 0,
+          "notApplicableOnly": 0,
+          "both": 0,
+          "total": 0
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 24,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 284,
+              "missingCount": 0,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 284,
+              "missingCount": 0,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 335,
+              "missingCount": 0,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        }
+      }
+    },
+    {
+      "name": "quality-median-cap",
+      "operationKey": "ds-quality-clean",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "MEDIAN_NUMERIC",
+        "extremePolicy": "CAP_P95"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-quality-clean",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "f3cfb4423a4d4c4ad092ce1e9be5ad4313fb7e3d5d4758d0bf4b15d5c6fbddcc",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 359,
+        "exclusions": {
+          "missingOnly": 0,
+          "notApplicableOnly": 0,
+          "both": 0,
+          "total": 0
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 308,
+              "missingCount": 0,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 308,
+              "missingCount": 0,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 359,
+              "missingCount": 0,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 10,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 8,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 6,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 16,
+          "capValue": 46.65
+        }
+      }
+    },
+    {
+      "name": "quality-duplicate",
+      "operationKey": "ds-quality-clean",
+      "parameters": {
+        "duplicatePolicy": "KEEP",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-quality-clean",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "1d51d978fa889de69fe6535a51fcc434627a946e4b1abb7168201dd431fe9e07",
+        "inputRows": 360,
+        "retainedRows": 360,
+        "uniqueLearners": 359,
+        "analysisRows": 360,
+        "exclusions": {
+          "missingOnly": 0,
+          "notApplicableOnly": 0,
+          "both": 0,
+          "total": 0
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 0,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        }
+      }
+    },
+    {
+      "name": "profile-session",
+      "operationKey": "ds-profile",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP",
+        "distributionField": "avg_session_minutes"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-profile",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 298,
+        "exclusions": {
+          "missingOnly": 10,
+          "notApplicableOnly": 51,
+          "both": 0,
+          "total": 61
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        },
+        "profile": {
+          "distributionField": "avg_session_minutes",
+          "completion": {
+            "n": 359,
+            "completedCount": 158,
+            "completionRate": 0.440111,
+            "ciLower": 0.389665,
+            "ciUpper": 0.491826
+          },
+          "validCount": 298,
+          "missingCount": 10,
+          "notApplicableCount": 51,
+          "mean": 28.872483,
+          "minimum": 6,
+          "q25": 18.25,
+          "median": 27,
+          "q75": 36,
+          "maximum": 240,
+          "histogram": [
+            {
+              "lower": 0,
+              "upper": 10,
+              "upperInclusive": false,
+              "count": 17
+            },
+            {
+              "lower": 10,
+              "upper": 20,
+              "upperInclusive": false,
+              "count": 66
+            },
+            {
+              "lower": 20,
+              "upper": 40,
+              "upperInclusive": false,
+              "count": 167
+            },
+            {
+              "lower": 40,
+              "upper": 80,
+              "upperInclusive": false,
+              "count": 45
+            },
+            {
+              "lower": 80,
+              "upper": 240,
+              "upperInclusive": true,
+              "count": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "group-device",
+      "operationKey": "ds-relationship",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP",
+        "relationshipMode": "GROUP_COMPLETION",
+        "groupBy": "device_group"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-relationship",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 359,
+        "exclusions": {
+          "missingOnly": 0,
+          "notApplicableOnly": 0,
+          "both": 0,
+          "total": 0
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        },
+        "relationship": {
+          "relationshipMode": "GROUP_COMPLETION",
+          "analysisRows": 359,
+          "exclusions": {
+            "missingOnly": 0,
+            "notApplicableOnly": 0,
+            "both": 0,
+            "total": 0
+          },
+          "groupBy": "device_group",
+          "groups": [
+            {
+              "key": "desktop",
+              "n": 137,
+              "completedCount": 61,
+              "completionRate": 0.445255,
+              "ciLower": 0.364656,
+              "ciUpper": 0.528842
+            },
+            {
+              "key": "mobile",
+              "n": 122,
+              "completedCount": 49,
+              "completionRate": 0.401639,
+              "ciLower": 0.318938,
+              "ciUpper": 0.490346
+            },
+            {
+              "key": "mixed",
+              "n": 100,
+              "completedCount": 48,
+              "completionRate": 0.48,
+              "ciLower": 0.384646,
+              "ciUpper": 0.576834
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "group-delay",
+      "operationKey": "ds-relationship",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP",
+        "relationshipMode": "GROUP_COMPLETION",
+        "groupBy": "days_to_first_lesson_band"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-relationship",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 300,
+        "exclusions": {
+          "missingOnly": 8,
+          "notApplicableOnly": 51,
+          "both": 0,
+          "total": 59
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        },
+        "relationship": {
+          "relationshipMode": "GROUP_COMPLETION",
+          "analysisRows": 300,
+          "exclusions": {
+            "missingOnly": 8,
+            "notApplicableOnly": 51,
+            "both": 0,
+            "total": 59
+          },
+          "groupBy": "days_to_first_lesson_band",
+          "groups": [
+            {
+              "key": "SAME_DAY",
+              "n": 24,
+              "completedCount": 16,
+              "completionRate": 0.666667,
+              "ciLower": 0.467063,
+              "ciUpper": 0.820278
+            },
+            {
+              "key": "DAYS_1_2",
+              "n": 50,
+              "completedCount": 25,
+              "completionRate": 0.5,
+              "ciLower": 0.366445,
+              "ciUpper": 0.633555
+            },
+            {
+              "key": "DAYS_3_6",
+              "n": 122,
+              "completedCount": 69,
+              "completionRate": 0.565574,
+              "ciLower": 0.476945,
+              "ciUpper": 0.650199
+            },
+            {
+              "key": "DAYS_7_PLUS",
+              "n": 104,
+              "completedCount": 41,
+              "completionRate": 0.394231,
+              "ciLower": 0.305689,
+              "ciUpper": 0.490308
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "scatter",
+      "operationKey": "ds-relationship",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP",
+        "relationshipMode": "SCATTER",
+        "xField": "days_to_first_lesson",
+        "yField": "assignment_submit_rate"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-relationship",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 294,
+        "exclusions": {
+          "missingOnly": 14,
+          "notApplicableOnly": 51,
+          "both": 0,
+          "total": 65
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        },
+        "relationship": {
+          "relationshipMode": "SCATTER",
+          "analysisRows": 294,
+          "exclusions": {
+            "missingOnly": 14,
+            "notApplicableOnly": 51,
+            "both": 0,
+            "total": 65
+          },
+          "xField": "days_to_first_lesson",
+          "yField": "assignment_submit_rate",
+          "scatter": {
+            "n": 294,
+            "meanX": 5.469388,
+            "meanY": 0.59949,
+            "r": -0.182143
+          },
+          "points": [
+            {
+              "rowNumber": 1,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 2,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 3,
+              "x": 5,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 4,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 5,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 6,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 7,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 9,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 10,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 11,
+              "x": 8,
+              "y": 0
+            },
+            {
+              "rowNumber": 12,
+              "x": 4,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 13,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 14,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 15,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 16,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 17,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 18,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 19,
+              "x": 0,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 20,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 21,
+              "x": 3,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 36,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 37,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 39,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 40,
+              "x": 3,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 41,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 42,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 43,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 45,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 46,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 47,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 48,
+              "x": 2,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 49,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 50,
+              "x": 0,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 51,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 52,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 53,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 54,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 55,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 56,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 57,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 58,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 59,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 60,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 61,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 62,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 63,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 64,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 65,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 66,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 67,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 68,
+              "x": 5,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 69,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 71,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 72,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 73,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 74,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 75,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 76,
+              "x": 2,
+              "y": 0
+            },
+            {
+              "rowNumber": 77,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 78,
+              "x": 1,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 79,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 80,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 82,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 83,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 84,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 86,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 87,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 88,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 89,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 90,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 92,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 93,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 94,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 95,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 96,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 97,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 98,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 99,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 100,
+              "x": 9,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 102,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 103,
+              "x": 3,
+              "y": 0
+            },
+            {
+              "rowNumber": 104,
+              "x": 1,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 106,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 107,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 108,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 109,
+              "x": 2,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 110,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 111,
+              "x": 2,
+              "y": 0
+            },
+            {
+              "rowNumber": 112,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 113,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 114,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 115,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 116,
+              "x": 2,
+              "y": 0
+            },
+            {
+              "rowNumber": 117,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 118,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 120,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 121,
+              "x": 5,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 122,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 123,
+              "x": 1,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 125,
+              "x": 3,
+              "y": 0
+            },
+            {
+              "rowNumber": 126,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 127,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 128,
+              "x": 3,
+              "y": 0
+            },
+            {
+              "rowNumber": 129,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 130,
+              "x": 6,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 131,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 132,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 133,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 134,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 135,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 137,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 138,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 139,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 140,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 141,
+              "x": 6,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 142,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 144,
+              "x": 3,
+              "y": 0
+            },
+            {
+              "rowNumber": 145,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 146,
+              "x": 6,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 147,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 148,
+              "x": 2,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 149,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 150,
+              "x": 8,
+              "y": 1
+            },
+            {
+              "rowNumber": 151,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 152,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 153,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 154,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 155,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 156,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 157,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 158,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 159,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 161,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 162,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 163,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 164,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 165,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 166,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 167,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 168,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 169,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 170,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 171,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 172,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 173,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "rowNumber": 174,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 175,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 176,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 177,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 178,
+              "x": 2,
+              "y": 0
+            },
+            {
+              "rowNumber": 179,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 180,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 181,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 182,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 184,
+              "x": 12,
+              "y": 1
+            },
+            {
+              "rowNumber": 185,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 187,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 188,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 189,
+              "x": 4,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 190,
+              "x": 13,
+              "y": 0
+            },
+            {
+              "rowNumber": 191,
+              "x": 12,
+              "y": 1
+            },
+            {
+              "rowNumber": 193,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 194,
+              "x": 16,
+              "y": 1
+            },
+            {
+              "rowNumber": 195,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 196,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 197,
+              "x": 12,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 198,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 200,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 202,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "rowNumber": 203,
+              "x": 12,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 204,
+              "x": 0,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 205,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 206,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 207,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 208,
+              "x": 13,
+              "y": 1
+            },
+            {
+              "rowNumber": 209,
+              "x": 8,
+              "y": 0
+            },
+            {
+              "rowNumber": 210,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 211,
+              "x": 8,
+              "y": 0
+            },
+            {
+              "rowNumber": 212,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 214,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 215,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 216,
+              "x": 11,
+              "y": 0
+            },
+            {
+              "rowNumber": 217,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 218,
+              "x": 12,
+              "y": 1
+            },
+            {
+              "rowNumber": 219,
+              "x": 4,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 220,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 221,
+              "x": 8,
+              "y": 1
+            },
+            {
+              "rowNumber": 223,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 224,
+              "x": 16,
+              "y": 1
+            },
+            {
+              "rowNumber": 225,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 227,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 229,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 230,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 231,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 232,
+              "x": 2,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 233,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 234,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 239,
+              "x": 6,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 240,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 242,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 243,
+              "x": 8,
+              "y": 1
+            },
+            {
+              "rowNumber": 244,
+              "x": 11,
+              "y": 1
+            },
+            {
+              "rowNumber": 245,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 246,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 247,
+              "x": 0,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 248,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 250,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 251,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 252,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 253,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 254,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 255,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 257,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 258,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 259,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 261,
+              "x": 1,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 262,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 263,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 265,
+              "x": 4,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 266,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 267,
+              "x": 13,
+              "y": 1
+            },
+            {
+              "rowNumber": 268,
+              "x": 1,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 269,
+              "x": 14,
+              "y": 1
+            },
+            {
+              "rowNumber": 270,
+              "x": 7,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 271,
+              "x": 8,
+              "y": 1
+            },
+            {
+              "rowNumber": 272,
+              "x": 4,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 273,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 275,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 277,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 279,
+              "x": 11,
+              "y": 0
+            },
+            {
+              "rowNumber": 280,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 281,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 282,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 283,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 285,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 286,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 289,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 290,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 292,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 293,
+              "x": 12,
+              "y": 1
+            },
+            {
+              "rowNumber": 294,
+              "x": 11,
+              "y": 0
+            },
+            {
+              "rowNumber": 295,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 297,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 298,
+              "x": 4,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 299,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 300,
+              "x": 11,
+              "y": 1
+            },
+            {
+              "rowNumber": 301,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 303,
+              "x": 13,
+              "y": 0
+            },
+            {
+              "rowNumber": 304,
+              "x": 2,
+              "y": 0
+            },
+            {
+              "rowNumber": 305,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 307,
+              "x": 15,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 308,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 309,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 310,
+              "x": 5,
+              "y": 0
+            },
+            {
+              "rowNumber": 311,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 312,
+              "x": 13,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 313,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 314,
+              "x": 6,
+              "y": 0
+            },
+            {
+              "rowNumber": 315,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "rowNumber": 316,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 317,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 318,
+              "x": 3,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 321,
+              "x": 12,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 323,
+              "x": 7,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 324,
+              "x": 10,
+              "y": 1
+            },
+            {
+              "rowNumber": 325,
+              "x": 15,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 327,
+              "x": 0,
+              "y": 1
+            },
+            {
+              "rowNumber": 328,
+              "x": 3,
+              "y": 1
+            },
+            {
+              "rowNumber": 329,
+              "x": 1,
+              "y": 1
+            },
+            {
+              "rowNumber": 331,
+              "x": 12,
+              "y": 0
+            },
+            {
+              "rowNumber": 332,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "rowNumber": 333,
+              "x": 12,
+              "y": 0.75
+            },
+            {
+              "rowNumber": 334,
+              "x": 12,
+              "y": 1
+            },
+            {
+              "rowNumber": 335,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 336,
+              "x": 7,
+              "y": 1
+            },
+            {
+              "rowNumber": 337,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 339,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 341,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 342,
+              "x": 4,
+              "y": 1
+            },
+            {
+              "rowNumber": 343,
+              "x": 9,
+              "y": 0
+            },
+            {
+              "rowNumber": 344,
+              "x": 1,
+              "y": 0
+            },
+            {
+              "rowNumber": 345,
+              "x": 7,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 346,
+              "x": 3,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 347,
+              "x": 4,
+              "y": 0
+            },
+            {
+              "rowNumber": 348,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 349,
+              "x": 5,
+              "y": 1
+            },
+            {
+              "rowNumber": 350,
+              "x": 10,
+              "y": 0
+            },
+            {
+              "rowNumber": 351,
+              "x": 2,
+              "y": 1
+            },
+            {
+              "rowNumber": 352,
+              "x": 11,
+              "y": 0
+            },
+            {
+              "rowNumber": 353,
+              "x": 11,
+              "y": 0.5
+            },
+            {
+              "rowNumber": 354,
+              "x": 6,
+              "y": 1
+            },
+            {
+              "rowNumber": 355,
+              "x": 1,
+              "y": 0.25
+            },
+            {
+              "rowNumber": 357,
+              "x": 7,
+              "y": 0
+            },
+            {
+              "rowNumber": 359,
+              "x": 8,
+              "y": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "stratify-group",
+      "operationKey": "ds-stratify",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP",
+        "relationshipMode": "GROUP_COMPLETION",
+        "groupBy": "device_group",
+        "stratifyBy": "cohort_period"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-stratify",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 359,
+        "exclusions": {
+          "missingOnly": 0,
+          "notApplicableOnly": 0,
+          "both": 0,
+          "total": 0
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        },
+        "stratified": {
+          "stratifyBy": "cohort_period",
+          "overall": {
+            "relationshipMode": "GROUP_COMPLETION",
+            "analysisRows": 359,
+            "exclusions": {
+              "missingOnly": 0,
+              "notApplicableOnly": 0,
+              "both": 0,
+              "total": 0
+            },
+            "groupBy": "device_group",
+            "groups": [
+              {
+                "key": "desktop",
+                "n": 137,
+                "completedCount": 61,
+                "completionRate": 0.445255,
+                "ciLower": 0.364656,
+                "ciUpper": 0.528842
+              },
+              {
+                "key": "mobile",
+                "n": 122,
+                "completedCount": 49,
+                "completionRate": 0.401639,
+                "ciLower": 0.318938,
+                "ciUpper": 0.490346
+              },
+              {
+                "key": "mixed",
+                "n": 100,
+                "completedCount": 48,
+                "completionRate": 0.48,
+                "ciLower": 0.384646,
+                "ciUpper": 0.576834
+              }
+            ]
+          },
+          "strata": [
+            {
+              "key": "EARLY",
+              "retainedRows": 180,
+              "summary": {
+                "relationshipMode": "GROUP_COMPLETION",
+                "analysisRows": 180,
+                "exclusions": {
+                  "missingOnly": 0,
+                  "notApplicableOnly": 0,
+                  "both": 0,
+                  "total": 0
+                },
+                "groupBy": "device_group",
+                "groups": [
+                  {
+                    "key": "desktop",
+                    "n": 71,
+                    "completedCount": 38,
+                    "completionRate": 0.535211,
+                    "ciLower": 0.420392,
+                    "ciUpper": 0.646416
+                  },
+                  {
+                    "key": "mobile",
+                    "n": 53,
+                    "completedCount": 27,
+                    "completionRate": 0.509434,
+                    "ciLower": 0.378835,
+                    "ciUpper": 0.638758
+                  },
+                  {
+                    "key": "mixed",
+                    "n": 56,
+                    "completedCount": 35,
+                    "completionRate": 0.625,
+                    "ciLower": 0.494054,
+                    "ciUpper": 0.739898
+                  }
+                ]
+              }
+            },
+            {
+              "key": "LATE",
+              "retainedRows": 179,
+              "summary": {
+                "relationshipMode": "GROUP_COMPLETION",
+                "analysisRows": 179,
+                "exclusions": {
+                  "missingOnly": 0,
+                  "notApplicableOnly": 0,
+                  "both": 0,
+                  "total": 0
+                },
+                "groupBy": "device_group",
+                "groups": [
+                  {
+                    "key": "desktop",
+                    "n": 66,
+                    "completedCount": 23,
+                    "completionRate": 0.348485,
+                    "ciLower": 0.244759,
+                    "ciUpper": 0.468878
+                  },
+                  {
+                    "key": "mobile",
+                    "n": 69,
+                    "completedCount": 22,
+                    "completionRate": 0.318841,
+                    "ciLower": 0.220948,
+                    "ciUpper": 0.435841
+                  },
+                  {
+                    "key": "mixed",
+                    "n": 44,
+                    "completedCount": 13,
+                    "completionRate": 0.295455,
+                    "ciLower": 0.181555,
+                    "ciUpper": 0.442202
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "stratify-scatter",
+      "operationKey": "ds-stratify",
+      "parameters": {
+        "duplicatePolicy": "DROP_EXACT",
+        "missingPolicy": "KEEP_NULL",
+        "extremePolicy": "KEEP",
+        "relationshipMode": "SCATTER",
+        "xField": "days_to_first_lesson",
+        "yField": "assignment_submit_rate",
+        "stratifyBy": "course_track"
+      },
+      "result": {
+        "schemaVersion": "ds-result-v1",
+        "operationKey": "ds-stratify",
+        "datasetSha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+        "cleaningConfigSha256": "ed6947316e725000341a0e66287cf344eebb575c219f222179dfa4dad830ea6d",
+        "inputRows": 360,
+        "retainedRows": 359,
+        "uniqueLearners": 359,
+        "analysisRows": 294,
+        "exclusions": {
+          "missingOnly": 14,
+          "notApplicableOnly": 51,
+          "both": 0,
+          "total": 65
+        },
+        "quality": {
+          "duplicateRows": 1,
+          "duplicateGroups": [
+            {
+              "learnerId": "learner-043",
+              "rowNumbers": [
+                43,
+                360
+              ]
+            }
+          ],
+          "removedDuplicateRows": 1,
+          "removedMissingRows": 0,
+          "before": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 299,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 301,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 354,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "after": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "validCount": 298,
+              "missingCount": 10,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "validCount": 300,
+              "missingCount": 8,
+              "notApplicableCount": 51
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "validCount": 353,
+              "missingCount": 6,
+              "notApplicableCount": 0
+            }
+          ],
+          "imputations": [
+            {
+              "fieldKey": "avg_session_minutes",
+              "count": 0,
+              "median": 27
+            },
+            {
+              "fieldKey": "days_to_first_lesson",
+              "count": 0,
+              "median": 5
+            },
+            {
+              "fieldKey": "assignment_submit_rate",
+              "count": 0,
+              "median": 0.5
+            }
+          ],
+          "cappedRows": 0,
+          "capValue": null
+        },
+        "stratified": {
+          "stratifyBy": "course_track",
+          "overall": {
+            "relationshipMode": "SCATTER",
+            "analysisRows": 294,
+            "exclusions": {
+              "missingOnly": 14,
+              "notApplicableOnly": 51,
+              "both": 0,
+              "total": 65
+            },
+            "xField": "days_to_first_lesson",
+            "yField": "assignment_submit_rate",
+            "scatter": {
+              "n": 294,
+              "meanX": 5.469388,
+              "meanY": 0.59949,
+              "r": -0.182143
+            }
+          },
+          "strata": [
+            {
+              "key": "FOUNDATIONS",
+              "retainedRows": 192,
+              "summary": {
+                "relationshipMode": "SCATTER",
+                "analysisRows": 153,
+                "exclusions": {
+                  "missingOnly": 10,
+                  "notApplicableOnly": 29,
+                  "both": 0,
+                  "total": 39
+                },
+                "xField": "days_to_first_lesson",
+                "yField": "assignment_submit_rate",
+                "scatter": {
+                  "n": 153,
+                  "meanX": 4.843137,
+                  "meanY": 0.650327,
+                  "r": -0.178807
+                }
+              }
+            },
+            {
+              "key": "APPLIED",
+              "retainedRows": 167,
+              "summary": {
+                "relationshipMode": "SCATTER",
+                "analysisRows": 141,
+                "exclusions": {
+                  "missingOnly": 4,
+                  "notApplicableOnly": 22,
+                  "both": 0,
+                  "total": 26
+                },
+                "xField": "days_to_first_lesson",
+                "yField": "assignment_submit_rate",
+                "scatter": {
+                  "n": 141,
+                  "meanX": 6.148936,
+                  "meanY": 0.544326,
+                  "r": -0.15385
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

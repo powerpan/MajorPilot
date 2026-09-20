@@ -134,7 +134,13 @@ onMounted(load);
     <section v-if="selected" class="demo-introduction">
       <div>
         <h2>你会做些什么</h2>
-        <ol>
+        <ol v-if="selected.majorCode === 'DATA_SCIENCE'">
+          <li>检查合成学习记录的缺失、重复、不适用与合理极端值</li>
+          <li>选择处理方案，比较分布、分组完成率或散点关系</li>
+          <li>分层检查解释，写出有证据且保留限制的发现</li>
+          <li>独立反思，不把分析结果当作专业适配分数</li>
+        </ol>
+        <ol v-else>
           <li>认识支持请求的四种分类与评价指标</li>
           <li>检查公开错误，选择定义、示例和阈值</li>
           <li>预览公开练习，再比较服务端固定隐藏集的聚合结果</li>
@@ -146,7 +152,10 @@ onMounted(load);
         <p>
           支持暂停、切换与继续；同一时刻只运行一项。未同步草稿仅保留于本机，最多7天。
         </p>
-        <p class="muted">
+        <p v-if="selected.majorCode === 'DATA_SCIENCE'" class="muted">
+          固定统计计算器；等价Python说明只读、不执行。每种操作最多30种成功配置，相同配置复用不扣次数。
+        </p>
+        <p v-else class="muted">
           教学分类器不是在线大模型。最多5种成功配置；基线和相同配置复用不扣次数。
         </p>
       </div>

@@ -10,10 +10,15 @@ import type {
   Config,
   Sample,
 } from "../../shared/classifier/classifier-v1.mjs";
+import type {
+  LearnerRow,
+  Operation,
+  Parameters,
+} from "../../shared/ds/ds-stats-v1.mjs";
 export interface ExecutionResult {
   status: "SUCCESS" | "ERROR";
   code?: string;
-  engine: "fixed-calculator-v1" | "classifier-v1";
+  engine: "fixed-calculator-v1" | "classifier-v1" | "ds-stats-v1";
   result?: Record<string, unknown>;
   elapsedMs: number;
 }
@@ -47,12 +52,34 @@ export function executeClassifier(
     signal,
   );
 }
+export function executeDs(
+  operationKey: Operation,
+  rows: LearnerRow[],
+  parameters: Parameters,
+  datasetSha256: string,
+  signal?: AbortSignal,
+) {
+  return sendExecution(
+    {
+      template: "ds-analysis-v1",
+      operationKey,
+      rows,
+      parameters,
+      datasetSha256,
+    },
+    signal,
+  );
+}
 async function sendExecution(
   payload: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<ExecutionResult> {
-  if (new TextEncoder().encode(JSON.stringify(payload)).length > 1024 * 1024)
+  // The execution contract is JSON-only. Snapshot before asynchronous iframe
+  // startup so Vue proxies and later editor mutations never cross the boundary.
+  const serialized = JSON.stringify(payload);
+  if (new TextEncoder().encode(serialized).length > 1024 * 1024)
     throw new Error("INPUT_LIMIT");
+  const snapshot = JSON.parse(serialized) as Record<string, unknown>;
   const nonce = crypto.randomUUID();
   const started = performance.now();
   const frame = document.createElement("iframe");
@@ -90,7 +117,7 @@ async function sendExecution(
         return;
       if (event.data?.type === "MP_EXECUTOR_READY") {
         frame.contentWindow?.postMessage(
-          { type: "MP_EXECUTE", nonce, ...payload },
+          { type: "MP_EXECUTE", nonce, ...snapshot },
           "*",
         );
       } else if (event.data?.type === "MP_EXECUTOR_RESULT") {

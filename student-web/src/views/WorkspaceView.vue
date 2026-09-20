@@ -10,6 +10,7 @@ import ArrowIcon from "../components/ArrowIcon.vue";
 import ClassifierConfig from "../components/workspace/ClassifierConfig.vue";
 import ClassifierErrors from "../components/workspace/ClassifierErrors.vue";
 import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
+import DsWorkspace from "../components/workspace/DsWorkspace.vue";
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace(),
@@ -29,6 +30,7 @@ const number = computed(() =>
       ),
 );
 const isMajor = computed(() => workspace.run?.contentKind === "MAJOR");
+const isDs = computed(() => workspace.run?.majorCode === "DATA_SCIENCE");
 const preview = computed(() => workspace.run?.runMode === "REVIEW_PREVIEW");
 const returnPath = computed(() =>
   isMajor.value
@@ -169,7 +171,9 @@ onBeforeUnmount(() => {
         ><span>MajorPilot</span></RouterLink
       ><strong>{{
         isMajor
-          ? "AI · 支持请求分类"
+          ? isDs
+            ? "DS · 学习行为分析"
+            : "AI · 支持请求分类"
           : workspace.manifest?.title || "工作区上手"
       }}</strong>
       <div class="workspace-header-actions">
@@ -183,7 +187,9 @@ onBeforeUnmount(() => {
             ['IN_PROGRESS', 'TASK_COMPLETED'].includes(workspace.run.status)
           "
           class="plain-button text-link"
-          :disabled="workspace.busy || workspace.executing || !workspace.selectionReady"
+          :disabled="
+            workspace.busy || workspace.executing || !workspace.selectionReady
+          "
           @click="pause"
         >
           {{
@@ -299,7 +305,9 @@ onBeforeUnmount(() => {
           >{{ isMajor ? "返回专业入口" : "查看其他演示" }} →</RouterLink
         ><small
           >{{
-            isMajor ? (preview ? "AI · 工程预览" : "AI · 专业体验") : "技术演示"
+            isMajor
+              ? (isDs ? "DS" : "AI") + (preview ? " · 工程预览" : " · 专业体验")
+              : "技术演示"
           }}
           · v{{ workspace.manifest.versionCode }}</small
         >
@@ -629,6 +637,7 @@ onBeforeUnmount(() => {
                 @update:model-value="workspace.edit"
               />
             </template>
+            <DsWorkspace v-else-if="isDs && workspace.step" />
             <StepFields
               v-else-if="workspace.step"
               :schema="workspace.step.definition.inputSchema"

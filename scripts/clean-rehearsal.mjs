@@ -66,6 +66,8 @@ if(mode==='--prepare') {
     }
     run(node,['executor/build-classifier.mjs','--write']);
     run(node,['executor/build-classifier.mjs']);
+    run(node,['executor/build-ds.mjs','--write']);
+    run(node,['executor/build-ds.mjs']);
     run(`${scratch}/backend/mvnw`,['--settings',mavenSettings,`-Dmaven.repo.local=${scratch}/.local/m2`,'-DskipTests','package'],`${scratch}/backend`);
     save({...state,stage:'BUILT',files:files.length,sourceSnapshotSha256:digest.digest('hex'),log,finishedAt:new Date().toISOString(),newIndependentLocalCredentials:true,buildResult:'PASS'});
     console.log(JSON.stringify({...metadata,scratch,files:files.length,newIndependentLocalCredentials:true,buildResult:'PASS',log}));

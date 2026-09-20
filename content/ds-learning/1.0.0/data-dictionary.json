@@ -1,0 +1,145 @@
+{
+  "schemaVersion": "ds-dictionary-v1",
+  "observationUnit": "LEARNER",
+  "synthetic": true,
+  "introduction": "360条原始记录来自359名合成学员，其中一条完全重复。未来业务漏斗从原始事件事实去重聚合，总报名人数为359；不会随你选择的清洗方案改变。",
+  "targetDefinition": "completed表示在同一规定周期内完成8个核心单元和全部4项作业。目标字段始终保留原始记录值，填补其他字段不会重新判定是否完成。",
+  "fields": [
+    {
+      "fieldKey": "learner_id",
+      "label": "合成学员标识",
+      "description": "无业务含义；原始表有一条完全重复记录。",
+      "unit": "identifier"
+    },
+    {
+      "fieldKey": "cohort_week",
+      "label": "加入批次",
+      "description": "1至12；每个批次均已到达同一规定观察截止时间，避免把新批次尚未观察完误作未完成。",
+      "unit": "week"
+    },
+    {
+      "fieldKey": "course_track",
+      "label": "课程方向",
+      "description": "FOUNDATIONS基础课程／APPLIED应用课程；不代表学生专业或能力。",
+      "unit": "category"
+    },
+    {
+      "fieldKey": "signup_source",
+      "label": "报名来源",
+      "description": "ORGANIC自然／PARTNER合作／CAMPAIGN活动。",
+      "unit": "category"
+    },
+    {
+      "fieldKey": "device_group",
+      "label": "常用设备",
+      "description": "desktop桌面／mobile移动／mixed混用；观察差异不能证明设备导致完成变化。",
+      "unit": "category"
+    },
+    {
+      "fieldKey": "lessons_started",
+      "label": "开始的核心单元数",
+      "description": "0至8；0表示尚未开始学习。",
+      "unit": "count"
+    },
+    {
+      "fieldKey": "lessons_completed",
+      "label": "完成的核心单元数",
+      "description": "0至8，不能超过开始数。",
+      "unit": "count"
+    },
+    {
+      "fieldKey": "assignment_submit_rate",
+      "label": "作业提交率",
+      "description": "提交项数除以固定4项作业，对全部报名者适用；未学习者为0。空值是记录缺失，不能自动当作未提交。",
+      "unit": "ratio"
+    },
+    {
+      "fieldKey": "avg_session_minutes",
+      "label": "平均会话时长",
+      "description": "分钟，0至240。未开始者空值为不适用；已开始者空值是记录缺失。很长的会话可能有多种解释，不自动认定错误。",
+      "unit": "minute"
+    },
+    {
+      "fieldKey": "days_to_first_lesson",
+      "label": "首次学习等待时间",
+      "description": "天，0至28。0代表同日开始；未开始者空值为不适用，不得中位数填补；已开始者空值才是记录缺失。",
+      "unit": "day"
+    },
+    {
+      "fieldKey": "forum_visits",
+      "label": "论坛访问次数",
+      "description": "观察期内0至60次；较高次数不直接说明更高学习动机。",
+      "unit": "count"
+    },
+    {
+      "fieldKey": "support_contacts",
+      "label": "联系支持次数",
+      "description": "观察期内0至20次；不是联系过支持的人数。",
+      "unit": "count"
+    },
+    {
+      "fieldKey": "completed",
+      "label": "是否按期完成",
+      "description": "true或false；没有记录缺失。",
+      "unit": "boolean"
+    }
+  ],
+  "bins": {
+    "avg_session_minutes": [
+      0,
+      10,
+      20,
+      40,
+      80,
+      240
+    ],
+    "days_to_first_lesson": [
+      0,
+      1,
+      3,
+      7,
+      14,
+      28
+    ],
+    "assignment_submit_rate": [
+      0,
+      0.25,
+      0.5,
+      0.75,
+      1
+    ]
+  },
+  "groupOrder": {
+    "course_track": [
+      "FOUNDATIONS",
+      "APPLIED"
+    ],
+    "signup_source": [
+      "ORGANIC",
+      "PARTNER",
+      "CAMPAIGN"
+    ],
+    "device_group": [
+      "desktop",
+      "mobile",
+      "mixed"
+    ],
+    "cohort_period": [
+      "EARLY",
+      "LATE"
+    ],
+    "days_to_first_lesson_band": [
+      "SAME_DAY",
+      "DAYS_1_2",
+      "DAYS_3_6",
+      "DAYS_7_PLUS"
+    ]
+  },
+  "notes": [
+    "cohort_period：1至6周为EARLY，7至12周为LATE。",
+    "保留重复时，统计分母是记录数而不是独立学员人数。",
+    "Wilson区间依赖二项独立观测假设，不能消除重复、缺失、非随机样本和混杂的限制。",
+    "Pearson仅描述当前成对有效记录的线性关系，不证明因果；常量或少于两条时为null。",
+    "所有数据均为合成，未完成真实用户计时或专业人工审核。"
+  ]
+}

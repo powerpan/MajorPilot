@@ -45,22 +45,41 @@ public class EvidenceJobs {
         var row=db.jdbc().queryForMap("SELECT closed_input_manifest_json,closed_input_sha256 FROM mp_experience_run WHERE id=? AND student_id=? AND status='CLOSED'",lease.run,lease.student);JsonNode manifest=db.node(row.get("closed_input_manifest_json"));
         require(lease.closedSha.equals(s(row,"closed_input_sha256"))&&lease.closedSha.equals(closure.hash(manifest))&&manifest.path("runMode").asText().equals(lease.mode)&&lease.rule.equals(ClosurePipeline.frozenRule(manifest)));
         // Only this explicit schema/rule pair has safe claim semantics. Legacy READY snapshots are not touched.
-        if(!manifest.path("schemaVersion").asText().equals("closed-input-v3")||!lease.rule.equals("evidence-v2"))throw new ApiException(409,"EVIDENCE_RULE_UNSUPPORTED");
+        if(!manifest.path("schemaVersion").asText().equals("closed-input-v3")||!Set.of("evidence-v2","ds-evidence-v1").contains(lease.rule))throw new ApiException(409,"EVIDENCE_RULE_UNSUPPORTED");
         require(db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_background_job WHERE id=? AND owner_student_id=? AND target_id=? AND business_key=?",Integer.class,lease.job,lease.student,lease.run,ClosurePipeline.evidenceKey(manifest.path("runId").asText(),lease.closedSha,lease.rule))==1);
         Row run=db.internal(lease.run);require(runs.version(run).manifestSha256().equals(manifest.path("taskManifestSha256").asText()));
+        if(!(run.majorCode().equals("AI")&&lease.rule.equals("evidence-v2")||run.majorCode().equals("DATA_SCIENCE")&&lease.rule.equals("ds-evidence-v1")))throw new ApiException(409,"EVIDENCE_RULE_UNSUPPORTED");
         require(Objects.equals(run.profileId(),manifest.path("decisionProfileId").asLong())&&closure.profileHash(run.profileId(),lease.student).equals(manifest.path("profileSha256").asText()));
-        var result=new ArrayList<Item>();
+        var result=new ArrayList<Item>();var frozenResponses=new HashMap<String,JsonNode>();var frozenRevisions=new HashMap<String,Long>();
         for(var step:manifest.path("steps")){
             var response=db.jdbc().queryForMap("SELECT r.response_json,r.content_sha256,r.revision_no,r.received_at,s.step_key FROM mp_step_response_revision r JOIN mp_step_state s ON s.id=r.step_state_id WHERE r.id=? AND s.experience_run_id=?",step.path("revisionId").asLong(),lease.run);JsonNode value=db.node(response.get("response_json"));
             require(s(response,"content_sha256").equals(step.path("sha256").asText())&&closure.hash(value).equals(step.path("valueSha256").asText())&&n(response,"revision_no")==step.path("revision").asLong()&&s(response,"step_key").equals(step.path("stepKey").asText()));
+            require(frozenResponses.put(step.path("stepKey").asText(),value)==null);frozenRevisions.put(step.path("stepKey").asText(),step.path("revision").asLong());
             result.addAll(stepItems(run.majorCode(),step.path("stepKey").asText(),step.path("revisionId").asLong(),value,time(response,"received_at")));
         }
+        var requiredOperations=new HashMap<String,JsonNode>();
+        for(var definition:runs.version(run).manifest().path("steps")){
+            String stepKey=definition.path("stepKey").asText();if(definition.path("required").asBoolean(true))require(frozenResponses.containsKey(stepKey));
+            String operationKey=definition.path("operationKey").asText("");if(!operationKey.isBlank()&&frozenResponses.containsKey(stepKey))requiredOperations.put(operationKey,runs.operation(run,operationKey));
+        }
+        var seenOperations=new HashSet<String>();
         for(var execution:manifest.path("executions")){
-            var source=db.jdbc().queryForMap("SELECT result_json,status,trust_level,created_at FROM mp_execution_record WHERE id=? AND experience_run_id=?",execution.path("executionId").asLong(),lease.run);JsonNode value=db.node(source.get("result_json"));
+            String operationKey=execution.path("operationKey").asText(),stepKey=execution.path("stepKey").asText();var operation=requiredOperations.get(operationKey);
+            require(operation!=null&&seenOperations.add(operationKey)&&operation.path("stepKey").asText().equals(stepKey)&&Objects.equals(frozenRevisions.get(stepKey),execution.path("appliedRevision").asLong()));
+            var expectedSources=new TreeMap<String,Long>();
+            for(var binding:operation.path("inputBindings")){
+                String ancestor=binding.path("sourceStepKey").asText(),field=binding.path("sourceField").asText();var input=frozenResponses.get(ancestor);require(input!=null);
+                if(!input.has(field)){require(ExecutionBindings.optional(runs.stepDefinition(run,ancestor).path("inputSchema"),field)&&ExecutionBindings.optional(operation.path("parametersSchema"),binding.path("parameterKey").asText()));continue;}
+                expectedSources.put(ancestor,frozenRevisions.get(ancestor));
+            }
+            require(execution.path("sourceRevisions").isObject()&&expectedSources.equals(runs.sourceMap(execution.path("sourceRevisions"))));
+            var source=db.jdbc().queryForMap("SELECT public_id,operation_key,step_key,result_json,status,trust_level,created_at FROM mp_execution_record WHERE id=? AND experience_run_id=?",execution.path("executionId").asLong(),lease.run);JsonNode value=db.node(source.get("result_json"));
+            require(s(source,"public_id").equals(execution.path("publicId").asText())&&s(source,"operation_key").equals(operationKey)&&s(source,"step_key").equals(stepKey));
             require(s(source,"status").equals("SUCCEEDED")&&s(source,"trust_level").equals("SERVER_VERIFIED")&&closure.hash(value).equals(execution.path("resultSha256").asText()));
             require(db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_response_execution x JOIN mp_step_response_revision r ON r.id=x.response_revision_id JOIN mp_step_state s ON s.id=r.step_state_id WHERE x.execution_record_id=? AND s.experience_run_id=? AND s.step_key=? AND r.revision_no=? AND x.source_binding_sha256=?",Integer.class,execution.path("executionId").asLong(),lease.run,execution.path("stepKey").asText(),execution.path("appliedRevision").asLong(),runs.bindingHash(runs.sourceMap(execution.path("sourceRevisions"))))>0);
-            result.add(new Item("execution:"+execution.path("publicId").asText(),"VERIFIED_EXECUTION","EXECUTION_RECORD",execution.path("executionId").asLong(),value,"固定版本引擎验证的聚合结果；不推断专业适合度",List.of("OBSERVED_FACT"),time(source,"created_at")));
+            result.add(new Item("execution:"+execution.path("publicId").asText(),"VERIFIED_EXECUTION","EXECUTION_RECORD",execution.path("executionId").asLong(),selectedExecution(run.majorCode(),value),run.majorCode().equals("AI")?"固定版本引擎验证的聚合结果；不推断专业适合度":"固定版本引擎验证的聚合结果；不推断因果、专业适合度或稳定能力",List.of("OBSERVED_FACT"),time(source,"created_at")));
         }
+        require(seenOperations.equals(requiredOperations.keySet()));
         var reflection=db.jdbc().queryForMap("SELECT draft_json,status,row_version,submitted_at FROM mp_reflection WHERE id=? AND experience_run_id=?",manifest.path("reflectionId").asLong(),lease.run);JsonNode answers=db.node(reflection.get("draft_json"));require(s(reflection,"status").equals("SUBMITTED")&&n(reflection,"row_version")==manifest.path("reflectionRevision").asLong()&&closure.hash(answers).equals(manifest.path("reflectionSha256").asText()));
         for(String field:List.of("interestingStepKeys","difficultySources","continueSimilarWork","nextWorkStyle"))if(answers.has(field))result.add(new Item("reflection:"+field,"SELF_REPORT","REFLECTION",manifest.path("reflectionId").asLong(),answers.get(field),"学生在本次体验中的自述；不作为客观能力评分",List.of("STUDENT_SELF_REPORT"),time(reflection,"submitted_at")));
         for(var hint:manifest.path("hints")){
@@ -84,9 +103,9 @@ public class EvidenceJobs {
     }
     private static void require(boolean valid){if(!valid)throw new ApiException(409,"EVIDENCE_SOURCE_INVALID");}
     List<Item> stepItems(String major,String step,long revisionId,JsonNode input,Instant observedAt){
-        if(!major.equals("AI"))throw new ApiException(409,"EVIDENCE_RULE_UNAVAILABLE");
-        List<String> actionFields=switch(step){case "a3-errors"->List.of("inspectedSampleIds");case "a4-configure"->List.of("definitionVariantIds","exampleIds","confidenceThreshold","lowConfidencePolicy");case "a6-decision"->List.of("rolloutDecision");default->List.of();};
-        List<String> analysisFields=switch(step){case "a3-errors"->List.of("errorPatterns");case "a4-configure"->List.of("modificationReason","expectedEffect");case "a5-evaluate"->List.of("comparisonNotes","tradeoff");case "a6-decision"->List.of("decisionReason","monitoringItems","residualRisk");default->List.of();};
+        if(!Set.of("AI","DATA_SCIENCE").contains(major))throw new ApiException(409,"EVIDENCE_RULE_UNAVAILABLE");
+        List<String> actionFields=major.equals("AI")?switch(step){case "a3-errors"->List.of("inspectedSampleIds");case "a4-configure"->List.of("definitionVariantIds","exampleIds","confidenceThreshold","lowConfidencePolicy");case "a6-decision"->List.of("rolloutDecision");default->List.of();}:switch(step){case "d1-context"->List.of("acknowledged","observationUnit","targetField");case "d2-quality"->List.of("duplicatePolicy","missingPolicy","extremePolicy");case "d3-profile"->List.of("distributionField");case "d4-relationship"->List.of("relationshipMode","groupBy","xField","yField");case "d5-stratify"->List.of("stratifyBy");default->List.of();};
+        List<String> analysisFields=major.equals("AI")?switch(step){case "a3-errors"->List.of("errorPatterns");case "a4-configure"->List.of("modificationReason","expectedEffect");case "a5-evaluate"->List.of("comparisonNotes","tradeoff");case "a6-decision"->List.of("decisionReason","monitoringItems","residualRisk");default->List.of();}:switch(step){case "d2-quality"->List.of("identifiedIssues","duplicateReason","missingReason");case "d3-profile"->List.of("sampleInterpretation");case "d4-relationship"->List.of("observation");case "d5-stratify"->List.of("uncertaintyComment","causalJudgment");case "d6-conclusion"->List.of("findings","unsupportedCausalClaim","limitations","nextQuestion");default->List.of();};
         var action=db.mapper().createObjectNode();for(String field:actionFields)if(input.has(field))action.set(field,input.get(field));
         var analysis=db.mapper().createObjectNode();for(String field:analysisFields)if(input.has(field))analysis.set(field,input.get(field));
         if(!analysis.isEmpty())action.put("submittedAnalysisFieldCount",analysis.size());
@@ -94,5 +113,17 @@ public class EvidenceJobs {
         if(!action.isEmpty())items.add(new Item("step:"+step,"STEP_RESPONSE","STEP_RESPONSE_REVISION",revisionId,action,"系统仅记录学生所选配置、选项及提交行为；不验证选择、解释或命题正确",List.of("OBSERVED_FACT"),observedAt));
         if(!analysis.isEmpty())items.add(new Item("analysis:"+step,"STUDENT_ANALYSIS","STEP_RESPONSE_REVISION",revisionId,db.mapper().valueToTree(map("verificationStatus","UNVERIFIED","attribution","STUDENT_AUTHORED_ANALYSIS","answers",analysis)),"学生撰写的分析、预测或方案，未经内容验证；不是 Reflection 体验自述，不能据此发布事实主张",List.of(),observedAt));
         return List.copyOf(items);
+    }
+    JsonNode selectedExecution(String major,JsonNode value){
+        if(major.equals("AI"))return value;
+        if(!major.equals("DATA_SCIENCE")||!value.path("schemaVersion").asText().equals("ds-result-v1"))throw new ApiException(409,"EVIDENCE_RULE_UNAVAILABLE");
+        var result=db.mapper().createObjectNode();
+        for(String field:List.of("schemaVersion","operationKey","datasetSha256","cleaningConfigSha256","inputRows","retainedRows","uniqueLearners","analysisRows","exclusions","quality","profile","relationship","stratified"))if(value.has(field))result.set(field,value.get(field).deepCopy());
+        // Evidence needs aggregate verification, not individual chart points or duplicate learner identifiers.
+        if(result.path("quality").isObject())((com.fasterxml.jackson.databind.node.ObjectNode)result.path("quality")).remove("duplicateGroups");
+        if(result.path("relationship").isObject())((com.fasterxml.jackson.databind.node.ObjectNode)result.path("relationship")).remove("points");
+        if(result.path("stratified").path("overall").isObject())((com.fasterxml.jackson.databind.node.ObjectNode)result.path("stratified").path("overall")).remove("points");
+        for(var stratum:result.path("stratified").path("strata"))if(stratum.path("summary").isObject())((com.fasterxml.jackson.databind.node.ObjectNode)stratum.path("summary")).remove("points");
+        return result;
     }
 }

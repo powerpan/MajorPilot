@@ -31,6 +31,7 @@ public final class TaskContentRepository {
         byte[] raw=resource(path);JsonNode m=mapper.readTree(raw);TaskManifestValidator.validate(m);List<String> hashes=new ArrayList<>();
         Map<String,byte[]> loadedAssets=new HashMap<>();for(JsonNode asset:m.path("assets")){loadedAssets.put(asset.path("assetKey").asText(),checkedAsset(asset));hashes.add(asset.path("assetKey").asText()+":"+asset.path("sha256").asText());}Collections.sort(hashes);
         if(m.path("schemaVersion").asText().equals("task-manifest-v2"))com.ruoyi.majorpilot.classifier.ClassifierAssets.validate(loadedAssets);
+        if(m.path("schemaVersion").asText().equals("task-manifest-v3")){com.ruoyi.majorpilot.datascience.DsAssets.validate(loadedAssets);for(JsonNode sample:mapper.readTree(loadedAssets.get("golden-private")).path("cases")){JsonNode operation=null;for(JsonNode candidate:m.path("operations"))if(candidate.path("operationKey").equals(sample.path("operationKey")))operation=candidate;if(operation==null)throw integrity();TaskInputValidator.validate(operation.path("parametersSchema"),sample.path("parameters"),true);TaskInputValidator.validate(operation.path("resultSchema"),sample.path("result"),true);}}
         return new Bundle(path,hash(raw),hash(String.join("\n",hashes).getBytes(StandardCharsets.UTF_8)),m);
     }
     private byte[] checkedAsset(JsonNode asset){byte[] raw=resource(asset.path("path").asText());if(raw.length!=asset.path("byteLength").asLong()||!hash(raw).equals(asset.path("sha256").asText()))throw integrity();

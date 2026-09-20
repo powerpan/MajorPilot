@@ -2,7 +2,7 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P3 AI专业工程闭环已完成本地实施和验收**：在P1账户推荐和P2通用任务引擎上，新增AI固定分类器、公开练习/隐藏集服务端评价、五次配置配额、A1–A6与反思、冻结版本的后台证据。AI内容仍为REVIEW工程预览，尚待真人专业审核及目标用户计时，不计正式完成或生成正式报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [AI工作区视觉验收](docs/26-p3-ai-visual-direction.md)。DS、BA、报告及完整MVP继续按P4–P8推进；不声称公网生产已就绪。
+**P4 DS专业工程闭环已完成本地实施和验收**：在P1账户推荐、P2任务引擎与P3 AI体验上，新增DS质量处理、分箱频数、分组/散点关系、分层检查、D1–D6与反思及冻结证据。隔离JS计算和Java复核、来源版本、30种配置配额、Chrome/Edge完整流程及AI/演示回归均通过。AI/DS内容仍为REVIEW工程预览，尚待真人专业审核及目标用户计时，不计正式完成或生成正式报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [DS视觉验收](docs/28-p4-ds-visual-direction.md)。BA、报告及完整MVP继续按P5–P8推进；不声称公网生产已就绪。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
@@ -48,6 +48,7 @@ sh scripts/test-integration
 sh scripts/test-p1-e2e
 sh scripts/test-p2-e2e
 sh scripts/test-p3-e2e
+sh scripts/test-p4-e2e
 sh scripts/verify-secrets
 sh scripts/stop-local
 ```
@@ -60,7 +61,9 @@ P2演示需要在忽略的 `.env.local` 中显式设置 `MP_P2_DEMO_ENABLED=true
 
 P3的AI专业内容目前为REVIEW，尚待真人专业审核与目标用户计时。仅本地验证时可在 `.env.local` 显式设置 `MP_CONTENT_PREVIEW_ENABLED=true`，从个人主页打开“内容工程预览”。预览保存真实操作并在关闭后生成后台证据，但不计正式专业完成、不生成NEXT或正式报告。`test-p3-e2e`验证真实HTTP与Chrome/Edge任务闭环，共4个合成账户，仍遵守注册限额；普通测试保持任务AI关闭。`node scripts/test-p3-api.mjs --check`只做静态预检，不创建账户或调用服务。
 
-`build-local`还会从受审共享分类器源码生成忽略的 `executor/dist/classifier-worker.js`；启动与单测校验其源码一致性，执行器再核对提交的manifest哈希。不要提交该生成产物，也不要手改bundle来绕过哈希检查。
+P4新增DS工程预览，仍受同一 `MP_CONTENT_PREVIEW_ENABLED` 本地开关控制。D1–D6覆盖质量策略、分箱频数、分组/散点关系、分层和结论；固定JS Worker预览加Java服务端复算，只读Python说明不执行代码。每个操作最多30种成功配置，相同配置复用免费，HTTP速率限制独立。`test-p4-e2e`先跑真实HTTP再跑Chrome/Edge，共4个合成账户；`node scripts/test-p4-api.mjs --check`只做静态预检。本地实现与最终验收状态见交付记录。
+
+`build-local`还会从受审共享源码生成忽略的 `executor/dist/classifier-worker.js` 与 `executor/dist/ds-worker.js`；启动与单测校验其源码一致性，执行器再核对提交的manifest哈希。DS在opaque Worker中计算，配置摘要由固定可信launcher生成后返回原Worker，未放宽CSP或Cookie边界。不要提交生成产物，也不要手改bundle来绕过哈希检查。
 
 `data/tools/node/bin/node scripts/test-p2-recovery.mjs`仅在其他本项目测试结束后单独执行：要求标准项目托管后端、显式关闭任务AI及空闲Redis DB15，实际重启后端并在finally恢复原配置，不清空正常DB0。它不是操作系统断电或完整数据库备份恢复验证。
 

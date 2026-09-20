@@ -29,22 +29,32 @@ const messages: Record<string, string> = {
   CONSENT_REQUIRED: "请阅读并同意使用条款和隐私政策。",
   PASSWORD_INVALID: "密码需要15–128个字符。",
   EMAIL_INVALID: "请输入有效邮箱。",
-  STEP_REVISION_CONFLICT: "另一页面已保存了较新版本。请先复制本机草稿或重新载入，不会自动覆盖。",
-  REFLECTION_REVISION_CONFLICT: "反思在另一页面更新了。请复制本机草稿或重新载入。",
+  STEP_REVISION_CONFLICT:
+    "另一页面已保存了较新版本。请先复制本机草稿或重新载入，不会自动覆盖。",
+  REFLECTION_REVISION_CONFLICT:
+    "反思在另一页面更新了。请复制本机草稿或重新载入。",
   RUN_REVISION_CONFLICT: "体验状态已经变化，请刷新后重新确认。",
   ACTIVE_RUN_EXISTS: "已有正在进行的体验。请确认暂停原体验后再切换。",
-  RUN_PAUSED: "这次体验已暂停。页面只读，本机未同步内容仍保留；请主动恢复后继续。",
+  RUN_PAUSED:
+    "这次体验已暂停。页面只读，本机未同步内容仍保留；请主动恢复后继续。",
   RUN_REPLACED: "这次体验已被替代，旧记录只读。请打开恢复后的体验。",
   RUN_STATE_INVALID: "体验状态已变化，请刷新后继续。",
   STEP_NOT_AVAILABLE: "这个步骤还未开放，或已经完成并锁定。",
   RESPONSE_INVALID: "请检查当前步骤的输入要求。",
-  STEP_VALIDATION_FAILED: "请完成当前步骤的必填项，并检查文字长度或允许的参数。输入不会被清空。",
-  TASK_VERSION_UNAVAILABLE: "这个任务版本暂时不能开始，请返回列表刷新；已保存的旧体验不会切换版本。",
+  STEP_VALIDATION_FAILED:
+    "请完成当前步骤的必填项，并检查文字长度或允许的参数。输入不会被清空。",
+  TASK_VERSION_UNAVAILABLE:
+    "这个任务版本暂时不能开始，请返回列表刷新；已保存的旧体验不会切换版本。",
   REFLECTION_INCOMPLETE: "请完成三项必填反思；“没有”不能与其他选项同时选择。",
   EXECUTION_REVISION_STALE: "输入已经改变，请保存后重新运行。",
+  DS_PARAMETERS_INVALID:
+    "请补全当前分析分支的参数；两轴不能相同，分层依据不能与分组相同。",
+  DS_INPUT_INVALID: "计算参数不完整或与当前分支不符，请检查后重试。",
   EXECUTION_NOT_ALLOWED: "请先保存允许的参数并完成运行，再完成此步骤。",
-  EXECUTION_RESULT_MISMATCH: "本机与服务端计算未能一致，结果未被采纳。请重新运行。",
-  EVALUATION_LIMIT_REACHED: "不同配置的运行次数已用完。已经运行过的配置仍可查看。",
+  EXECUTION_RESULT_MISMATCH:
+    "本机与服务端计算未能一致，结果未被采纳。请重新运行。",
+  EVALUATION_LIMIT_REACHED:
+    "不同配置的运行次数已用完。已经运行过的配置仍可查看。",
   CONTENT_UNAVAILABLE: "任务内容暂不可用，请稍后重试；已保存的进度不会被清空。",
 };
 export class ApiError extends Error {

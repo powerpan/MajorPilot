@@ -10,7 +10,7 @@ import static com.ruoyi.majorpilot.experience.RunStore.*;
 /** Runs inside the close transaction; no external calls or deferred domain facts. */
 @Service @Profile("local")
 public class ClosurePipeline {
-    public static final String RULE="evidence-v2",NEXT_RULE="next-recommendation-v1";
+    public static final String RULE="evidence-v2",DS_RULE="ds-evidence-v1",NEXT_RULE="next-recommendation-v1";
     private final RunService runs;private final RunStore db;
     public ClosurePipeline(RunService runs){this.runs=runs;this.db=runs.store();}
     String hash(JsonNode value){return db.hash(value);}
@@ -19,13 +19,18 @@ public class ClosurePipeline {
         for(var state:db.jdbc().queryForList("SELECT * FROM mp_step_state WHERE experience_run_id=? ORDER BY id",run.id())){
             var revision=db.jdbc().queryForMap("SELECT id,revision_no,content_sha256 FROM mp_step_response_revision WHERE step_state_id=? AND revision_no=?",n(state,"id"),n(state,"current_revision"));
             steps.add(map("stepKey",s(state,"step_key"),"revisionId",n(revision,"id"),"revision",n(revision,"revision_no"),"sha256",s(revision,"content_sha256"),"valueSha256",hash(runs.response(state))));
-            for(var result:runs.executions(run,s(state,"step_key")))if(result.appliedToRevision()!=null&&result.status().equals("SUCCEEDED")){
+            String stepKey=s(state,"step_key");var definition=runs.stepDefinition(run,stepKey);
+            if(!definition.path("operationKey").asText("").isBlank()){
+                RunDtos.Execution result;
+                try{result=runs.currentExecution(run,stepKey);}catch(ApiException invalid){throw new ApiException(409,"EVIDENCE_SOURCE_INVALID");}
+                if(result==null)throw new ApiException(409,"EVIDENCE_SOURCE_INVALID");
                 long execution=db.jdbc().queryForObject("SELECT id FROM mp_execution_record WHERE public_id=?",Long.class,result.executionId());
                 executions.add(map("executionId",execution,"publicId",result.executionId(),"stepKey",result.stepKey(),"operationKey",result.operationKey(),"resultSha256",hash(result.result()),"appliedRevision",result.appliedToRevision(),"sourceRevisions",result.appliedSourceRevisions()));
             }
         }
         var hints=new ArrayList<Map<String,Object>>();for(var hint:db.jdbc().queryForList("SELECT * FROM mp_hint_request WHERE experience_run_id=? AND status IN ('SUCCEEDED','FALLBACK') ORDER BY id",run.id()))hints.add(map("hintId",n(hint,"id"),"stepKey",s(hint,"step_key"),"hintLevel",n(hint,"hint_level"),"inputRevision",n(hint,"input_revision"),"responseSha256",hash(db.node(hint.get("response_json")))));
-        return map("schemaVersion","closed-input-v3","evidenceRuleVersion",RULE,"runId",run.publicId(),"contentKind",run.kind(),"runMode",run.mode(),"taskVersionId",run.taskPublicId(),"taskManifestSha256",runs.version(run).manifestSha256(),"decisionProfileId",run.profileId(),"profileSha256",profileHash(run.profileId(),run.studentId()),"steps",steps,"executions",executions,"hints",hints,"reflectionId",n(reflection,"id"),"reflectionRevision",n(reflection,"row_version")+1,"reflectionSha256",hash(answers));
+        String rule="DATA_SCIENCE".equals(run.majorCode())?DS_RULE:RULE;
+        return map("schemaVersion","closed-input-v3","evidenceRuleVersion",rule,"runId",run.publicId(),"contentKind",run.kind(),"runMode",run.mode(),"taskVersionId",run.taskPublicId(),"taskManifestSha256",runs.version(run).manifestSha256(),"decisionProfileId",run.profileId(),"profileSha256",profileHash(run.profileId(),run.studentId()),"steps",steps,"executions",executions,"hints",hints,"reflectionId",n(reflection,"id"),"reflectionRevision",n(reflection,"row_version")+1,"reflectionSha256",hash(answers));
     }
     /** The implicit legacy rule is recognized for explicit rejection, never silently upgraded. */
     static String frozenRule(JsonNode manifest){

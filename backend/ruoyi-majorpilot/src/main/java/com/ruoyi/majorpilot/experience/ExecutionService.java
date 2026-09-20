@@ -19,15 +19,23 @@ public class ExecutionService {
         for(var candidate:version.manifest().path("operations"))if(candidate.path("operationKey").asText().equals(input.operationKey()))operation=candidate;
         if(operation==null)throw new ApiException(422,"EXECUTION_NOT_ALLOWED");String stepKey=operation.path("stepKey").asText();var definition=runs.stepDefinition(run,stepKey);runs.dependencies(run,definition);var state=runs.stepState(run,stepKey);
         if(n(state,"current_revision")!=input.inputRevision()||input.inputRevision()==0)throw new ApiException(409,"EXECUTION_REVISION_STALE");
-        var revision=db.jdbc().queryForMap("SELECT id,response_json,content_sha256 FROM mp_step_response_revision WHERE step_state_id=? AND revision_no=?",n(state,"id"),input.inputRevision());JsonNode response=db.node(revision.get("response_json"));var parameters=db.mapper().createObjectNode();var bound=runs.bindings(run,operation);if(bound.isEmpty()){var fields=operation.path("parametersSchema").path("properties").fieldNames();while(fields.hasNext()){String field=fields.next();if(response.has(field))parameters.set(field,response.get(field));}}else for(var binding:bound)parameters.set(binding.parameterKey(),binding.value());
-        ResponseRules.validate(operation.path("parametersSchema"),parameters,true);
+        var revision=db.jdbc().queryForMap("SELECT id,response_json,content_sha256 FROM mp_step_response_revision WHERE step_state_id=? AND revision_no=?",n(state,"id"),input.inputRevision());JsonNode response=db.node(revision.get("response_json"));var bound=runs.bound(run,operation,response);var parameters=bound.parameters();
+        boolean v3=version.manifest().path("schemaVersion").asText().equals("task-manifest-v3");
+        checkExpectedSources(input.expectedSourceRevisions(),bound.sources(),v3);
+        runs.validateParameters(operation,parameters);
         if(input.parameters()!=null&&!input.parameters().isObject())throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
-        if(input.parameters()!=null&&!input.parameters().isEmpty()&&(!bound.isEmpty()||!input.parameters().equals(parameters)))throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
+        if(v3&&(input.parameters()==null||!input.parameters().isObject()||!input.parameters().isEmpty()))throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
+        if(input.parameters()!=null&&!input.parameters().isEmpty()&&(!bound.ancestors().isEmpty()||!input.parameters().equals(parameters)))throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
         String hash=s(revision,"content_sha256");if(input.inputSha256()!=null&&!Secrets.equal(input.inputSha256(),hash))throw new ApiException(409,"EXECUTION_REVISION_STALE");
         if(input.observedResult()!=null)ResponseRules.validate(operation.path("resultSchema"),input.observedResult(),true);
         JsonNode normalized=calculator.normalize(version,operation,parameters);var sorted=new TreeMap<String,JsonNode>();normalized.fields().forEachRemaining(entry->sorted.put(entry.getKey(),entry.getValue()));String config=Secrets.hash(version.taskVersionId()+"\0"+input.operationKey()+"\0"+db.json(sorted));
-        return new Plan(student.internalId(),id,stepKey,input.inputRevision(),n(revision,"id"),hash,version,operation,normalized,config,runs.sources(bound),!calculator.isBaseline(version,operation,normalized));
+        return new Plan(student.internalId(),id,stepKey,input.inputRevision(),n(revision,"id"),hash,version,operation,normalized,config,bound.sources(),!calculator.isBaseline(version,operation,normalized));
     });}
+    static void checkExpectedSources(Map<String,Long> expected,Map<String,Long> actual,boolean required){
+        if(expected==null){if(required)throw new ApiException(422,"VALIDATION_ERROR");return;}
+        if(expected.size()>50||expected.entrySet().stream().anyMatch(e->e.getKey()==null||!e.getKey().matches("[a-z][a-z0-9-]{0,39}")||e.getValue()==null||e.getValue()<1))throw new ApiException(422,"VALIDATION_ERROR");
+        if(!expected.equals(actual))throw new ApiException(409,"EXECUTION_REVISION_STALE");
+    }
     public RunDtos.Execution execute(StudentPrincipal student,String id,String key,RunDtos.Execute input) {
         runs.transactions().executeWithoutResult(status->{db.activeStudent(student);db.owned(student,id);});
         var replay=runs.idempotency().replay(runs.owner(student),"POST","/api/app/v1/experience-runs/"+id+"/executions",key,input,Outcome.class);
@@ -40,7 +48,7 @@ public class ExecutionService {
         final JsonNode finalResult=result;final String finalError=computationError;
         Outcome outcome=runs.write(student,"/experience-runs/"+id+"/executions",key,input,Outcome.class,()->{
             var run=db.owned(student,id);String stale=run.status().equals("PAUSED")?"RUN_PAUSED":!run.status().equals("IN_PROGRESS")?"RUN_STATE_INVALID":n(runs.stepState(run,plan.stepKey),"current_revision")!=plan.inputRevision?"EXECUTION_REVISION_STALE":null;
-            if(stale==null)try{runs.dependencies(run,runs.stepDefinition(run,plan.stepKey));if(!runs.sources(runs.bindings(run,plan.operation)).equals(plan.sources))stale="EXECUTION_REVISION_STALE";}catch(ApiException changed){stale="EXECUTION_REVISION_STALE";}
+            if(stale==null)try{runs.dependencies(run,runs.stepDefinition(run,plan.stepKey));if(!runs.validatedParameters(run,plan.operation,runs.response(runs.stepState(run,plan.stepKey))).sources().equals(plan.sources))stale="EXECUTION_REVISION_STALE";}catch(ApiException changed){stale="EXECUTION_REVISION_STALE";}
             int maximum=plan.operation.path("maxEvaluations").asInt(5);int used=db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_execution_record WHERE experience_run_id=? AND operation_key=? AND evaluation_config_sha256 IS NOT NULL AND counts_against_quota=TRUE",Integer.class,run.id(),input.operationKey());
             if(stale==null&&finalError==null){var reused=db.jdbc().queryForList("SELECT * FROM mp_execution_record WHERE experience_run_id=? AND operation_key=? AND evaluation_config_sha256=?",run.id(),input.operationKey(),plan.configSha);if(!reused.isEmpty()){link(plan,n(reused.getFirst(),"id"));return new Outcome(runs.execution(reused.getFirst(),true,maximum-used,plan.inputRevision,plan.sources),null);}if(plan.countsAgainstQuota&&used>=maximum)throw new ApiException(429,"EVALUATION_LIMIT_REACHED");}
             String error=stale!=null?stale:finalError;String status=stale!=null?"CANCELLED":error==null?"SUCCEEDED":error.equals("EXECUTION_TIMED_OUT")?"TIMED_OUT":"FAILED";String executionId=PublicIds.next();

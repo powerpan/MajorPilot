@@ -7,6 +7,7 @@ import "./styles.css";
 import "./styles/editorial.css";
 import "./styles/workspace.css";
 import "./styles/classifier.css";
+import "./styles/ds.css";
 import { useAuth } from "./stores/auth";
 const HomeView = () => import("./views/HomeView.vue");
 import IntakeView from "./views/IntakeView.vue";

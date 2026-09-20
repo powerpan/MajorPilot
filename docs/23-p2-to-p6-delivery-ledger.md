@@ -13,10 +13,10 @@ P1 的 AI 理由润色仍按用户确认延期；P2–P6 的分层提示、反�
 | 阶段 | 必须实现和验证 | 当前状态 |
 | --- | --- | --- |
 | P2 | 版本化内容、受控执行、三栏工作区、保存 revision、暂停/原子切换/恢复、撤回和审计恢复 | 本地实施与验收通过；已推送 `02e7552` 并核对远端 |
-| P3 | AI 教学分类器与隐藏集服务端评分、完整任务与反思、冻结证据输入 | 本地工程验收通过；REVIEW预览，真人审核/计时仍待办 |
-| P4 | DS 数据质量与关系分析、可复核统计、非因果结论、完整任务 | 设计接缝及关键屏已准备，尚未实施 |
-| P5 | BA 指标/漏斗/分群、行动与验证指标、完整任务 | 尚未开始 |
-| P6 | 持久化证据与报告作业、校验/修复/回退、NEXT、私有比较报告和反馈/打印 | 尚未开始 |
+| P3 | AI 教学分类器与隐藏集服务端评分、完整任务与反思、冻结证据输入 | 已推送 `37d77ab` 并核对远端；REVIEW预览，真人审核/计时仍待办 |
+| P4 | DS 数据质量与关系分析、可复核统计、非因果结论、完整任务 | 完整本地工程验收及AI/演示回归通过；Git交付见任务回执 |
+| P5 | BA 指标/漏斗/分群、行动与验证指标、完整任务 | 设计准备，尚未代码实施 |
+| P6 | 持久化证据与报告作业、校验/修复/回退、NEXT、私有比较报告和反馈/打印 | 设计准备，尚未代码实施 |
 
 状态以实际证据更新，不以代码行数或绿色单元测试替代纵向闭环。
 
@@ -110,4 +110,44 @@ P3接缝与预览隔离见 [工程计划](./25-p3-engineering-plan.md)，新增�
 - 最终代码的同机干净源码重建通过：`/tmp/majorpilot-clean-hMqY1I`，1025个源码/设计文件，新本地随机凭证，不复制供应商密钥/应用状态、未启动服务；共享工具与依赖缓存。不等同于第二台机器或真实供应商验收。
 - 精选截图及主代理同轮概念对照见 [视觉验收](./26-p3-ai-visual-direction.md)。所有HTTP/浏览器合成账户与邮件精确清理，无限流重置；重复测试等待自然窗口。源码/产物/日志扫描、提交索引及diff检查作为本次提交最后门禁。
 
-P3技术闭环已具备可复核工程证据。内容仍REVIEW，真实专业审核、零代码目标用户试用和计时未完成；未公开部署，不称完整MVP完成。P4仅形成 [实施计划](./27-p4-engineering-plan.md) 与 [视觉合同](./28-p4-ds-visual-direction.md)，在P3提交推送后开始代码实施。
+P3技术闭环已具备可复核工程证据。提交 `37d77ab409d1598d2098002087739fc548968564` 已推送并核对远端。内容仍REVIEW，真实专业审核、零代码目标用户试用和计时未完成；未公开部署，不称完整MVP完成。P4随后按 [实施计划](./27-p4-engineering-plan.md) 与 [视觉合同](./28-p4-ds-visual-direction.md) 开始实施。
+
+## 7. P4 实施与工程验收
+
+DS保持REVIEW预览，不计正式完成、NEXT或用户报告。使用固定JS Worker计算与Java服务端复核，不执行学生Python。D1–D6、四个统计操作、来源revision、30种成功配置配额、独立Reflection与冻结证据均已实现；先保留中间证据，最终结果另列于本节末尾。
+
+- Task Version `01JD1000000000000000000001`；manifest SHA256 `0e3fad47b7b5e4b15c0666429a5cd163eb4b1115524e00d4140c8bc89132c8c2`；公开数据SHA256 `18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06`。360条原始行、359名合成学员、1条精确重复、24条注入缺失。AI已冻结内容和V1–V6迁移未改。
+- 主库首次注册前发现关系教学Python只说明了散点分支，已改成与GROUP_COMPLETION/SCATTER一致的只读示例；两端内容校验拒绝错分支，5项核心Python公式离线对照通过。不声称产品内运行Python；没有改动已交付的不可变DS版本。
+- `sh scripts/test-unit`中间结果：Node141/141，Java187项中117通过、70条件跳过。`sh scripts/test-integration`：186通过、仅1项明确付费百炼实测跳过。随后前端兼容性修复的最终单测结果另记，不能沿用本行冒充最终版本。
+- `sh scripts/build-local`通过；当前内容寻址运行JAR SHA256 `a13df051cf5e308ed7f541b1692b94defd10e816347722e14fcbd44f6fc03ccc`。`node scripts/test-p4-api.mjs`真实HTTP通过27/27操作响应schema；正式创建404和5项管理401仅为拒绝验证。D1–D6、四操作完整结果跨Java/JS相同、公开JSON/CSV原字节和哈希、私有404/跨账号、来源缺失422/过期409、伪造观察422、分支/X=Y错误、30种配置及第31种429、耗尽后复用均通过。执行请求间隔遵守独立每分钟限流，没有重置限额。
+- HTTP关闭后的Evidence Snapshot READY，`closed-input-v3`/`ds-evidence-v1`；5条学生分析为UNVERIFIED且allowed_claim_types为空，4条最终执行为VERIFIED_EXECUTION。无正式报告/NEXT，正式完成计数不变。两合成账户与关联邮件/业务行精确清理，付费调用0。
+- 同一P4运行包的 `node scripts/test-p3-api.mjs` 回归通过27/27；AI baseline免费/五次配额/隐藏资产边界/关闭语义未退化；两账户精确清理。
+- 当前JAR独立空库V1→V6通过：0→70表，首次6个迁移/再次0、checksum及归属外键正常；临时最小权限schema/账号精确清理。证据 `/tmp/majorpilot-fresh-migrations-nTAkZf/migration-evidence.json`，未启动或停止服务。
+
+### 实际验收发现与修复
+
+1. 第一轮Chrome D2无法执行：Vue响应式Proxy不能直接跨postMessage结构化克隆。已用真实Vue reactive输入复现，并对异步iframe启动前载荷被修改补回归；执行边界改成普通不可变JSON快照，未增加凭证或资产。
+2. 第二轮Proxy错误消失，但Worker返回DS_INPUT_INVALID。无账户的真实Chrome最小探针确认：iframe为secure context且有crypto.subtle，opaque Blob Worker不是secure context且没有crypto.subtle。固定可信launcher现只为规范化后的三字段配置计算摘要，返回原活动Worker；严格字段、操作、长度、次数与取消栅栏，未增加allow-same-origin或放宽CSP。16项Worker/摘要边界测试及真实同环境红绿探针通过；统计公式和数据没有改动。
+3. 每轮失败均关闭浏览器、精确清理本轮合成账户/邮件；没有清除注册IP限流。启动审批超时且未启动进程的尝试不计成实际运行。
+4. 后台作者自检发现超过50条失败历史后，分页可能隐藏仍有效的旧成功执行，导致冻结证据漏项。真实MySQL先复现3项失败，再改为独立查询当前own/source绑定的有效执行；历史最多50条加一条当前结果，不无限放大分页。完成、关闭和证据构建均验证完整操作覆盖/来源，缺项拒绝而非发布READY。四项新回归及既有目标测试通过；不称此作者自检为独立审查。
+5. 第三轮浏览器误把同一幂等key重放当作新请求配置复用。正确合同是重放原receipt，因此测试分别验证同key原样返回、新已保存revision下相同配置免费复用，未改业务或删断言；最终完整矩阵通过。
+6. 最终旧P3浏览器暂停恢复时，同名“了解并进入”同时命中AI/DS，触发strict locator错误。已按fixture.taskVersionId定位确切href，未使用first/nth掩盖歧义；等待注册窗口自然恢复后，Chrome/Edge完整重跑通过，没有放宽断言或限流。
+7. 视觉核验发现历史失效通知在重新完成后仍写“需要重新复核”，易与当前待办混淆。改成“本次修改曾使…失效”，明确当前进度以左侧状态为准；生命周期单测、strict与build通过，不影响失效或来源校验。
+
+### P4 最终运行版本及已通过门禁
+
+- 后端内容寻址只读JAR SHA256 `557389ce85a850fd523e9453ef71da92b3d321d99b016b6e7ec4d70ac47f8db7`；DS Worker SHA256 `f86f10f1d318fc0ff7b7bb4e9a5115717b14bfd8935430acdebda213088c454c`。P0/P2 Worker、AI classifier bundle和AI内容未改；V1–V6执行迁移未改。此前a13包验证仅为中间证据。
+- 最后文案修复后 `sh scripts/test-unit`：Node149/149（82+41+26）；Java191项中117通过、74条件跳过。最终后台 `sh scripts/test-integration`：190通过、仅1项明确付费百炼实测跳过。`build-local`、前端strict/build和bundle哈希校验通过；普通验收付费调用0。
+- 最终JAR上 `node scripts/test-p4-api.mjs`：27/27实际操作响应schema通过，正式创建404与5项管理401仍仅是拒绝验证。完整D1–D6、四操作Java/JS逐值相同、原字节数据哈希、公开/私有边界、来源422/409、错误分支/伪造结果、30种成功及第31种429、耗尽后免费复用通过。实际Snapshot READY且冻结 `closed-input-v3` / `ds-evidence-v1`，5条UNVERIFIED分析claims=[]，4条VERIFIED_EXECUTION完整。PREVIEW无正式NEXT/report，正式计数不变。
+- 同一最终JAR的 `node scripts/test-p3-api.mjs` 回归再次通过27/27；原AI五次配额/baseline免费/隐藏集/关闭来源不退化。两轮API账户、关联数据与邮件均精确清理，不重置限流。
+- `node tests/e2e/p4.mjs`：Chrome153.0.8010.48、Edge151.0.4129.78各八组检查通过。D1资料/空理由、D2失败恢复/默认计次/幂等与新revision复用、D3频数、D4分组Wilson与散点、上游修改/来源失效/暂停恢复、D5两模式/D6/Reflection关闭、1536/1366/1100/1024/390、无Cookie/私有投影边界。无非预期console/page error，两个合成账户与邮件精确清理。
+- 最终执行器/后台上的 `node tests/e2e/p2.mjs`：Chrome/Edge各六组完整回归再次通过；Worker约10秒超时、崩溃、取消、恢复以及双标签冲突、离线草稿、TTL/跨身份隔离没有退化。
+- 最终JAR空库V1→V6：0→70表，首次6迁移、第二次0，checksum/P1与P2各13关键表/P3六表/Student归属通过；临时最小权限schema与账户精确清理。证据 `/tmp/majorpilot-fresh-migrations-kjp0QD/migration-evidence.json`。
+- 最后文案/选择器修复后的同机干净源码重建通过：`/tmp/majorpilot-clean-w69Ebh`，1087个源码/设计文件、新本地随机凭证、未复制供应商密钥或状态、未启动服务，共享工具/依赖缓存。随后只补交付文档和精选图片，不把同机演练称独立第二台机器验证。
+- 主代理同轮概念与真实截图核对八项见 [P4视觉验收](./28-p4-ds-visual-direction.md)。源码/前端产物/日志1423文件secret扫描通过；提交索引和diff仍作为Git交付最后门禁。所有普通测试未调用付费模型，专业审核/真人试用/45–60分钟计时仍PENDING。
+
+- 旧P3选择器修复后 `node tests/e2e/p3.mjs`：Chrome153.0.8010.48、Edge151.0.4129.78各四组完整回归通过，包含A1–A6、暂停恢复、真实五次配额/耗尽后复用、来源revision、反思与关闭、工程预览隔离及无私有字段/Cookie泄漏。无非预期console/page error；两个合成账户与捕获邮件精确清理。最终日志 `/tmp/majorpilot-p4-final-p3-browser.log`。
+
+P4本地工程门禁通过，准备按约定提交并推送；确切提交与远端核对见任务回执，并在下一阶段更新本记录。真人专业审核、零代码目标用户试用/计时、真实供应商容量以及公网部署仍未完成，不能据此宣称完整MVP已验收。
+
+P5的 [实施接缝](./29-p5-engineering-plan.md) 和关键屏概念在等待P4验收期间准备，仍不代表P5代码实现。真实专业审核、目标用户试用/计时以及公开部署保持独立门禁。

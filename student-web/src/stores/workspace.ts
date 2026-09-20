@@ -9,7 +9,14 @@ import {
   type DraftKey,
   type TaskDraft,
 } from "../lib/task-drafts";
-import { execute, executeClassifier } from "../execution";
+import { execute, executeClassifier, executeDs } from "../execution";
+import type {
+  DsResult,
+  LearnerRow,
+  Operation as DsOperation,
+  Parameters as DsParameters,
+} from "../../../shared/ds/ds-stats-v1.mjs";
+import type { DsDictionary, DsPythonExamples } from "../lib/ds-display";
 import type {
   Model,
   Config,
@@ -82,6 +89,20 @@ export const useWorkspace = defineStore("workspace", () => {
       ? (execution.value.result as unknown as Comparison)
       : null,
   );
+  const dsResult = computed(() =>
+    execution.value?.result?.schemaVersion === "ds-result-v1"
+      ? (execution.value.result as unknown as DsResult)
+      : null,
+  );
+  const dsRows = computed(
+    () => publicAssets.value["learner-activity"] as LearnerRow[] | undefined,
+  );
+  const dsDictionary = computed(
+    () => publicAssets.value["data-dictionary"] as DsDictionary | undefined,
+  );
+  const dsPython = computed(
+    () => publicAssets.value["python-examples"] as DsPythonExamples | undefined,
+  );
   const bindingConfiguration = computed(() =>
     Object.fromEntries(
       (step.value?.inputBindings || []).map((value) => [
@@ -116,7 +137,9 @@ export const useWorkspace = defineStore("workspace", () => {
   );
   const saveLabel = computed(() =>
     !selectionReady.value
-      ? error.value ? "步骤尚未就绪" : "正在读取步骤…"
+      ? error.value
+        ? "步骤尚未就绪"
+        : "正在读取步骤…"
       : conflict.value
         ? "版本冲突"
         : saving.value
@@ -537,6 +560,17 @@ export const useWorkspace = defineStore("workspace", () => {
         modificationReason: "",
         expectedEffect: "",
       });
+    if (
+      !recovered.value &&
+      !readOnly.value &&
+      key === "d2-quality" &&
+      Object.keys(answer.value).length === 0
+    )
+      edit({
+        duplicatePolicy: "KEEP",
+        missingPolicy: "KEEP_NULL",
+        extremePolicy: "KEEP",
+      });
   }
   function edit(next: Answer) {
     if (readOnly.value) return;
@@ -639,7 +673,7 @@ export const useWorkspace = defineStore("workspace", () => {
           if (summary) summary.revision = saved.revision;
           if (saved.invalidatedStepKeys?.length) {
             run.value = await request<Run>(`${base}/${runId}`);
-            iterationNotice.value = `你修改了已完成步骤。以下步骤的答案和历史仍保留，需要重新复核：${saved.invalidatedStepKeys.map((key) => manifest.value?.steps.find((value) => value.stepKey === key)?.title || key).join("、")}。`;
+            iterationNotice.value = `本次修改曾使以下步骤的完成状态失效：${saved.invalidatedStepKeys.map((key) => manifest.value?.steps.find((value) => value.stepKey === key)?.title || key).join("、")}。答案与历史仍保留；当前进度以左侧步骤状态为准。`;
           }
         }
         if (issuedAt !== generation) return false;
@@ -702,9 +736,14 @@ export const useWorkspace = defineStore("workspace", () => {
     )
       return;
     if (
-      !["demo-summary-v1", "ai-evaluate"].includes(
-        step.value.definition.operationKey,
-      )
+      ![
+        "demo-summary-v1",
+        "ai-evaluate",
+        "ds-quality-clean",
+        "ds-profile",
+        "ds-relationship",
+        "ds-stratify",
+      ].includes(step.value.definition.operationKey)
     ) {
       error.value = "此版本的执行适配器尚未开放，不会运行未审核操作。";
       return;
@@ -714,7 +753,8 @@ export const useWorkspace = defineStore("workspace", () => {
     error.value = "";
     workerController = new AbortController();
     const controller = workerController,
-      issuedAt = generation;
+      issuedAt = generation,
+      selectedAt = selectionGeneration;
     try {
       if (
         step.value!.definition.operationKey === "ai-evaluate" &&
@@ -725,9 +765,75 @@ export const useWorkspace = defineStore("workspace", () => {
       if (
         !(await flush()) ||
         controller.signal.aborted ||
-        issuedAt !== generation
+        issuedAt !== generation ||
+        selectedAt !== selectionGeneration
       )
         return;
+      if (step.value!.definition.operationKey?.startsWith("ds-")) {
+        const operationKey = step.value!.definition.operationKey as DsOperation;
+        const operation = manifest.value!.operations.find(
+          (value) => value.operationKey === operationKey,
+        );
+        if (!operation?.ownResponseBindings)
+          throw new Error("此版本缺少审核后的参数绑定，未执行计算。");
+        const inputRevision = step.value!.revision,
+          expectedSourceRevisions = sourceVector(step.value!);
+        const parameters: Answer = { ...bindingConfiguration.value };
+        for (const binding of operation.ownResponseBindings) {
+          const value = step.value!.response[binding.sourceField];
+          if (value !== undefined) parameters[binding.parameterKey] = value;
+        }
+        await loadAssets(["learner-activity"]);
+        if (
+          controller.signal.aborted ||
+          issuedAt !== generation ||
+          selectedAt !== selectionGeneration
+        )
+          return;
+        const dataset = manifest.value!.assets.find(
+          (value) => value.assetKey === "learner-activity",
+        );
+        if (!dataset || !dsRows.value)
+          throw new Error("公开数据未就绪，请重新读取本步骤。");
+        const local = await executeDs(
+          operationKey,
+          dsRows.value,
+          parameters as unknown as DsParameters,
+          dataset.sha256,
+          controller.signal,
+        );
+        if (
+          controller.signal.aborted ||
+          issuedAt !== generation ||
+          selectedAt !== selectionGeneration
+        )
+          return;
+        if (local.status !== "SUCCESS" || !local.result) {
+          if (local.code === "DS_INPUT_INVALID")
+            throw new ApiError(422, "DS_PARAMETERS_INVALID");
+          throw new Error(local.code || "WORKER_FAILURE");
+        }
+        localEngine.value = "ds-stats-v1 · 隔离 Worker 预览 · 服务端复算";
+        const body = {
+          operationKey,
+          inputRevision,
+          parameters: {},
+          expectedSourceRevisions,
+        };
+        execution.value = await request<Execution>(
+          base + "/" + run.value!.runId + "/executions",
+          {
+            method: "POST",
+            body,
+            key: requestKey("execution", {
+              body,
+              sourceRevisions: expectedSourceRevisions,
+            }),
+            signal: controller.signal,
+          },
+        );
+        return;
+      }
       if (step.value!.definition.operationKey === "ai-evaluate") {
         const body = {
           operationKey: "ai-evaluate",
@@ -788,6 +894,7 @@ export const useWorkspace = defineStore("workspace", () => {
               "EXECUTION_TIMEOUT",
               "EXECUTOR_BOOT_TIMEOUT",
               "WORKER_FAILURE",
+              "DS_DIGEST_FAILURE",
             ].includes(cause.message)
           ? "计算器超时或暂不可用。输入和上次结果仍保留，重试会新建隔离 Worker。"
           : errorText(cause);
@@ -978,6 +1085,10 @@ export const useWorkspace = defineStore("workspace", () => {
     practice,
     baseline,
     comparison,
+    dsResult,
+    dsRows,
+    dsDictionary,
+    dsPython,
     bindingConfiguration,
     practiceResult,
     practiceStale,

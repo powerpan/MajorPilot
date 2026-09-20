@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFileSync } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash, webcrypto } from "node:crypto";
 import ts from "typescript";
 
 // Current store code with transport/DOM/storage boundaries substituted. Browser
@@ -67,7 +67,8 @@ function harness() {
   let draftReader = async () => undefined;
   const listeners = [],
     calls = [],
-    drafts = [];
+    drafts = [],
+    dsCalls = [];
   let handler = async (path, options) =>
     path.endsWith("/task")
       ? { steps: [definition], assets: [], versionCode: "1" }
@@ -92,6 +93,13 @@ function harness() {
     setTimeout,
     clearTimeout,
     navigator: { onLine: true },
+    crypto: webcrypto,
+    TextEncoder,
+    TextDecoder,
+    fetch: async () => ({
+      ok: true,
+      arrayBuffer: async () => new TextEncoder().encode("[]").buffer,
+    }),
   });
   const require = (path) =>
     path === "vue"
@@ -143,7 +151,9 @@ function harness() {
               }
             : path === "../lib/task-drafts"
               ? {
-                  async readTaskDraft() { return draftReader(); },
+                  async readTaskDraft() {
+                    return draftReader();
+                  },
                   async writeTaskDraft(key, revision, answer) {
                     drafts.push({ key, revision, answer: clone(answer) });
                   },
@@ -157,6 +167,13 @@ function harness() {
                       status: "SUCCESS",
                       result: { count: 4, sum: 52, mean: 13 },
                     }),
+                    executeDs: async (...args) => {
+                      dsCalls.push(clone(args.slice(0, 4)));
+                      return {
+                        status: "SUCCESS",
+                        result: { schemaVersion: "ds-result-v1" },
+                      };
+                    },
                   }
                 : (() => {
                     throw new Error(`Unexpected import ${path}`);
@@ -173,6 +190,7 @@ function harness() {
     auth,
     calls,
     drafts,
+    dsCalls,
     setApi(next) {
       handler = next;
     },
@@ -245,6 +263,57 @@ test("conflicting autosave keeps the draft and requires explicit adoption", asyn
   assert.equal(h.store.conflict.value, true);
   assert.equal(h.store.answer.value.acknowledged, false);
   assert.ok(h.drafts.length);
+  h.store.clear();
+});
+test("invalidation notice describes history after a step is completed again and clears with identity", async () => {
+  const h = harness();
+  await h.store.load("owned-run");
+  const observe = { ...definition, stepKey: "observe", title: "观察" };
+  h.store.manifest.value.steps.push(observe);
+  h.setApi(async (path, options) => {
+    if (options.method === "PUT")
+      return {
+        revision: 2,
+        runRevision: 2,
+        invalidatedStepKeys: ["prepare", "observe"],
+      };
+    if (path.endsWith("/complete"))
+      return {
+        ...clone(run),
+        revision: 3,
+        currentStepKey: "observe",
+        steps: [
+          { stepKey: "prepare", status: "COMPLETED", revision: 2 },
+          { stepKey: "observe", status: "IN_PROGRESS", revision: 0 },
+        ],
+      };
+    if (path.endsWith("/steps/observe"))
+      return {
+        ...clone(step),
+        stepKey: "observe",
+        definition: observe,
+        revision: 0,
+      };
+    return { ...clone(run), revision: 2 };
+  });
+  h.store.edit({ acknowledged: false });
+  assert.equal(await h.store.flush(), true);
+  const notice = h.store.iterationNotice.value;
+  assert.equal(
+    notice,
+    "本次修改曾使以下步骤的完成状态失效：准备、观察。答案与历史仍保留；当前进度以左侧步骤状态为准。",
+  );
+  assert.doesNotMatch(notice, /需要重新复核/);
+  await h.store.complete();
+  assert.equal(h.store.run.value.steps[0].status, "COMPLETED");
+  assert.equal(h.store.selectedStep.value, "observe");
+  assert.equal(
+    h.store.iterationNotice.value,
+    notice,
+    "a historical notice does not claim these remain pending",
+  );
+  h.identity();
+  assert.equal(h.store.iterationNotice.value, "");
   h.store.clear();
 });
 test("other-tab pause stops writes without silently resuming or deleting local differences", async () => {
@@ -638,9 +707,10 @@ test("a newly edited input cannot be mistaken for recovered draft while selectin
 test("a superseded draft hydration cannot unlock or recover into the next selected step", async () => {
   const h = harness();
   await h.store.load("owned-run");
-  const first = deferred(), second = deferred();
+  const first = deferred(),
+    second = deferred();
   let reads = 0;
-  h.setDraftReader(() => ++reads === 1 ? first.promise : second.promise);
+  h.setDraftReader(() => (++reads === 1 ? first.promise : second.promise));
   h.setApi(async (path) => ({
     ...clone(step),
     stepKey: path.endsWith("observe") ? "observe" : "prepare",
@@ -671,11 +741,15 @@ test("a Run poll issued on A5 does not make the loaded A4 read-only when its act
     { stepKey: "a4-configure", status: "COMPLETED" },
   ];
   const poll = deferred();
-  h.setApi(async (path) => path.includes("/steps/") ? {
-    ...clone(step),
-    stepKey: "a4-configure",
-    definition: { ...definition, dependencies: ["a3-errors"] },
-  } : poll.promise);
+  h.setApi(async (path) =>
+    path.includes("/steps/")
+      ? {
+          ...clone(step),
+          stepKey: "a4-configure",
+          definition: { ...definition, dependencies: ["a3-errors"] },
+        }
+      : poll.promise,
+  );
   const pending = h.store.checkState();
   await settle();
   await h.store.select("a4-configure");
@@ -694,7 +768,9 @@ test("a Run poll issued on A5 does not make the loaded A4 read-only when its act
 test("a failed step hydration stays gated with an explicit error and can be retried", async () => {
   const h = harness();
   await h.store.load("owned-run");
-  h.setApi(async () => { throw new Error("reviewed asset unavailable"); });
+  h.setApi(async () => {
+    throw new Error("reviewed asset unavailable");
+  });
   await h.store.select("prepare").catch(h.store.handle);
   assert.equal(h.store.selectionReady.value, false);
   assert.equal(h.store.readOnly.value, true);
@@ -705,5 +781,119 @@ test("a failed step hydration stays gated with an explicit error and can be retr
   assert.equal(h.store.selectionReady.value, true);
   assert.equal(h.store.readOnly.value, false);
   assert.equal(h.store.error.value, "");
+  h.store.clear();
+});
+test("P4 v3 sends source CAS including empty ancestry and uses saved own fields only for local preview", async () => {
+  const h = harness();
+  await h.store.load("owned-run");
+  const digest = createHash("sha256").update("[]").digest("hex");
+  h.store.manifest.value = {
+    ...h.store.manifest.value,
+    schemaVersion: "task-manifest-v3",
+    assets: [
+      {
+        assetKey: "learner-activity",
+        mediaType: "application/json",
+        sha256: digest,
+        byteLength: 2,
+      },
+    ],
+    operations: [
+      {
+        operationKey: "ds-profile",
+        ownResponseBindings: [
+          {
+            parameterKey: "distributionField",
+            sourceField: "distributionField",
+          },
+        ],
+      },
+    ],
+  };
+  h.store.step.value = {
+    ...h.store.step.value,
+    definition: { ...definition, operationKey: "ds-profile" },
+    response: {
+      distributionField: "avg_session_minutes",
+      sampleInterpretation: "not a compute parameter",
+    },
+    inputBindings: [
+      {
+        parameterKey: "duplicatePolicy",
+        sourceStepKey: "d2-quality",
+        sourceRevision: 3,
+        value: "DROP_EXACT",
+      },
+      {
+        parameterKey: "missingPolicy",
+        sourceStepKey: "d2-quality",
+        sourceRevision: 3,
+        value: "KEEP_NULL",
+      },
+      {
+        parameterKey: "extremePolicy",
+        sourceStepKey: "d2-quality",
+        sourceRevision: 3,
+        value: "KEEP",
+      },
+    ],
+  };
+  const receipts = new Map();
+  h.setApi(async (_path, options) => {
+    if (!receipts.has(options.key))
+      receipts.set(options.key, {
+        executionId: "server-result",
+        status: "SUCCEEDED",
+        reused: receipts.size > 0,
+        remainingEvaluations: 29,
+        appliedToRevision: options.body.inputRevision,
+      });
+    return clone(receipts.get(options.key));
+  });
+  await h.store.executePreview();
+  assert.equal(h.store.execution.value.reused, false);
+  await h.store.executePreview();
+  assert.equal(
+    h.store.execution.value.reused,
+    false,
+    "same request receipt retains the first reused flag",
+  );
+  const calls = h.calls.filter((value) => value.path.endsWith("/executions"));
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].options.key, calls[1].options.key);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].options.body)), {
+    operationKey: "ds-profile",
+    inputRevision: 1,
+    parameters: {},
+    expectedSourceRevisions: { "d2-quality": 3 },
+  });
+  assert.deepEqual(h.dsCalls[0][2], {
+    duplicatePolicy: "DROP_EXACT",
+    missingPolicy: "KEEP_NULL",
+    extremePolicy: "KEEP",
+    distributionField: "avg_session_minutes",
+  });
+  h.store.step.value.revision = 2;
+  h.store.step.value.response.sampleInterpretation =
+    "updated explanation, same compute configuration";
+  await h.store.executePreview();
+  assert.notEqual(h.calls.at(-1).options.key, calls[0].options.key);
+  assert.deepEqual(h.dsCalls.at(-1)[2], h.dsCalls[0][2]);
+  assert.equal(h.store.execution.value.executionId, "server-result");
+  assert.equal(
+    h.store.execution.value.reused,
+    true,
+    "a new answer revision can receive a computation-cache reuse receipt",
+  );
+  assert.equal(h.store.execution.value.remainingEvaluations, 29);
+  assert.equal(h.store.execution.value.appliedToRevision, 2);
+  h.store.step.value.inputBindings = [];
+  await h.store.executePreview();
+  const last = h.calls.at(-1);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(last.options.body.expectedSourceRevisions)),
+    {},
+  );
+  assert.notEqual(last.options.key, calls[0].options.key);
   h.store.clear();
 });

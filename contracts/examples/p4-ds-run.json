@@ -1,0 +1,76 @@
+{
+  "purpose": "Synthetic engineering acceptance fixture, not human review or timing evidence",
+  "taskVersionId": "01JD1000000000000000000001",
+  "responseSchemaVersion": "ds-response-v1",
+  "responses": {
+    "d1-context": {
+      "acknowledged": true,
+      "observationUnit": "LEARNER",
+      "targetField": "completed"
+    },
+    "d2-quality": {
+      "identifiedIssues": [
+        "EXACT_DUPLICATE",
+        "MISSING_RECORD",
+        "NOT_APPLICABLE"
+      ],
+      "duplicatePolicy": "DROP_EXACT",
+      "missingPolicy": "KEEP_NULL",
+      "extremePolicy": "KEEP",
+      "duplicateReason": "完全重复记录会给同一学员重复权重，因此先保留第一条。",
+      "missingReason": "先保留记录缺失，针对每次分析报告有效分母，不填补未开始者的不适用值。"
+    },
+    "d3-profile": {
+      "distributionField": "avg_session_minutes",
+      "sampleInterpretation": "完成率使用保留记录作为分母，会话分布只包含该字段有效记录，两者不能混用。"
+    },
+    "d4-relationship": {
+      "relationshipMode": "SCATTER",
+      "xField": "days_to_first_lesson",
+      "yField": "assignment_submit_rate",
+      "observation": "我观察首课等待时间与提交率的成对记录关系；缺少任一轴的记录没有参与。"
+    },
+    "d5-stratify": {
+      "stratifyBy": "course_track",
+      "uncertaintyComment": "分层后的样本量更小，课程构成与缺失可能影响关系，相关系数不能替代因果检验。",
+      "causalJudgment": "INSUFFICIENT_FOR_CAUSAL_CLAIM"
+    },
+    "d6-conclusion": {
+      "findings": [
+        {
+          "statement": "会话时长分布的有效记录数不同于完成率分母，需要分别说明。",
+          "evidenceStepKey": "d3-profile",
+          "verdict": "SUPPORTED"
+        },
+        {
+          "statement": "当前成对数据与分层关系仍不足以识别缩短等待时间的因果效果。",
+          "evidenceStepKey": "d5-stratify",
+          "verdict": "INSUFFICIENT_EVIDENCE"
+        }
+      ],
+      "unsupportedCausalClaim": "不能仅凭相关就说缩短首次学习等待时间一定会提高完成率。",
+      "limitations": "合成样本、缺失与重复处理以及课程构成都限制了对真实学生的推广。",
+      "nextQuestion": "在相同课程和批次中开展小范围随机提醒试验，能否观察到首课启动和完成的变化？"
+    }
+  },
+  "groupAlternative": {
+    "relationshipMode": "GROUP_COMPLETION",
+    "groupBy": "device_group",
+    "observation": "比较设备组的完成比例和各自分母，观察差异但不把设备解释为原因。"
+  },
+  "reflection": {
+    "questionSetVersion": "ds-reflection-v1",
+    "answers": {
+      "interestingStepKeys": [
+        "d2-quality",
+        "d5-stratify"
+      ],
+      "difficultySources": [
+        "KNOWLEDGE"
+      ],
+      "continueSimilarWork": "YES",
+      "nextWorkStyle": "DATA_REASONING",
+      "aiFollowUp": "SKIPPED"
+    }
+  }
+}

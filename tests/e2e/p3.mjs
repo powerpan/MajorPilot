@@ -165,7 +165,9 @@ try {
         .getByLabel("密码", { exact: true })
         .fill(accounts[index].password);
       await page.getByRole("button", { name: "登录", exact: true }).click();
-      await page.getByRole("link", { name: "了解并进入 →" }).click();
+      await page
+        .locator('a[href="/app/review-previews/' + fixture.taskVersionId + '"]')
+        .click();
       await title("AI：让支持请求分类更可靠");
       await shot("introduction-1536");
       await page.getByRole("button", { name: "开始工程预览" }).click();
@@ -291,7 +293,9 @@ try {
       await page
         .getByRole("button", { name: "暂停并返回", exact: true })
         .click();
-      await page.getByRole("link", { name: "了解并进入 →" }).click();
+      await page
+        .locator('a[href="/app/review-previews/' + fixture.taskVersionId + '"]')
+        .click();
       await page.getByRole("button", { name: "恢复工程预览" }).click();
       await title("设计有限配置修改");
       assert.equal(
@@ -581,50 +585,79 @@ try {
       // Only state gates and reviewed configuration: no credentials, headers,
       // free-text responses or complete browser storage are captured.
       if (!page.isClosed()) {
-        await page.screenshot({ path: `${output}/${channel}-failure.png` })
+        await page
+          .screenshot({ path: `${output}/${channel}-failure.png` })
           .catch(() => undefined);
-        const state = await page.evaluate(() => {
-          const root = document.querySelector("#app"),
-            store = root?.__vue_app__?.config.globalProperties.$pinia?._s.get("workspace");
-          return {
-            heading: document.querySelector(".workspace-title-row h1")?.textContent?.trim(),
-            saveStatus: document.querySelector('[data-testid="save-status"]')?.textContent?.trim(),
-            gates: store ? {
-              readOnly: store.readOnly,
-              selectionReady: store.selectionReady,
-              busy: store.busy,
-              executing: store.executing,
-              saving: store.saving,
-              dirty: store.dirty,
-              conflict: store.conflict,
-              hasRecovered: !!store.recovered,
-              runStatus: store.run?.status,
-              runRevision: store.run?.revision,
-              step: store.step?.stepKey,
-              stepRevision: store.step?.revision,
-              stepReadOnly: store.step?.readOnly,
-            } : null,
-            configuration: store ? {
-              confidenceThreshold: store.answer?.confidenceThreshold,
-              lowConfidencePolicy: store.answer?.lowConfidencePolicy,
-              definitionVariantIds: store.answer?.definitionVariantIds,
-            } : null,
-            notices: [...document.querySelectorAll(".error-notice,.workspace-notice")]
-              .map((value) => value.textContent?.trim()),
-            geometry: {
-              headerTop: document.querySelector(".workspace-header")?.getBoundingClientRect().top,
-              footerBottom: document.querySelector(".workspace-footer")?.getBoundingClientRect().bottom,
-              viewportHeight: innerHeight,
-            },
-          };
-        }).catch(() => ({ unavailable: true }));
+        const state = await page
+          .evaluate(() => {
+            const root = document.querySelector("#app"),
+              store =
+                root?.__vue_app__?.config.globalProperties.$pinia?._s.get(
+                  "workspace",
+                );
+            return {
+              heading: document
+                .querySelector(".workspace-title-row h1")
+                ?.textContent?.trim(),
+              saveStatus: document
+                .querySelector('[data-testid="save-status"]')
+                ?.textContent?.trim(),
+              gates: store
+                ? {
+                    readOnly: store.readOnly,
+                    selectionReady: store.selectionReady,
+                    busy: store.busy,
+                    executing: store.executing,
+                    saving: store.saving,
+                    dirty: store.dirty,
+                    conflict: store.conflict,
+                    hasRecovered: !!store.recovered,
+                    runStatus: store.run?.status,
+                    runRevision: store.run?.revision,
+                    step: store.step?.stepKey,
+                    stepRevision: store.step?.revision,
+                    stepReadOnly: store.step?.readOnly,
+                  }
+                : null,
+              configuration: store
+                ? {
+                    confidenceThreshold: store.answer?.confidenceThreshold,
+                    lowConfidencePolicy: store.answer?.lowConfidencePolicy,
+                    definitionVariantIds: store.answer?.definitionVariantIds,
+                  }
+                : null,
+              notices: [
+                ...document.querySelectorAll(".error-notice,.workspace-notice"),
+              ].map((value) => value.textContent?.trim()),
+              geometry: {
+                headerTop: document
+                  .querySelector(".workspace-header")
+                  ?.getBoundingClientRect().top,
+                footerBottom: document
+                  .querySelector(".workspace-footer")
+                  ?.getBoundingClientRect().bottom,
+                viewportHeight: innerHeight,
+              },
+            };
+          })
+          .catch(() => ({ unavailable: true }));
         await writeFile(
           `${output}/${channel}-failure-state.json`,
-          JSON.stringify({ browser: channel, state, pageErrors: errors, consoleErrors }, null, 2),
+          JSON.stringify(
+            { browser: channel, state, pageErrors: errors, consoleErrors },
+            null,
+            2,
+          ),
         );
-        console.error(JSON.stringify({
-          browser: channel, phase: "failure-state", state, pageErrors: errors, consoleErrors,
-        }));
+        console.error(
+          JSON.stringify({
+            browser: channel,
+            phase: "failure-state",
+            state,
+            pageErrors: errors,
+            consoleErrors,
+          }),
+        );
       }
       throw cause;
     } finally {

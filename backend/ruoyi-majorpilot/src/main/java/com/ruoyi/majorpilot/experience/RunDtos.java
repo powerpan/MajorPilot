@@ -1,6 +1,7 @@
 package com.ruoyi.majorpilot.experience;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,11 @@ public final class RunDtos {
     public record Transition(Long expectedRevision,String pauseActiveRunId,Long expectedActiveRunRevision) {}
     public record Revision(Long expectedRevision) {}
     public record Save(Long expectedRevision,String responseSchemaVersion,JsonNode response) {}
-    public record Execute(String operationKey,Long inputRevision,JsonNode parameters,String inputSha256,JsonNode observedResult) {}
+    public record Execute(String operationKey,Long inputRevision,JsonNode parameters,String inputSha256,JsonNode observedResult,
+                          @JsonInclude(JsonInclude.Include.NON_NULL) Map<String,Long> expectedSourceRevisions) {
+        /** Keep old request fingerprints byte-compatible when the optional v3 field is absent. */
+        public Execute(String operationKey,Long inputRevision,JsonNode parameters,String inputSha256,JsonNode observedResult){this(operationKey,inputRevision,parameters,inputSha256,observedResult,null);}
+    }
     public record Hint(String stepKey,Integer hintLevel) {}
     public record ReflectionSave(Long expectedRevision,String questionSetVersion,JsonNode answers) {}
     public record Recovery(Long expectedRevision,String reasonCode,String reasonText) {}

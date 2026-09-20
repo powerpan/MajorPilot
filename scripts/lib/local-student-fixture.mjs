@@ -32,8 +32,10 @@ export class LocalClient {
       if (parts.some(x => /^Max-Age=0$/i.test(x))) this.cookies.delete(name);
       else this.cookies.set(name, { value: parts[0].slice(equal + 1), path: parts.find(x => /^Path=/i.test(x))?.slice(5) || '/' });
     }
-    const payload = await response.json().catch(() => null);
-    return { status: response.status, body: payload, headers: response.headers, setCookies };
+    const text = await response.text();
+    let payload = null;
+    try { payload = JSON.parse(text); } catch { /* Fixed public CSV/text assets are not JSON envelopes. */ }
+    return { status: response.status, body: payload, text, headers: response.headers, setCookies };
   }
   async publicCsrf() { expect(await this.call('/api/public/v1/auth/csrf'), 200, 'public CSRF'); }
 }

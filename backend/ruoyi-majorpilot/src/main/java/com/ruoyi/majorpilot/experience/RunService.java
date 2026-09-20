@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ruoyi.majorpilot.content.*;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.datascience.DsSemantics;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
@@ -112,7 +113,10 @@ public class RunService {
     void dependencies(Row run,JsonNode definition) {for(var dependency:definition.path("dependencies")){var state=stepState(run,dependency.asText());if(!s(state,"status").equals("COMPLETED"))throw new ApiException(409,"STEP_NOT_AVAILABLE");}}
     JsonNode response(Map<String,Object> step) {if(n(step,"current_revision")==0)return db.mapper().createObjectNode();return db.node(db.jdbc().queryForObject("SELECT response_json FROM mp_step_response_revision WHERE step_state_id=? AND revision_no=?",String.class,n(step,"id"),n(step,"current_revision")));}
     JsonNode operation(Row run,String key) {for(var op:version(run).manifest().path("operations"))if(op.path("operationKey").asText().equals(key))return op;throw new ApiException(422,"EXECUTION_NOT_ALLOWED");}
-    List<RunDtos.InputBinding> bindings(Row run,JsonNode operation) {var result=new ArrayList<RunDtos.InputBinding>();for(var binding:operation.path("inputBindings")){String source=binding.path("sourceStepKey").asText();var state=stepState(run,source);long revision=n(state,"current_revision");String field=binding.path("sourceField").asText();var value=response(state).get(field);if(revision==0||value==null)throw new ApiException(409,"EXECUTION_REVISION_STALE");result.add(new RunDtos.InputBinding(binding.path("parameterKey").asText(),source,field,revision,value));}return List.copyOf(result);}
+    ExecutionBindings.Bound bound(Row run,JsonNode operation,JsonNode ownResponse){return new ExecutionBindings(this).resolve(run,operation,ownResponse);}
+    List<RunDtos.InputBinding> bindings(Row run,JsonNode operation) {return bound(run,operation,null).ancestors();}
+    void validateParameters(JsonNode operation,JsonNode parameters){ResponseRules.validate(operation.path("parametersSchema"),parameters,true);if(operation.path("engineType").asText().equals("DATA_ANALYSIS"))DsSemantics.validate(operation.path("operationKey").asText(),parameters);}
+    ExecutionBindings.Bound validatedParameters(Row run,JsonNode operation,JsonNode ownResponse){var bound=bound(run,operation,ownResponse);validateParameters(operation,bound.parameters());return bound;}
     Map<String,Long> sources(List<RunDtos.InputBinding> bindings) {var result=new TreeMap<String,Long>();for(var binding:bindings)result.put(binding.sourceStepKey(),binding.sourceRevision());return result;}
     String bindingHash(Map<String,Long> sources) {return Secrets.hash(db.json(new TreeMap<>(sources)));}
     Map<String,Long> sourceMap(Object json) {var result=new TreeMap<String,Long>();db.node(json).fields().forEachRemaining(e->result.put(e.getKey(),e.getValue().asLong()));return result;}
@@ -138,7 +142,10 @@ public class RunService {
         if(s(state,"status").equals("COMPLETED"))return db.view(run);
         ResponseRules.validate(definition.path("inputSchema"),response(state),true);
         String operation=definition.path("operationKey").asText("");
-        if(!operation.isBlank()&&db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_response_execution x JOIN mp_step_response_revision r ON r.id=x.response_revision_id JOIN mp_execution_record e ON e.id=x.execution_record_id WHERE r.step_state_id=? AND r.revision_no=? AND e.status='SUCCEEDED' AND e.trust_level='SERVER_VERIFIED' AND e.operation_key=? AND x.source_binding_sha256=?",Integer.class,n(state,"id"),n(state,"current_revision"),operation,bindingHash(sources(bindings(run,operation(run,operation)))))==0)throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
+        if(!operation.isBlank()){
+            var bound=validatedParameters(run,operation(run,operation),response(state));
+            if(currentExecutionRecord(run,state,operation,bound.sources())==null)throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
+        }
         db.jdbc().update("INSERT IGNORE INTO mp_step_completion(public_id,step_state_id,response_revision) VALUES(?,?,?)",PublicIds.next(),n(state,"id"),n(state,"current_revision"));
         db.jdbc().update("UPDATE mp_step_state SET status='COMPLETED',completed_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=?",n(state,"id"));db.touch(run,nextStep(run,key));db.event(run,"step.completed",Map.of("stepKey",key));return db.view(db.internal(run.id()));
     });}
@@ -153,9 +160,32 @@ public class RunService {
         db.jdbc().update("UPDATE mp_experience_run SET status='TASK_COMPLETED',task_completed_at=UTC_TIMESTAMP(3),last_activity_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=?",run.id());
         db.jdbc().update("INSERT INTO mp_reflection(public_id,experience_run_id,question_set_version,draft_json) VALUES(?,?,?,'{}')",PublicIds.next(),run.id(),manifest.path("reflection").path("questionSetVersion").asText());db.event(run,"task.completed",Map.of());return db.view(db.internal(run.id()));
     });}
+    private Map<String,Object> currentExecutionRecord(Row run,Map<String,Object> state,String operation,Map<String,Long> sources) {
+        var rows=db.jdbc().queryForList("SELECT e.* FROM mp_response_execution x JOIN mp_step_response_revision r ON r.id=x.response_revision_id JOIN mp_execution_record e ON e.id=x.execution_record_id WHERE r.step_state_id=? AND r.revision_no=? AND e.experience_run_id=? AND e.step_key=? AND e.status='SUCCEEDED' AND e.trust_level='SERVER_VERIFIED' AND e.operation_key=? AND x.source_binding_sha256=? ORDER BY e.id DESC LIMIT 1",n(state,"id"),n(state,"current_revision"),run.id(),s(state,"step_key"),operation,bindingHash(sources));
+        return rows.isEmpty()?null:rows.getFirst();
+    }
+    private int remainingEvaluations(Row run,String key) {
+        int used=db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_execution_record WHERE experience_run_id=? AND operation_key=? AND evaluation_config_sha256 IS NOT NULL AND counts_against_quota=TRUE",Integer.class,run.id(),key);
+        return Math.max(0,operation(run,key).path("maxEvaluations").asInt(5)-used);
+    }
+    /** Current business state is selected by its exact own/source binding, never by a history page. */
+    RunDtos.Execution currentExecution(Row run,String step) {
+        String key=stepDefinition(run,step).path("operationKey").asText("");if(key.isBlank())return null;
+        var state=stepState(run,step);if(n(state,"current_revision")==0)return null;
+        var bound=validatedParameters(run,operation(run,key),response(state));var record=currentExecutionRecord(run,state,key,bound.sources());
+        return record==null?null:execution(record,false,remainingEvaluations(run,key),n(state,"current_revision"),bound.sources());
+    }
     List<RunDtos.Execution> executions(Row run,String step) {
-        var remaining=new HashMap<String,Integer>();for(var operation:version(run).manifest().path("operations")){String key=operation.path("operationKey").asText();int used=db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_execution_record WHERE experience_run_id=? AND operation_key=? AND evaluation_config_sha256 IS NOT NULL AND counts_against_quota=TRUE",Integer.class,run.id(),key);remaining.put(key,Math.max(0,operation.path("maxEvaluations").asInt(5)-used));}
-        return db.jdbc().queryForList("SELECT e.* FROM mp_execution_record e WHERE e.experience_run_id=? AND e.step_key=? ORDER BY e.id DESC LIMIT 50",run.id(),step).stream().map(e->{var sources=sources(bindings(run,operation(run,s(e,"operation_key"))));var applied=db.jdbc().queryForList("SELECT r.revision_no FROM mp_response_execution x JOIN mp_step_response_revision r ON r.id=x.response_revision_id JOIN mp_step_state s ON s.id=r.step_state_id WHERE x.execution_record_id=? AND r.revision_no=s.current_revision AND x.source_binding_sha256=?",n(e,"id"),bindingHash(sources));return execution(e,false,remaining.getOrDefault(s(e,"operation_key"),0),applied.isEmpty()?null:n(applied.getFirst(),"revision_no"),applied.isEmpty()?null:sources);}).toList();
+        RunDtos.Execution current=null;
+        try{current=currentExecution(run,step);}catch(ApiException incomplete){if(!Set.of("STEP_VALIDATION_FAILED","DS_PARAMETERS_INVALID","EXECUTION_REVISION_STALE").contains(incomplete.code))throw incomplete;}
+        var remaining=new HashMap<String,Integer>();var result=new ArrayList<RunDtos.Execution>();boolean included=false;
+        for(var record:db.jdbc().queryForList("SELECT e.* FROM mp_execution_record e WHERE e.experience_run_id=? AND e.step_key=? ORDER BY e.id DESC LIMIT 50",run.id(),step)){
+            if(current!=null&&current.executionId().equals(s(record,"public_id"))){result.add(current);included=true;}
+            else result.add(execution(record,false,remaining.computeIfAbsent(s(record,"operation_key"),key->remainingEvaluations(run,key)),null,null));
+        }
+        // At most one explicitly current result accompanies the bounded historical page for this step.
+        if(current!=null&&!included)result.add(current);
+        return List.copyOf(result);
     }
     RunDtos.Execution execution(Map<String,Object> e,boolean reused,int remaining,Long appliedRevision,Map<String,Long> appliedSources) {return new RunDtos.Execution(s(e,"public_id"),s(e,"operation_key"),s(e,"step_key"),n(e,"input_revision"),appliedRevision,s(e,"status"),s(e,"trust_level"),db.node(e.get("result_json")),s(e,"error_code"),n(e,"duration_ms"),reused,Math.max(0,remaining),sourceMap(e.get("source_revisions_json")),appliedSources);}
     public RunDtos.Run recover(long operator,String id,String key,RunDtos.Recovery input,String correlation) {

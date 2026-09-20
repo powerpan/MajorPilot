@@ -1,0 +1,290 @@
+.ds-workspace {
+  font-size: 18px;
+  line-height: 1.65;
+}
+.ds-workspace h2 {
+  font-size: 23px;
+  line-height: 1.4;
+  margin: 24px 0 14px;
+}
+.ds-workspace table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.ds-workspace th,
+.ds-workspace td {
+  border: 1px solid var(--line);
+  padding: 10px 13px;
+  vertical-align: top;
+  font-weight: 400;
+}
+.ds-workspace th {
+  font-weight: 600;
+}
+.ds-workspace caption {
+  text-align: left;
+  padding: 10px 0;
+}
+.ds-workspace .muted {
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 10px 0 20px;
+}
+.ds-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+  max-height: 390px;
+  margin: 12px 0;
+}
+.ds-raw-table table {
+  min-width: 1800px;
+}
+.ds-raw-table td {
+  white-space: nowrap;
+}
+.ds-details {
+  margin: 18px 0;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.ds-details summary {
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 32px;
+}
+.ds-details small {
+  display: block;
+  font-weight: 400;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.ds-fields {
+  margin-top: 24px;
+}
+.ds-fields > label,
+.ds-two-columns > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 15px 0;
+  font-size: 17px;
+  font-weight: 550;
+}
+.ds-two-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+}
+.ds-fields select,
+.ds-fields textarea {
+  background: #fbfaf6;
+  color: var(--ink);
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #8b8f99;
+  border-radius: 3px;
+  font-size: 16px;
+  line-height: 1.6;
+  padding: 9px 12px;
+}
+.ds-fields textarea {
+  resize: vertical;
+  min-height: 92px;
+  font-weight: 400;
+}
+.ds-fields select {
+  min-height: 43px;
+}
+.ds-fields input {
+  accent-color: var(--blue);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin: 0;
+}
+.ds-fields select:disabled,
+.ds-fields textarea:disabled {
+  opacity: 0.65;
+}
+.ds-fields .workspace-check {
+  flex-direction: row;
+}
+.ds-issues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 25px;
+  border: 1px solid var(--line);
+  padding: 15px 18px;
+  margin: 0 0 17px;
+  font-size: 16px;
+}
+.ds-issues legend {
+  font-weight: 600;
+  padding: 0 7px;
+}
+.ds-issues label,
+.ds-modes label {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.ds-policy-rows > label {
+  display: grid;
+  grid-template-columns: 155px minmax(0, 280px);
+  gap: 15px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding: 10px 0;
+  font-size: 17px;
+}
+.ds-policy-rows > p {
+  padding-left: 170px;
+}
+.ds-modes {
+  display: flex;
+  gap: 28px;
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+.ds-inline-select {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px !important;
+}
+.ds-inline-select select {
+  max-width: 360px;
+}
+.ds-inline-select span {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.ds-run-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 22px 0 8px;
+}
+.ds-run-actions > span {
+  font-size: 14px;
+  color: var(--muted);
+}
+.ds-run-actions button {
+  font-size: 18px;
+  min-height: 45px;
+  padding: 9px 24px;
+  border-radius: 3px;
+}
+.ds-empty {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 16px;
+}
+.ds-stat-line {
+  font-size: 17px;
+  font-weight: 550;
+  line-height: 1.8;
+}
+.ds-chart {
+  margin: 25px 0 18px;
+  min-width: 0;
+}
+.ds-chart figcaption {
+  font-weight: 600;
+  font-size: 19px;
+  margin-bottom: 16px;
+}
+.ds-chart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  font-family: inherit;
+  color: var(--ink);
+}
+.ds-chart text {
+  font-size: 14px;
+  fill: var(--ink);
+}
+.ds-axis line,
+.ds-grid {
+  stroke: #bfc1c4;
+  stroke-width: 0.6;
+  shape-rendering: crispEdges;
+}
+.ds-interval {
+  stroke: var(--blue);
+  stroke-width: 1.8;
+}
+.ds-point {
+  fill: var(--blue);
+}
+.ds-scatter-point {
+  fill: #304ffe12;
+  stroke: var(--blue);
+  stroke-width: 1.1;
+}
+.ds-bar {
+  fill: #304ffeb8;
+}
+.ds-hash {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.ds-python pre {
+  overflow: auto;
+  max-height: 360px;
+  font-size: 14px;
+  line-height: 1.75;
+  padding: 18px;
+  background: #eeede7;
+}
+.ds-finding {
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  margin: 18px 0;
+}
+.ds-finding legend {
+  font-size: 23px;
+  font-weight: 600;
+  padding-right: 20px;
+}
+.ds-finding > label {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (min-width: 1024px) and (max-width: 1399px) {
+  .ds-two-columns {
+    gap: 16px;
+  }
+  .ds-workspace {
+    font-size: 17px;
+  }
+  .ds-workspace td,
+  .ds-workspace th {
+    padding: 8px 10px;
+  }
+  .ds-policy-rows > label {
+    grid-template-columns: 130px minmax(0, 1fr);
+  }
+  .ds-policy-rows > p {
+    padding-left: 145px;
+  }
+}
+.ds-references-compact > .ds-details {
+  margin-block: 8px;
+  padding-block: 8px;
+}

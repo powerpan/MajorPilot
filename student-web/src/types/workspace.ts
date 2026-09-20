@@ -49,6 +49,12 @@ export interface TaskManifest {
     stepKey: string;
     parametersSchema: InputSchema;
     maxEvaluations: number;
+    ownResponseBindings?: { parameterKey: string; sourceField: string }[];
+    inputBindings?: {
+      parameterKey: string;
+      sourceStepKey: string;
+      sourceField: string;
+    }[];
   }[];
   reflection: {
     questionSetVersion: string;
