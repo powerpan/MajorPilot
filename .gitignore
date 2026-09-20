@@ -20,3 +20,7 @@ target/
 *.log
 /logs/
 /data/
+/.local/
+/artifacts/
+playwright-report/
+test-results/

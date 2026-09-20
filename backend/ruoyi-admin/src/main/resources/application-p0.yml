@@ -1,0 +1,67 @@
+# LOCAL TECHNICAL PROBES ONLY. Not a production/deployment profile.
+server:
+  address: 127.0.0.1
+  port: 18080
+  tomcat:
+    threads:
+      max: 30
+      min-spare: 2
+spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    time-zone: UTC
+  datasource:
+    druid:
+      master:
+        url: ${MP_DB_URL}
+        username: ${MP_DB_USERNAME}
+        password: ${MP_DB_PASSWORD}
+      initial-size: 1
+      min-idle: 1
+      max-active: 8
+      web-stat-filter:
+        enabled: false
+      stat-view-servlet:
+        enabled: false
+      filter:
+        stat:
+          enabled: false
+          log-slow-sql: false
+  data:
+    redis:
+      host: ${MP_REDIS_HOST:127.0.0.1}
+      port: ${MP_REDIS_PORT:16380}
+      password: ${MP_REDIS_PASSWORD}
+  flyway:
+    # Use Flyway's own JDBC connection: Druid's wall filter interferes with the
+    # harmless capability probe for performance_schema session variables.
+    url: ${MP_DB_URL}
+    user: ${MP_DB_USERNAME}
+    password: ${MP_DB_PASSWORD}
+    enabled: true
+    clean-disabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+  mail:
+    host: 127.0.0.1
+    port: 11025
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+ruoyi:
+  profile: ${MP_DATA_DIR:./data}/uploads
+logging:
+  config: classpath:logback-p0.xml
+  level:
+    com.ruoyi: info
+    org.springframework: warn
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+majorpilot:
+  p0:
+    worker-enabled: ${MP_P0_WORKER_ENABLED:true}

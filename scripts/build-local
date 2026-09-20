@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+exec data/tools/node/bin/node scripts/build-local.mjs

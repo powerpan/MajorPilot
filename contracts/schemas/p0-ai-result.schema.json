@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://majorpilot.invalid/schemas/p0-ai-result.schema.json",
+  "title": "P0 synthetic capability result (not a report)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "major", "evidenceIds", "explanation"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "p0-ai-v1" },
+    "major": { "type": "string", "const": "DATA_SCIENCE" },
+    "evidenceIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "const": "synthetic_ev_1" }
+    },
+    "explanation": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

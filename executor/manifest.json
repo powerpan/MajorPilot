@@ -1,0 +1,9 @@
+{
+  "engine": "fixed-calculator-v1",
+  "workerSha256": "df6cf2ea3a3b9f6dcbc6d91247d97369c21fa11b7fb3f114eb7bcebe62086515",
+  "inputBytes": 1048576,
+  "outputBytes": 102400,
+  "timeoutMs": 10000,
+  "maximumNumbers": 10000,
+  "scope": "p0-trusted-templates-only"
+}

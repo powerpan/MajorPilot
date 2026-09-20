@@ -1,0 +1,9 @@
+{
+  "name": "majorpilot-p0-e2e",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.1",
+  "engines": {"node": "24.x", "npm": "11.19.1"},
+  "scripts": {"test:execution": "node execution.mjs", "test:cookies": "node cookies.mjs", "test:admin": "node admin.mjs", "test:security": "node security.mjs", "test:pyodide": "node pyodide.mjs"},
+  "devDependencies": {"playwright": "1.62.1"}
+}

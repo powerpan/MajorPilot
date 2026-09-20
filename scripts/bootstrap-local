@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+node scripts/configure-local.mjs
+node scripts/install-tools.mjs
+data/tools/node/bin/node scripts/infra.mjs --bootstrap

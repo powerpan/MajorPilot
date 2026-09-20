@@ -1,0 +1,1379 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "MajorPilot P0 local-only probe API",
+    "version": "0.0.0-p0",
+    "description": "Engineering probes enabled only under the loopback p0 Spring profile. This is not the P1 registration API or P7 privacy implementation. See docs/12 for eventual product contracts. Cookie Path restricts transmission, never substitutes for authentication. Local HTTP cookies are SameSite=Lax and host-only; production Secure handling is a later gate."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:18080",
+      "description": "Local backend only; browser should use configured same-origin frontend proxy"
+    }
+  ],
+  "tags": [
+    {
+      "name": "student-p0"
+    },
+    {
+      "name": "operator-p0"
+    }
+  ],
+  "paths": {
+    "/api/app/v1/p0/mail": {
+      "post": {
+        "operationId": "p0Mail",
+        "summary": "Send synthetic verification or reset email to local Mailpit only",
+        "tags": ["student-p0"],
+        "security": [{"StudentSession": [], "StudentCsrfCookie": [], "CsrfHeader": []}],
+        "parameters": [{"$ref": "#/components/parameters/RequestId"}, {"$ref": "#/components/parameters/Origin"}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MailInput"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Synthetic message accepted by local mail catcher; no real account token",
+            "headers": {"X-Request-Id": {"schema": {"type": "string"}}},
+            "content": {"application/json": {"schema": {
+              "type": "object", "additionalProperties": false, "required": ["data", "meta"],
+              "properties": {"data": {"$ref": "#/components/schemas/MailResult"}, "meta": {"$ref": "#/components/schemas/Meta"}}
+            }}}
+          },
+          "default": {"$ref": "#/components/responses/Failure"}
+        }
+      }
+    },
+    "/api/public/v1/p0/health": {
+      "get": {
+        "operationId": "p0Health",
+        "summary": "P0 database, Redis and migration readiness; model and mail are not checked",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Database, Redis and migration checks are UP; model and mail remain NOT_CHECKED",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "At least one database, Redis or migration check is DOWN; health report is retained rather than replaced by an error envelope",
+            "headers": {"X-Request-Id": {"schema": {"type": "string"}}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HealthEnvelope"}}}
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        }
+      }
+    },
+    "/api/public/v1/auth/csrf": {
+      "get": {
+        "operationId": "publicCsrf",
+        "summary": "Issue public signed CSRF value; HttpOnly Intake cookie remains private",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Csrf"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        }
+      }
+    },
+    "/api/public/v1/p0/intake": {
+      "post": {
+        "operationId": "p0Intake",
+        "summary": "Create synthetic Intake identity",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "PublicCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Intake"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "description": "Send Content-Type: application/json and an empty JSON object. Signed matching CSRF cookie/header plus exact local Origin are required. This is a synthetic P0 probe, not a production domain endpoint."
+      }
+    },
+    "/api/public/v1/p0/claim": {
+      "post": {
+        "operationId": "p0Claim",
+        "summary": "Claim synthetic Intake once (not full registration)",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "IntakeSession": [],
+            "PublicCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Claim"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "description": "Send Content-Type: application/json and an empty JSON object. Signed matching CSRF cookie/header plus exact local Origin are required. This is a synthetic P0 probe, not a production domain endpoint."
+      }
+    },
+    "/api/public/v1/p0/login": {
+      "post": {
+        "operationId": "p0Login",
+        "summary": "Login synthetic student with local P0 password",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "PublicCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Student"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/auth/csrf": {
+      "get": {
+        "operationId": "studentCsrf",
+        "summary": "Issue session-bound CSRF value",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Csrf"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        }
+      }
+    },
+    "/api/app/v1/p0/whoami": {
+      "get": {
+        "operationId": "p0StudentWhoami",
+        "summary": "Return synthetic student identity only",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StudentWhoami"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        }
+      }
+    },
+    "/api/app/v1/auth/logout": {
+      "post": {
+        "operationId": "studentLogout",
+        "summary": "Revoke current student session and expire exact-path cookies",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": [],
+            "StudentCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Logout"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "description": "Send Content-Type: application/json and an empty JSON object. Signed matching CSRF cookie/header plus exact local Origin are required. This is a synthetic P0 probe, not a production domain endpoint."
+      }
+    },
+    "/api/app/v1/p0/deletion": {
+      "post": {
+        "operationId": "p0PrepareDeletion",
+        "summary": "Pre-issue path-limited deletion receipt credential",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": [],
+            "StudentCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Deletion"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "description": "Send Content-Type: application/json and an empty JSON object. Signed matching CSRF cookie/header plus exact local Origin are required. This is a synthetic P0 probe, not a production domain endpoint."
+      }
+    },
+    "/api/app/v1/p0/delete-confirm": {
+      "post": {
+        "operationId": "p0ConfirmDeletion",
+        "summary": "Delete synthetic P0 actor, revoke sessions; not P7 real deletion",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": [],
+            "StudentCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DeleteConfirm"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Password"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/v1/deletion-receipts/{id}": {
+      "get": {
+        "operationId": "deletionReceipt",
+        "summary": "Read status only with scoped deletion credential",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "DeletionReceipt": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Receipt"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        }
+      }
+    },
+    "/api/app/v1/p0/examples": {
+      "get": {
+        "operationId": "p0ListExamples",
+        "summary": "List only current synthetic actor's rows",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Example"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        }
+      },
+      "post": {
+        "operationId": "p0CreateExample",
+        "summary": "Create MySQL persistence probe row",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": [],
+            "StudentCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Example"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExampleInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/p0/examples/{id}": {
+      "delete": {
+        "operationId": "p0DeleteExample",
+        "summary": "Delete own probe row; inaccessible row indistinguishable from absent",
+        "tags": [
+          "student-p0"
+        ],
+        "security": [
+          {
+            "StudentSession": [],
+            "StudentCsrfCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Deleted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Failure"
+          }
+        },
+        "description": "Send Content-Type: application/json and an empty JSON object. Signed matching CSRF cookie/header plus exact local Origin are required. This is a synthetic P0 probe, not a production domain endpoint."
+      }
+    },
+    "/api/admin/v1/majorpilot/p0/whoami": {
+      "get": {
+        "operationId": "p0OperatorWhoami",
+        "summary": "Requires separate RuoYi token and majorpilot:p0:read",
+        "tags": [
+          "operator-p0"
+        ],
+        "security": [
+          {
+            "OperatorToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful P0 probe response",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AdminWhoami"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/OperatorFailure"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "StudentSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_SESSION"
+      },
+      "IntakeSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_INTAKE"
+      },
+      "DeletionReceipt": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_DELETION"
+      },
+      "PublicCsrfCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_PUBLIC_CSRF"
+      },
+      "StudentCsrfCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_CSRF"
+      },
+      "CsrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      },
+      "OperatorToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "RuoYi operator JWT"
+      }
+    },
+    "parameters": {
+      "RequestId": {
+        "name": "X-Request-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "description": "Server issues a safe correlation ID when missing or unusable."
+      },
+      "Origin": {
+        "name": "Origin",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uri"
+        },
+        "description": "Exact configured localhost student Origin; not wildcard."
+      }
+    },
+    "responses": {
+      "Failure": {
+        "description": "Safe P0 rejection; status 400/401/403/404/409/422 as appropriate. No secrets or provider message.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "OperatorFailure": {
+        "description": "Legacy RuoYi authentication/permission failure. MajorPilot success envelope is used only after authorization; authentication errors retain RuoYi's upstream envelope.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RuoYiError"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "MailInput": {
+        "type": "object", "additionalProperties": false, "required": ["kind"],
+        "properties": {"kind": {"enum": ["verify", "reset"]}}
+      },
+      "MailResult": {
+        "type": "object", "additionalProperties": false, "required": ["messageId", "kind", "scope"],
+        "properties": {"messageId": {"type": "string", "format": "uuid"}, "kind": {"enum": ["verify", "reset"]}, "scope": {"const": "synthetic-local-mail"}}
+      },
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "apiVersion"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "apiVersion": {
+            "const": "v1"
+          }
+        }
+      },
+      "ErrorMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "fieldErrors",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]+$",
+                "maxLength": 80
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "fieldErrors": {
+                "type": "array",
+                "maxItems": 0,
+                "items": {}
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ErrorMeta"
+          }
+        }
+      },
+      "RuoYiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "msg"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      },
+      "Login": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId",
+          "password"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 256
+          }
+        }
+      },
+      "Password": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 256
+          }
+        }
+      },
+      "ExampleInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      },
+      "Csrf": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "csrfToken"
+        ],
+        "properties": {
+          "csrfToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        }
+      },
+      "HealthEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Health"},
+          "meta": {"$ref": "#/components/schemas/Meta"}
+        }
+      },
+      "Health": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "database",
+          "redis",
+          "migration",
+          "model",
+          "mail"
+        ],
+        "properties": {
+          "scope": {
+            "const": "p0-local-only"
+          },
+          "database": {
+            "enum": [
+              "UP",
+              "DOWN"
+            ]
+          },
+          "redis": {"enum": ["UP", "DOWN"]},
+          "migration": {"enum": ["UP", "DOWN"]},
+          "model": {"const": "NOT_CHECKED"},
+          "mail": {"const": "NOT_CHECKED"}
+        }
+      },
+      "Intake": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "intakeId"
+        ],
+        "properties": {
+          "intakeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Claim": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId",
+          "scope"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "const": "synthetic-p0-actor"
+          }
+        }
+      },
+      "Student": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "StudentWhoami": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId",
+          "subjectType"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectType": {
+            "const": "P0_STUDENT"
+          }
+        }
+      },
+      "AdminWhoami": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subjectType",
+          "userId"
+        ],
+        "properties": {
+          "subjectType": {
+            "const": "RUOYI_OPERATOR"
+          },
+          "userId": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "Logout": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "loggedOut"
+        ],
+        "properties": {
+          "loggedOut": {
+            "const": true
+          }
+        }
+      },
+      "Deletion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "receiptId"
+        ],
+        "properties": {
+          "receiptId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "DeleteConfirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "scope"
+        ],
+        "properties": {
+          "status": {
+            "const": "COMPLETED"
+          },
+          "scope": {
+            "const": "synthetic-p0-only"
+          }
+        }
+      },
+      "Receipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "REQUESTED",
+              "COMPLETED"
+            ]
+          }
+        }
+      },
+      "Example": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      },
+      "Deleted": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "const": true
+          }
+        }
+      }
+    }
+  }
+}
