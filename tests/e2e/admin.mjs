@@ -46,7 +46,7 @@ for(const channel of ['chrome','msedge']) {
     const prohibitedCookieNames=(await context.cookies()).filter(cookie=>['Admin-Token','password','rememberMe'].includes(cookie.name)).map(cookie=>cookie.name)
     assert.deepEqual(prohibitedCookieNames,[],'prohibited cookie names present (values suppressed)')
     const student=await context.newPage()
-    await student.goto('http://localhost:15173/')
+    await student.goto('http://localhost:15173/p0')
     assert.equal(await student.evaluate(()=>sessionStorage.getItem('MP_ADMIN_TOKEN')),null)
     await student.close()
   }

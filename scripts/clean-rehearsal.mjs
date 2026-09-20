@@ -30,8 +30,10 @@ if(mode==='--prepare') {
   const git=existsSync(fallback)?fallback:'git';
   const candidates=execFileSync(git,['ls-files','--cached','--others','--exclude-standard','-z'],{cwd:ROOT,encoding:'utf8'}).split('\0').filter(Boolean);
   const directories=new Set(['backend','admin-web','student-web','contracts','database','scripts','docs','executor','tests','content']);
-  const rootFiles=new Set(['README.md','UPSTREAM.md','UPSTREAM-backend.md','UPSTREAM-frontend.md','CONTEXT.md','.env.example','.gitignore','.java-version','.node-version','.nvmrc']);
-  const forbidden=new Set(['.git','node_modules','target','dist','logs','data','.local','artifacts','playwright-report','test-results']);
+  const rootFiles=new Set(['AGENTS.md','README.md','UPSTREAM.md','UPSTREAM-backend.md','UPSTREAM-frontend.md','CONTEXT.md','.env.example','.gitignore','.java-version','.node-version','.nvmrc']);
+  // Root runtime data/ is already excluded by the top-level allowlist. A nested
+  // source directory such as student-web/src/data must remain in the snapshot.
+  const forbidden=new Set(['.git','node_modules','target','dist','logs','.local','artifacts','playwright-report','test-results']);
   const files=candidates.filter(file=>{
     const parts=file.split('/');
     return (directories.has(parts[0])||rootFiles.has(file)) && !parts.some(part=>forbidden.has(part)||part==='.DS_Store'||(part.startsWith('.env')&&part!=='.env.example'));

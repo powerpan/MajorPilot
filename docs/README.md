@@ -1,7 +1,7 @@
 # MajorPilot 设计文档索引
 
 > 更新日期：2026-09-20  
-> 当前阶段：P0 本地技术基线实施与约定范围验证完成；尚未开始 P1。最新运行证据及保留门禁以 P0 专题与实施记录为准，不以设计文档中的覆盖状态代替。
+> 当前阶段：P0 已完成本地验证并推送；P1 已完成本地实施与约定范围验收。2026-09-20 用户确认本轮使用规则解释，AI 润色单列后续增强。Git 交付、公网部署和完整 MVP 验收分别记录。
 
 ## 阅读顺序
 
@@ -27,6 +27,8 @@
 根目录的 [领域语言](../CONTEXT.md) 是所有文档和后续代码命名的词汇基线。
 
 实施新增记录：[百炼与契约验证](./18-p0-ai-spike.md)、[浏览器执行验证](./19-p0-browser-execution-spike.md)、[P0 实施与验证汇总](./20-p0-implementation-evidence.md)。本地启动入口见 [根 README](../README.md)，固定来源与补丁见 [UPSTREAM](../UPSTREAM.md)。
+
+当前实施：[P1 实施与交付记录](./21-p1-implementation-and-delivery.md)、[P1 视觉方向与截图比对](./22-p1-visual-direction.md)。
 
 设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。阅读本轮变化可以先看 `17`，再按其中的问题编号进入专题设计。
 

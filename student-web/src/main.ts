@@ -1,9 +1,68 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import { createRouter, createWebHistory } from 'vue-router'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import App from './App.vue'
+import "./lib/mail-token";
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import { createRouter, createWebHistory } from "vue-router";
+import App from "./App.vue";
+import "./styles.css";
+import "./styles/editorial.css";
+import { useAuth } from "./stores/auth";
+const HomeView = () => import("./views/HomeView.vue");
+import IntakeView from "./views/IntakeView.vue";
+import AuthView from "./views/AuthView.vue";
+import MailView from "./views/MailView.vue";
+import RecommendationView from "./views/RecommendationView.vue";
+import DashboardView from "./views/DashboardView.vue";
+import SettingsView from "./views/SettingsView.vue";
+import InformationView from "./views/InformationView.vue";
+import NotFoundView from "./views/NotFoundView.vue";
+const P0View = () => import("./views/P0View.vue");
 
-const router = createRouter({history: createWebHistory(), routes: [{path: '/', component: App}]})
-createApp(App).use(createPinia()).use(router).use(ElementPlus).mount('#app')
+const pinia = createPinia();
+const router = createRouter({
+  history: createWebHistory(),
+  scrollBehavior(to, from, saved) {
+    if (to.path === from.path) return;
+    return saved || { top: 0 };
+  },
+  routes: [
+    { path: "/", component: HomeView },
+    { path: "/p0", component: P0View },
+    { path: "/intake/:step(1[0-2]|[1-9])", component: IntakeView },
+    { path: "/recommendation", component: RecommendationView },
+    ...["/login", "/register", "/forgot-password"].map((path) => ({
+      path,
+      component: AuthView,
+    })),
+    ...["/verify-email", "/reset-password"].map((path) => ({
+      path,
+      component: MailView,
+    })),
+    ...["/how-it-works", "/majors", "/majors/:code", "/privacy", "/terms"].map(
+      (path) => ({ path, component: InformationView }),
+    ),
+    { path: "/app", component: DashboardView, meta: { private: true } },
+    { path: "/app/settings", component: SettingsView, meta: { private: true } },
+    {
+      path: "/app/experiences/:major",
+      redirect: (to) => `/majors/${String(to.params.major)}`,
+    },
+    { path: "/:pathMatch(.*)*", component: NotFoundView },
+  ],
+});
+router.beforeEach(async (to) => {
+  document.title =
+    to.path === "/p0"
+      ? "MajorPilot · P0 技术验证"
+      : "MajorPilot · 找到你的专业探索第一站";
+  if (to.meta.private) {
+    const auth = useAuth(pinia);
+    try {
+      await auth.refresh(true);
+      if (!auth.me) return { path: "/login", query: { returnTo: to.path } };
+    } catch {
+      /* Private view presents retry, not fake data. */
+    }
+  }
+});
+const app = createApp(App).use(pinia).use(router);
+void router.isReady().then(() => app.mount("#app"));

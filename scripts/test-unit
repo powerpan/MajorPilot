@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/.."
-data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scripts/ai-spike.test.mjs scripts/runtime-artifact.test.mjs executor/test/worker.test.mjs contracts/tests/contracts.test.mjs
+data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scripts/ai-spike.test.mjs scripts/runtime-artifact.test.mjs scripts/local-profile.test.mjs scripts/verify-secrets.test.mjs executor/test/worker.test.mjs contracts/tests/contracts.test.mjs contracts/tests/p1-contracts.test.mjs student-web/test/identity-state.test.mjs
 data/tools/node/bin/node docs/validation/check-design.mjs
 cd backend
 JAVA_HOME="${MP_JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}" MAVEN_USER_HOME="../data/maven-user" ./mvnw -Dmaven.repo.local=../.local/m2 test

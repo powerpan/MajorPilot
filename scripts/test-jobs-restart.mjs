@@ -8,6 +8,7 @@ import { materializeBackendArtifact } from './runtime-artifact.mjs';
 const sql = statement => mysqlCommand(`USE majorpilot; ${statement}`).trim();
 const before = record('backend');
 if (!before) throw new Error('Requires a healthy project-managed backend; no process changed');
+if (!before.identity.includes('--spring.profiles.active=p0')) throw new Error('Synthetic job regression requires --profile=p0; no process changed');
 const actor = randomUUID(), pending = randomUUID(), expired = randomUUID();
 const artifact = materializeBackendArtifact();
 await stop('backend');

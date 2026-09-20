@@ -8,7 +8,7 @@ for(const channel of ['chrome','msedge']) {
   const browser=await chromium.launch({channel,headless:true,chromiumSandbox:true})
   const context=await browser.newContext()
   const page=await context.newPage()
-  await page.goto('http://localhost:15173/')
+  await page.goto('http://localhost:15173/p0')
   const observed=[]
   page.on('request',request=>{
     if(request.url().includes('/api/')) observed.push(request.allHeaders().then(headers=>({path:new URL(request.url()).pathname,method:request.method(),cookieNames:(headers.cookie||'').split(';').map(part=>part.trim().split('=')[0]).filter(Boolean)})))

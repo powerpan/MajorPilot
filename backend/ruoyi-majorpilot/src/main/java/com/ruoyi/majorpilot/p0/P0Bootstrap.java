@@ -9,7 +9,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import com.ruoyi.system.service.ISysConfigService;
 
-@Component @Profile("p0")
+@Component @Profile({"p0","local"})
 public class P0Bootstrap implements ApplicationRunner {
     private final JdbcTemplate jdbc;private final String password;private final ISysConfigService configs;
     public P0Bootstrap(JdbcTemplate jdbc,ISysConfigService configs,@Value("${MP_P0_ADMIN_PASSWORD}") String password) { validateAdminPassword(password);this.jdbc=jdbc;this.configs=configs;this.password=password; }

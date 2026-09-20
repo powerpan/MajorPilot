@@ -1,0 +1,31 @@
+{
+  "questionnaireVersion": "decision-profile-v1",
+  "answers": {
+    "applicationStage": "EXPLORING",
+    "targetIntakeWindow": "MONTHS_12_TO_24",
+    "targetRegions": ["HONG_KONG", "SINGAPORE"],
+    "currentField": "SOCIAL_HUMANITIES",
+    "currentFieldText": "合成测试背景，不是真实个人资料",
+    "consideredMajors": ["BUSINESS_ANALYTICS"],
+    "majorFamiliarity": {
+      "AI": "PRACTICAL_EXPERIENCE",
+      "DATA_SCIENCE": "UNFAMILIAR",
+      "BUSINESS_ANALYTICS": "UNFAMILIAR"
+    },
+    "foundationSelfView": {
+      "PROGRAMMING": "UNEXPOSED",
+      "MATHEMATICS_STATISTICS": "UNEXPOSED",
+      "DATA_ANALYSIS": "BEGINNER",
+      "BUSINESS_PROBLEMS": "BASIC_TASKS"
+    },
+    "scenarioPreference": [
+      {"majorCode": "AI", "rank": 1},
+      {"majorCode": "DATA_SCIENCE", "rank": 2},
+      {"majorCode": "BUSINESS_ANALYTICS", "rank": 3}
+    ],
+    "workElements": ["DEFINE_METRICS"],
+    "decisionUncertainties": ["DAILY_WORK", "MAJOR_DIFFERENCES"],
+    "mainQuestion": "这是一份仅用于本地自动验证的合成问卷。",
+    "acquisitionChannel": "DECLINED"
+  }
+}

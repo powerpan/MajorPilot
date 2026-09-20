@@ -1,0 +1,8 @@
+# Shared loopback dependencies only. Importing these properties does NOT activate
+# the p0 Spring profile; synthetic P0 controllers/security remain disabled.
+spring:
+  config:
+    import: classpath:application-p0.yml
+majorpilot:
+  p0:
+    worker-enabled: false

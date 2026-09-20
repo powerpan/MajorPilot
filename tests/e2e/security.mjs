@@ -23,7 +23,7 @@ for(const channel of ['chrome','msedge']) {
 
   const student=await browser.newContext()
   const page=await student.newPage()
-  await page.goto('http://localhost:15173/')
+  await page.goto('http://localhost:15173/p0')
   const adminToStudent=await page.evaluate(async token=>(await fetch('/api/app/v1/p0/whoami',{headers:{Authorization:`Bearer ${token}`}})).status,token)
   assert.equal(adminToStudent,401,'admin token incorrectly authenticated a student')
   const response=await page.evaluate(async password=>{

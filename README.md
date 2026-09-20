@@ -2,7 +2,9 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P0 本地技术基线已完成实施与约定范围验证**，证据见 [P0 验证记录](docs/20-p0-implementation-evidence.md)。技术验证页不是正式产品；注册、任务、反思、报告仍属 P1–P8。产品事实及设计入口见 [docs/README.md](docs/README.md)，实施范围见 [P0 路线](docs/16-implementation-roadmap-and-traceability.md)。
+**P1 身份、Intake 与首次推荐已完成本地实施和约定范围验收**：新版首页、12 页问卷、注册前推荐、注册认领、邮箱验证／找回、接受与改选均可使用。见 [P1 验证记录](docs/21-p1-implementation-and-delivery.md) 和 [已确认视觉方向](docs/22-p1-visual-direction.md)。按用户 2026-09-20 确认，本轮使用确定性规则解释，AI 润色单列后续增强。专业任务、反思、报告仍属 P2–P8，不声称完整 MVP 或公网生产已就绪。
+
+产品事实与设计入口见 [docs/README.md](docs/README.md)，实施范围见 [P0–P8 路线](docs/16-implementation-roadmap-and-traceability.md)，历史技术底座见 [P0 记录](docs/20-p0-implementation-evidence.md)。
 
 ## 本地运行（macOS Apple Silicon）
 
@@ -24,15 +26,16 @@ Codex 的 macOS 沙箱可能禁止 MySQL 的 `hw.cachelinesize` 查询以及 `ps
 
 | 组件 | 地址／端口 | 数据／职责 |
 | --- | --- | --- |
-| 学生技术验证页 | http://localhost:15173 | 独立 Vue 3 页面；不是正式 Intake |
+| 学生产品首页 | http://localhost:15173 | 新视觉、正式 Intake、推荐和账户流程 |
+| P0 技术验证页 | http://localhost:15173/p0 | 固定执行器探针；合成身份需独立 p0 profile |
 | 管理端 | http://localhost:15174 | RuoYi 管理登录；本地随机密码 |
-| 后端 | 127.0.0.1:18080 | `p0` profile，最小合成主体与 API |
+| 后端 | 127.0.0.1:18080 | 默认 `local` profile，正式 P1 身份与 API |
 | 执行器 | 127.0.0.1:15175 | 不同 hostname、无凭证的固定计算器 |
 | MySQL 8.4.11 | 127.0.0.1:13306 | `data/mysql/`，majorpilot / majorpilot_test |
 | Redis 7.2.16 | 127.0.0.1:16380 | `data/redis/`，独立认证与 AOF |
 | Mailpit 1.31.2 | http://127.0.0.1:18025 | SMTP 11025；仅本地合成邮件 |
 
-端口的运行脚本配置集中于 `scripts/local-config.mjs`；前端代理及 P0 Cookie Origin 当前固定为这套本地地址。不要只改一处端口来测试 Origin 安全边界。
+端口的运行脚本配置集中于 `scripts/local-config.mjs`；前端代理及 Cookie Origin 当前固定为这套本地地址。不要只改一处端口来测试 Origin 安全边界。`local` 和 `p0` 不同时运行；默认健康入口为 `/api/public/v1/health`。
 
 管理员名 `admin`；随机密码位于 `.env.local` 的 `MP_P0_ADMIN_PASSWORD`，使用编辑器在本机查看。学生 P0 探针也只使用生成的本地测试口令；它们不是注册产品。不把这些值粘贴到聊天、截图或工单。
 
@@ -40,12 +43,16 @@ Codex 的 macOS 沙箱可能禁止 MySQL 的 `hw.cachelinesize` 查询以及 `ps
 sh scripts/check-env
 sh scripts/test-unit
 sh scripts/test-integration
-sh scripts/test-e2e
+sh scripts/test-p1-e2e
 sh scripts/verify-secrets
 sh scripts/stop-local
 ```
 
 `test-integration` 只使用独立 `majorpilot_test` 库；`test-infra.mjs` 会重启本项目的 MySQL／Redis，需在没有其他本项目测试进行时单独执行。停止脚本核对 PID 的启动时间与完整命令，只关闭本项目记录的进程并保留数据。日志位于忽略的 `logs/`；不要发布未经检查的完整日志。
+
+`test-p1-e2e` 依次运行真实 HTTP／事件合同和 Chrome／Edge 完整流程；创建并精确清理本轮合成账户、草稿与捕获邮件。不放宽正式限流：重复运行可能触发本地共享 IP 的每小时注册限制，应等待窗口自然恢复，不清空 Redis 绕过。P0 回归需先停止本项目服务，再 `sh scripts/start-local --profile=p0` 并执行 `sh scripts/test-e2e`；完成后停止并以默认 `local` 重启。两个 profile 都保留原数据。
+
+全新空库迁移可用 `data/tools/node/bin/node scripts/test-fresh-migrations.mjs` 验证；脚本检查项目实例，为本轮创建隔离 schema／最小权限账号，最终精确删除这两个临时资源，不清空主库或测试库。
 
 ## 密钥及外部调用
 
@@ -58,6 +65,8 @@ sh scripts/stop-local
 交付约定（2026-09-20 用户确认）：每个完成的里程碑或重大变更，在相应验证通过后提交并推送 GitHub；保留提交和远端核验信息。推送不等于公网部署。项目协作规则见 [AGENTS.md](AGENTS.md)。
 
 - P0 的 `mp_p0_*` 表、探针接口和合成删除／邮件流程只用于技术验证，不是 P1/P7 实现。
+- P1 三个专业均为未开始／任务尚未开放；保存推荐或改选不创建 Experience Run。邮件仅进入本地 Mailpit，真实 SMTP、数据导出／账户删除和生产政策审核均未在本轮冒充完成。
+- 可选研究授权默认拒绝，撤回不影响核心使用；页面观察和后台业务事实分开。P1 API 与页面不会输出能力总分、人格标签或录取概率。
 - 执行器不执行用户 Python／JavaScript：只接受受限参数，执行固定可信计算器。Pyodide 是否可用必须同时满足 CSP 和隔离，不能只以 Python 算出结果为准。
 - 本地验收、Git 提交／上传、公网部署是独立步骤；运行成功不代表已上传或已上线。
 - 上游许可证与修改记录见 `UPSTREAM.md`。完整 P0 证据、固定计算器替代方案和上线前门禁见 [实施记录](docs/20-p0-implementation-evidence.md)。同机干净源码与独立空库复现通过，不代表独立第二台机器或跨平台验收。
