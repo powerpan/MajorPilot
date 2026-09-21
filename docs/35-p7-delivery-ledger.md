@@ -1,6 +1,6 @@
 # P7 管理、分析与隐私：验收和交付台账
 
-2026-09-21。状态：本地功能、真实流程及最终自动化回归通过；P7 Git提交/推送尚待执行，不预填SHA。P6已提交并推送 `fb030ac4cd5b9cb542ac5ffa9bec62a1174b0c0c`，远端main完整SHA一致；本阶段以该提交为起点。
+2026-09-21。状态：本地功能、真实流程及最终自动化回归通过；P7功能提交 `f4d26dd64d18da9a02c96b2939925d17c8076a66` 已推送，远端main完整SHA核对一致。本阶段以已交付P6提交 `fb030ac4cd5b9cb542ac5ffa9bec62a1174b0c0c` 为起点。
 
 合同见[工程设计](./33-p7-engineering-plan.md)、[视觉设计与真实截图](./34-p7-visual-contract.md)。范围截止P7，不进入P8，不公开部署。三专业真实内容保持REVIEW；纯算法/实库合成样本、隔离正式TEST_FIXTURE与真人审核/计时分开记录。
 
@@ -18,7 +18,7 @@
 | 普通纯回归 | `sh scripts/test-unit`：Node270/270（104+5+11+74+76）；Java481项，300通过、181实库/付费条件跳过，0失败/错误。普通测试0付费 |
 | 完整真实MySQL | `sh scripts/test-integration`：Java481项，479通过、仅2项明确付费探针跳过，0失败/错误；只使用majorpilot_test，不把付费跳过算供应商验证 |
 | 构建 | `sh scripts/build-local`：两端strict/生产构建、合同、三个受限执行器及完整Maven package通过。最终JAR SHA256为 `32f43d1ec7ccf175b61a310de1bf8ff0755ade7b126ab90cc5b47e7ea6a5c53f` |
-| 秘密扫描 | `sh scripts/verify-secrets`：源码/前端产物/日志1713文件、0泄漏（含最终真实截图）。暂存索引/禁入路径检查仍为Git前单独门禁 |
+| 秘密扫描 | `sh scripts/verify-secrets`：源码/前端产物/日志1713文件、0泄漏（含最终真实截图）；134个暂存文件与工作区逐字节一致，实际环境秘密/派生测试凭证及禁入路径检查通过 |
 | 指标 | metrics-v2纯黄金33项；真实MySQL三项核心指标各2/3，与独立手算一致；原anchor维度筛选、零分母null及坏答卷安全失败均覆盖 |
 | 隐私/并发/留存 | 实库验证账户安全、非空历史个人ZIP、非空CSV/公式/权限/审计、独立心跳与旧lease、删除/文件发布竞态、跨主体文件引用拒绝、完整体验/报告树精确删除及另一Student保留；留存截止、批次、重复执行、活跃数据保留和Evidence FK均通过 |
 | 迁移 | 空库V1–V8与V7→V8均PASS，80表；8种合法/28种非法job owner组合、5个新表、16菜单/15权限/零隐式授权；旧Student/Job/角色授权保持 |
@@ -81,7 +81,9 @@
 
 ## 6. Git交付与后续门禁
 
-P7功能、实库、真实HTTP/浏览器、迁移、崩溃恢复、最终普通回归/构建/秘密扫描及主站冻结包启动核验已通过。尚待提交索引/禁入路径及diff检查、Git提交/推送和远端完整SHA核对；取得结果后补写交付回执，不虚构提交编号。
+P7功能、实库、真实HTTP/浏览器、迁移、崩溃恢复、最终普通回归/构建/秘密扫描及主站冻结包启动核验已通过。134个暂存文件的实际秘密/禁入路径和字节一致性检查PASS，`git diff --check`、`git diff --cached --check`通过，文档38份/本地链接235个通过；索引证据 `/tmp/majorpilot-p7-index-check.log`。
+
+功能提交 `f4d26dd64d18da9a02c96b2939925d17c8076a66`（`feat(p7): deliver operations analytics and account privacy`，134个文件）已成功推送 `origin/main`，随后 `git ls-remote origin refs/heads/main` 返回相同完整SHA。本文交付回执属于随后独立文档提交，不改变功能包或重跑时的内容版本；后续main提交以Git历史为准。P7工程交付完成，不进入P8、不公开部署。
 
 以下不是本轮已完成事项：
 

@@ -2,7 +2,7 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P7 管理、分析与账户隐私的本地功能验收已通过，正在收尾 Git 交付**：七个运营页面、可复算指标、受控CSV、个人ZIP、账户安全、研究撤回及持久化删除已实现；真实HTTP、Chrome/Edge、两次实际JVM崩溃恢复、V7→V8与空库迁移已验证。完整结果与尚待交付项见 [P7台账](docs/35-p7-delivery-ledger.md) 和 [真实页面截图](docs/34-p7-visual-contract.md)。P0–P6已推送，P6报告/比较/打印证据见 [原交付记录](docs/23-p2-to-p6-delivery-ledger.md)。普通测试仍0付费；正式报告链用隔离TEST_FIXTURE验证，主站三专业内容仍REVIEW，尚待真人专业审核及目标用户计时，不因工程验收自动发布。当前范围止于P7；P8完整MVP硬化及公网部署均未开展。
+**P7 管理、分析与账户隐私已完成本地工程验收并推送**：功能提交 `f4d26dd64d18da9a02c96b2939925d17c8076a66` 已核对远端完整SHA。七个运营页面、可复算指标、受控CSV、个人ZIP、账户安全、研究撤回及持久化删除已实现；真实HTTP、Chrome/Edge、两次实际JVM崩溃恢复、V7→V8与空库迁移已验证。完整结果与后续门禁见 [P7台账](docs/35-p7-delivery-ledger.md) 和 [真实页面截图](docs/34-p7-visual-contract.md)。P0–P7已推送，P6报告/比较/打印证据见 [原交付记录](docs/23-p2-to-p6-delivery-ledger.md)。普通测试仍0付费；正式报告链用隔离TEST_FIXTURE验证，主站三专业内容仍REVIEW，尚待真人专业审核及目标用户计时，不因工程验收自动发布。当前范围止于P7；P8完整MVP硬化及公网部署均未开展。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
