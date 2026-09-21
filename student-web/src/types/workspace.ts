@@ -84,6 +84,7 @@ export interface PreviewTask {
 }
 export interface Run {
   runMode: "STANDARD" | "REVIEW_PREVIEW";
+  productEligible?: boolean;
   runId: string;
   contentKind: string;
   majorCode: string | null;

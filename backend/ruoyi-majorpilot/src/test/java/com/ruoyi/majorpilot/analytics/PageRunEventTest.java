@@ -25,6 +25,7 @@ class PageRunEventTest {
     final List<Object[]> writes=new ArrayList<>();Instant previousResume;
     @BeforeEach void setup() throws Exception {
         db=mock(JdbcTemplate.class);row=new HashMap<>();
+        when(db.queryForObject(startsWith("SELECT COUNT(*) FROM mp_experience_run r WHERE"),eq(Integer.class),eq(1L),eq(5L))).thenReturn(0);
         row.put("id",5L);row.put("content_kind","MAJOR");row.put("run_mode","STANDARD");row.put("status","IN_PROGRESS");
         row.put("started_at",Timestamp.from(NOW.minusSeconds(30)));row.put("task_version_id",7L);row.put("task_public_id",taskId);
         row.put("task_kind","MAJOR");row.put("major_id",1L);row.put("task_major_id",1L);

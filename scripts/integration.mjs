@@ -36,7 +36,7 @@ export function runIntegration() {
   const owner = acquireTestLock({ pid: process.pid, scope: 'majorpilot_test integration', nonce: randomUUID() });
   try {
     execFileSync(`${ROOT}/backend/mvnw`, [`-Dmaven.repo.local=${ROOT}/.local/m2`, 'test'], {
-      cwd: `${ROOT}/backend`, env: { ...runtimeEnv({ secrets: true }), MP_RUN_MYSQL_TESTS: 'true', MP_RUN_LIVE_REPORT_TESTS: 'false', MP_RUN_BAILIAN_TEST: 'false', MAVEN_USER_HOME: `${ROOT}/data/maven-user` }, stdio: 'inherit',
+      cwd: `${ROOT}/backend`, env: { ...runtimeEnv({ secrets: true }), MP_RUN_MYSQL_TESTS: 'true', MP_RUN_LIVE_REPORT_TESTS: 'false', MP_RUN_BAILIAN_TEST: 'false', MP_REPORT_AI_ENABLED: 'false', MP_EXPERIENCE_AI_ENABLED: 'false', MP_LOCAL_PRODUCT_ENABLED: 'false', MAVEN_USER_HOME: `${ROOT}/data/maven-user` }, stdio: 'inherit',
     });
   } finally { releaseTestLock(owner); }
 }

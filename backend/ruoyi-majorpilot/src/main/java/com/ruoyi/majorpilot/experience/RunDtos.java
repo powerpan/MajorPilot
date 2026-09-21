@@ -30,7 +30,9 @@ public final class RunDtos {
     public record StepSummary(String stepKey,String status,long revision) {}
     public record Run(String runId,String contentKind,String majorCode,String demoKey,String status,long revision,
                       String taskVersionId,String currentStepKey,String pausedFromStatus,String activeRunId,String replacementRunId,
-                      boolean readOnly,List<StepSummary> steps,Instant startedAt,Instant closedAt,String reportStatus,String runMode) {
+                      boolean readOnly,List<StepSummary> steps,Instant startedAt,Instant closedAt,String reportStatus,String runMode,
+                      @JsonInclude(JsonInclude.Include.NON_NULL) Boolean productEligible) {
+        public Run(String runId,String contentKind,String majorCode,String demoKey,String status,long revision,String taskVersionId,String currentStepKey,String pausedFromStatus,String activeRunId,String replacementRunId,boolean readOnly,List<StepSummary> steps,Instant startedAt,Instant closedAt,String reportStatus,String runMode){this(runId,contentKind,majorCode,demoKey,status,revision,taskVersionId,currentStepKey,pausedFromStatus,activeRunId,replacementRunId,readOnly,steps,startedAt,closedAt,reportStatus,runMode,null);}
         /** Pre-V6 idempotency receipts are exclusively STANDARD; migration does not rewrite safe receipts. */
         public Run {if(runMode==null)runMode="STANDARD";}
     }

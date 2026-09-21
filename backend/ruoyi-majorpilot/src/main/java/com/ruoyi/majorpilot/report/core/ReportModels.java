@@ -1,6 +1,7 @@
 package com.ruoyi.majorpilot.report.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.*;
 
@@ -19,8 +20,12 @@ public final class ReportModels {
     public record VersionPins(String requestSchemaVersion,String inputSchemaVersion,String claimRuleVersion,String templateVersion,String promptVersion,String outputSchemaVersion) {
         public static VersionPins v1(){return new VersionPins("report-request-v1","report-input-v1","report-claims-v1","report-template-v1","report-prompt-v1","report-v1");}
     }
-    public record SourcePins(String runId,String runMode,String contentKind,String runStatus,String taskVersionId,String taskManifestSha256,String taskVersionCode,String taskTitle,String decisionProfileId,String profileSha256,String closedInputSha256,String questionSetVersion,Map<String,String> stepTitles) {
+    /** Server-resolved provenance, never an alternative to the persistence authorization fence. */
+    public record ProductAuthorization(String authorizationId,String authorityCode,String authorizationReference,Instant authorizedAt,String originalRunMode,String taskManifestSha256,String closedInputSha256) {}
+    public record SourcePins(String runId,String runMode,String contentKind,String runStatus,String taskVersionId,String taskManifestSha256,String taskVersionCode,String taskTitle,String decisionProfileId,String profileSha256,String closedInputSha256,String questionSetVersion,Map<String,String> stepTitles,@JsonInclude(JsonInclude.Include.NON_NULL) ProductAuthorization productAuthorization) {
         public SourcePins{stepTitles=Collections.unmodifiableMap(new LinkedHashMap<>(stepTitles));}
+        /** Preserve the historical STANDARD JSON shape and its frozen input/catalog hashes. */
+        public SourcePins(String runId,String runMode,String contentKind,String runStatus,String taskVersionId,String taskManifestSha256,String taskVersionCode,String taskTitle,String decisionProfileId,String profileSha256,String closedInputSha256,String questionSetVersion,Map<String,String> stepTitles){this(runId,runMode,contentKind,runStatus,taskVersionId,taskManifestSha256,taskVersionCode,taskTitle,decisionProfileId,profileSha256,closedInputSha256,questionSetVersion,stepTitles,null);}
     }
     /** The persistence adapter verifies the historical 8-field snapshot hash before projection. */
     public record SnapshotRef(String snapshotId,String status,String studentPublicId,String runId,String taskVersionId,String decisionProfileId,String closedInputSha256,String snapshotSha256,String sourceRule,String effectiveRule) {}

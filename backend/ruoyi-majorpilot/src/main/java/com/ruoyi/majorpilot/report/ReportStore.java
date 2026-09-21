@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.ruoyi.majorpilot.content.*;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
 import com.ruoyi.majorpilot.report.core.ReportModels.*;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -36,9 +37,9 @@ public class ReportStore {
     static void require(boolean condition){if(!condition)throw new ApiException(409,"REPORT_SOURCE_INVALID");}
     public String profileHash(long id,long student){var p=jdbc.queryForMap("SELECT questionnaire_version,profile_summary_json FROM mp_decision_profile WHERE id=? AND student_id=?",id,student);var answers=new TreeMap<String,JsonNode>();for(var a:jdbc.queryForList("SELECT question_key,answer_json FROM mp_decision_answer WHERE decision_profile_id=? ORDER BY question_key",id))answers.put(s(a,"question_key"),node(a.get("answer_json")));return Secrets.hash(json(map("questionnaireVersion",s(p,"questionnaire_version"),"summary",node(p.get("profile_summary_json")),"answers",answers)));}
     public Source source(long student,long snapshotId,ExperienceVersionRef experience){
-        var p=jdbc.queryForMap("SELECT e.*,r.public_id AS run_public_id,r.content_kind,r.status AS run_status,r.closed_input_manifest_json,r.closed_input_sha256 AS run_closed_sha,r.task_version_id AS run_task,r.decision_profile_id AS run_profile,m.code AS major_code,t.public_id AS task_public_id,a.public_id AS student_public_id,d.public_id AS profile_public_id FROM mp_evidence_snapshot e JOIN mp_experience_run r ON r.id=e.experience_run_id JOIN mp_major m ON m.id=r.major_id JOIN mp_task_version t ON t.id=e.task_version_id JOIN mp_student_account a ON a.id=e.student_id JOIN mp_decision_profile d ON d.id=e.decision_profile_id WHERE e.id=? AND e.student_id=?",snapshotId,student);
-        require("READY".equals(s(p,"status"))&&"STANDARD".equals(s(p,"run_mode"))&&"MAJOR".equals(s(p,"content_kind"))&&"CLOSED".equals(s(p,"run_status"))&&n(p,"run_task")==n(p,"task_version_id")&&n(p,"run_profile")==n(p,"decision_profile_id"));
-        var closed=node(p.get("closed_input_manifest_json"));require(hash(closed).equals(s(p,"closed_input_sha256"))&&s(p,"closed_input_sha256").equals(s(p,"run_closed_sha")));
+        var p=jdbc.queryForMap("SELECT e.*,r.public_id AS run_public_id,r.run_mode AS actual_run_mode,r.student_id AS run_student,r.content_kind,r.status AS run_status,r.closed_input_manifest_json,r.closed_input_sha256 AS run_closed_sha,r.task_version_id AS run_task,r.decision_profile_id AS run_profile,m.code AS major_code,t.public_id AS task_public_id,a.public_id AS student_public_id,d.public_id AS profile_public_id FROM mp_evidence_snapshot e JOIN mp_experience_run r ON r.id=e.experience_run_id JOIN mp_major m ON m.id=r.major_id JOIN mp_task_version t ON t.id=e.task_version_id JOIN mp_student_account a ON a.id=e.student_id JOIN mp_decision_profile d ON d.id=e.decision_profile_id WHERE e.id=? AND e.student_id=?",snapshotId,student);
+        require("READY".equals(s(p,"status"))&&Objects.equals(s(p,"run_mode"),s(p,"actual_run_mode"))&&n(p,"run_student")==student&&ProductEligibility.eligible(jdbc,student,n(p,"experience_run_id"))&&"MAJOR".equals(s(p,"content_kind"))&&"CLOSED".equals(s(p,"run_status"))&&n(p,"run_task")==n(p,"task_version_id")&&n(p,"run_profile")==n(p,"decision_profile_id"));
+        var closed=node(p.get("closed_input_manifest_json"));require(hash(closed).equals(s(p,"closed_input_sha256"))&&s(p,"closed_input_sha256").equals(s(p,"run_closed_sha"))&&s(p,"actual_run_mode").equals(closed.path("runMode").asText()));
         var task=content.pinned(s(p,"task_public_id"));require(task.manifestSha256().equals(closed.path("taskManifestSha256").asText()));
         String profileSha=profileHash(n(p,"decision_profile_id"),student);require(profileSha.equals(closed.path("profileSha256").asText()));
         var rows=jdbc.queryForList("SELECT * FROM mp_evidence_item WHERE evidence_snapshot_id=? ORDER BY id",snapshotId);var legacy=new ArrayList<Map<String,Object>>();var items=new ArrayList<EvidenceValue>();
@@ -49,7 +50,9 @@ public class ReportStore {
         }
         require(!items.isEmpty()&&hash(mapper.valueToTree(legacy)).equals(s(p,"snapshot_sha256")));
         var titles=new LinkedHashMap<String,String>();for(var step:task.manifest().path("steps"))titles.put(step.path("stepKey").asText(),step.path("title").asText());
-        var pins=new SourcePins(s(p,"run_public_id"),"STANDARD","MAJOR","CLOSED",task.taskVersionId(),task.manifestSha256(),task.versionCode(),task.manifest().path("title").asText(),s(p,"profile_public_id"),profileSha,s(p,"closed_input_sha256"),task.manifest().path("reflection").path("questionSetVersion").asText(),titles);
+        ProductAuthorization authorization=null;
+        if("REVIEW_PREVIEW".equals(s(p,"actual_run_mode"))){var proof=ProductEligibility.authorization(jdbc,student,n(p,"experience_run_id"));require(proof!=null);authorization=new ProductAuthorization(s(proof,"public_id"),s(proof,"authority_code"),s(proof,"authorization_reference"),time(proof,"authorized_at"),s(proof,"original_run_mode"),s(proof,"task_manifest_sha256"),s(proof,"closed_input_sha256"));}
+        var pins=new SourcePins(s(p,"run_public_id"),s(p,"actual_run_mode"),"MAJOR","CLOSED",task.taskVersionId(),task.manifestSha256(),task.versionCode(),task.manifest().path("title").asText(),s(p,"profile_public_id"),profileSha,s(p,"closed_input_sha256"),task.manifest().path("reflection").path("questionSetVersion").asText(),titles,authorization);
         var snapshot=new SnapshotRef(s(p,"public_id"),"READY",s(p,"student_public_id"),pins.runId(),pins.taskVersionId(),pins.decisionProfileId(),pins.closedInputSha256(),s(p,"snapshot_sha256"),closed.path("evidenceRuleVersion").asText(),s(p,"evidence_rule_version"));
         return new Source(s(p,"major_code"),s(p,"student_public_id"),pins,snapshot,items,experience);
     }

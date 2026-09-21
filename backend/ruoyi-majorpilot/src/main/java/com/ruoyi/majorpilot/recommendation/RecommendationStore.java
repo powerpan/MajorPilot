@@ -17,13 +17,16 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** Writes immutable profile/recommendation snapshots inside the caller's domain transaction. */
 @Service @Profile("local")
 public class RecommendationStore {
     public record Created(long profileInternalId,long recommendationInternalId,RecommendationView view) {}
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final ProductEvents events;
-    public RecommendationStore(JdbcTemplate jdbc,ObjectMapper mapper,ProductEvents events) { this.jdbc=jdbc;this.mapper=mapper;this.events=events; }
+    private MajorCatalog majors;
+    @Autowired public void majorCatalog(MajorCatalog majors){this.majors=majors;}
+    public RecommendationStore(JdbcTemplate jdbc,ObjectMapper mapper,ProductEvents events) { this.jdbc=jdbc;this.mapper=mapper;this.events=events;this.majors=new MajorCatalog(jdbc); }
     public Created create(Long student,Long intake,Long inputRevision,long version,DecisionAnswers answers,Long supersedes) {
         Instant now=Instant.now();String profileId=PublicIds.next(),recId=PublicIds.next();
         Map<String,Object> summary=Map.of("applicationStage",answers.applicationStage(),"currentField",answers.currentField(),"foundationSelfView",answers.foundationSelfView());
@@ -31,7 +34,7 @@ public class RecommendationStore {
         var normalized=Questionnaire.json(answers);
         normalized.fields().forEachRemaining(field->jdbc.update("INSERT INTO mp_decision_answer(decision_profile_id,question_key,answer_json,answer_text_redacted,schema_version,created_at) VALUES(?,?,?,NULL,?,?)",profile,field.getKey(),json(field.getValue()),Questionnaire.VERSION,Timestamp.from(now)));
         if(supersedes!=null)jdbc.update("UPDATE mp_decision_profile SET status='SUPERSEDED' WHERE id=?",supersedes);
-        RecommendationView view=new MajorCatalog(jdbc).project(RecommendationView.create(profileId,recId,version,answers,now,student==null));
+        RecommendationView view=majors.project(RecommendationView.create(profileId,recId,version,answers,now,student==null));
         long recommendation=insert("INSERT INTO mp_recommendation(public_id,student_id,decision_profile_id,recommendation_type,source_run_id,completed_major_codes_json,rule_version,primary_major_code,alternative_order_json,tie_detected,tie_break_rule,explanation_status,explanation_version,generated_at,safe_result_json) VALUES(?,?,?,'INITIAL',NULL,'[]',?,?,?,?,?,'STRUCTURED_ONLY',?,?,?)",recId,student,profile,view.ruleVersion(),view.primaryMajor().name(),json(view.alternativeMajors()),view.tieDetected(),view.tieBreakRule().name(),view.explanationVersion(),Timestamp.from(now),json(view));
         int order=0;
         for(var reason:view.reasons())jdbc.update("INSERT INTO mp_recommendation_reason(recommendation_id,reason_code,reason_type,major_code,reason_order,source_question_keys_json,display_text,rule_version) VALUES(?,?,?,?,?,?,?,?)",recommendation,reason.code().name(),reason.reasonType().name(),reason.majorCode().name(),++order,json(reason.sourceQuestionKeys()),reason.text(),view.ruleVersion());
@@ -64,7 +67,7 @@ public class RecommendationStore {
         },student);
     }
     public String json(Object value) { try{return mapper.writeValueAsString(value);}catch(Exception invalid){throw new IllegalStateException("Domain serialization failed");} }
-    private RecommendationView decode(String value) { try{return new MajorCatalog(jdbc).project(mapper.readValue(value,RecommendationView.class));}catch(Exception invalid){throw new IllegalStateException("Stored recommendation invalid");} }
+    private RecommendationView decode(String value) { try{return majors.project(mapper.readValue(value,RecommendationView.class));}catch(Exception invalid){throw new IllegalStateException("Stored recommendation invalid");} }
     public long insert(String sql,Object... values) {
         var key=new GeneratedKeyHolder();jdbc.update(connection->{var statement=connection.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);for(int i=0;i<values.length;i++)statement.setObject(i+1,values[i]);return statement;},key);
         if(key.getKey()==null)throw new IllegalStateException("Missing generated key");return key.getKey().longValue();

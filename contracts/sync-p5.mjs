@@ -36,6 +36,13 @@ for (const milestone of [2, 3, 4]) {
   const file = new URL(`./openapi-p${milestone}.json`, import.meta.url);
   const api = JSON.parse(readFileSync(file, 'utf8'));
   Object.assign(api.components.schemas, structuredClone(shared));
+  // Post-P7 owner-authorized local product flow is an additive wire change.
+  // Historical receipts may omit it; explicit null also means no affirmative grant.
+  api.components.schemas.Run.properties.productEligible = {
+    anyOf: [{ type: 'boolean' }, { type: 'null' }],
+    description: 'Server-derived product eligibility. Optional for legacy receipts; only true admits a historical REVIEW_PREVIEW to the product report flow. Does not rewrite runMode or prove expert review/public release.',
+  };
+  api.components.schemas.Run.properties.reportStatus.enum = ['NOT_APPLICABLE', 'NOT_REQUESTED', 'PENDING', 'GENERATING', 'READY', 'FAILED'];
   api.components.schemas.Step.properties.baActionContext = ref('BaActionContext');
   api.components.schemas.Error.properties.error.properties.details.properties.currentSourceRevisions = ref('SourceRevisions');
   api.components.schemas.PublicManifest.properties.schemaVersion.enum = ['task-manifest-v1', 'task-manifest-v2', 'task-manifest-v3', 'task-manifest-v4'];

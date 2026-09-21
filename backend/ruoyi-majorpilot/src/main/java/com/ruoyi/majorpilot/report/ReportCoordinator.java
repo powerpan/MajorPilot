@@ -4,12 +4,14 @@ import com.ruoyi.majorpilot.report.core.*;
 import com.ruoyi.majorpilot.report.core.ReportModels.*;
 import com.ruoyi.majorpilot.recommendation.NextRecommendations;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import static com.ruoyi.majorpilot.report.ReportStore.*;
 
 /** Only short database transactions. Never calls a model. */
@@ -22,7 +24,20 @@ public class ReportCoordinator {
         var j=store.db().queryForMap("SELECT * FROM mp_background_job WHERE id=?",job);
         ReportStore.require(store.db().queryForObject("SELECT COUNT(*) FROM mp_evidence_snapshot WHERE id=? AND experience_run_id=? AND student_id=? AND status='READY' AND (origin_job_id=? OR origin_job_id IS NULL)",Integer.class,snapshot,run,n(j,"owner_student_id"),job)==1);
         if("REPORT_VERSION".equals(s(j,"target_type"))){var version=store.version(n(j,"target_id"));var report=store.report(n(version,"report_id"));if(!Objects.equals(nullable(report,"generation_target_version_id"),n(version,"id"))||!"GENERATING".equals(s(version,"status")))return;prepare(report,version,List.of(store.source(n(report,"student_id"),snapshot,null)));return;}
-        var reports=store.db().queryForList("SELECT p.* FROM mp_report p JOIN mp_experience_run r ON r.id=p.experience_run_id WHERE p.experience_run_id=? AND r.run_mode='STANDARD' AND r.content_kind='MAJOR' AND r.status='CLOSED'",run);
+        initializeCore(run,snapshot);
+    }
+    /** Explicit adoption uses a selected, authenticated snapshot; it never rewrites the closed Run. */
+    @Transactional public void initializeAuthorizedRun(long run,long snapshot){
+        var rows=store.db().queryForList("SELECT student_id FROM mp_experience_run WHERE id=?",run);
+        ReportStore.require(rows.size()==1);long student=n(rows.getFirst(),"student_id");store.active(student);
+        ReportStore.require(ProductEligibility.eligible(store.db(),student,run));
+        ReportStore.require(store.db().queryForObject("SELECT COUNT(*) FROM mp_evidence_snapshot WHERE id=? AND experience_run_id=? AND student_id=? AND status='READY'",Integer.class,snapshot,run,student)==1);
+        store.source(student,snapshot,null);
+        ReportStore.require(store.db().queryForObject("SELECT COUNT(*) FROM mp_report WHERE experience_run_id=? AND student_id=? AND report_type='EXPERIENCE'",Integer.class,run,student)==1);
+        initializeCore(run,snapshot);
+    }
+    private void initializeCore(long run,long snapshot){
+        var reports=store.db().queryForList("SELECT p.* FROM mp_report p JOIN mp_experience_run r ON r.id=p.experience_run_id WHERE p.experience_run_id=? AND "+ProductEligibility.sql("r")+" AND r.content_kind='MAJOR' AND r.status='CLOSED'",run);
         if(reports.isEmpty())return;var report=reports.getFirst();if(store.db().queryForObject("SELECT COUNT(*) FROM mp_report_version WHERE report_id=?",Integer.class,n(report,"id"))>0)return;
         var source=store.source(n(report,"student_id"),snapshot,null);var request=map("schemaVersion","report-request-v1","reportId",s(report,"public_id"),"reportType","EXPERIENCE","runId",source.pins().runId(),"closedInputSha256",source.pins().closedInputSha256(),"evidenceMode","INITIAL","targetEvidenceRuleVersion",source.snapshot().effectiveRule(),"nextRecommendation",next.projection(n(report,"student_id"),run),"sourceVersionIds",List.of());
         var version=create(report,request);prepare(report,version,List.of(source));
@@ -48,7 +63,8 @@ public class ReportCoordinator {
     }
     public void compare(long student){compare(student,false);}
     public void compare(long student,boolean explicitRegeneration){
-        var sources=store.db().queryForList("SELECT v.*,p.public_id AS report_public_id,p.major_id,m.code AS major_code FROM mp_report p JOIN mp_report_version v ON v.id=p.current_version_id JOIN mp_major m ON m.id=p.major_id WHERE p.student_id=? AND p.report_type='EXPERIENCE' AND v.status='READY' ORDER BY m.code",student);
+        var sources=store.db().queryForList("SELECT v.*,p.public_id AS report_public_id,p.major_id,m.code AS major_code FROM mp_report p JOIN mp_report_version v ON v.id=p.current_version_id JOIN mp_major m ON m.id=p.major_id JOIN mp_experience_run r ON r.id=p.experience_run_id WHERE p.student_id=? AND p.report_type='EXPERIENCE' AND v.status='READY' AND "+ProductEligibility.sql("r")+" ORDER BY m.code",student);
+        ReportStore.require(sources.stream().map(v->s(v,"major_code")).distinct().count()==sources.size());
         if(sources.size()<2)return;var reports=store.db().queryForList("SELECT * FROM mp_report WHERE student_id=? AND report_type='COMPARISON'",student);
         Map<String,Object> report;if(reports.isEmpty()){String id=PublicIds.next();store.db().update("INSERT INTO mp_report(public_id,student_id,report_type,status) VALUES(?,?,'COMPARISON','PENDING')",id,student);report=store.owned(student,id);}else report=reports.getFirst();
         var tuple=sources.stream().map(v->s(v,"public_id")).toList();

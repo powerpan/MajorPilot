@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspace } from "../stores/workspace";
-import { useAuth } from "../stores/auth";
+import { identityRequest, onIdentityChange, useAuth } from "../stores/auth";
 import StepFields from "../components/workspace/StepFields.vue";
 import ReflectionFields from "../components/workspace/ReflectionFields.vue";
 import HintPanel from "../components/workspace/HintPanel.vue";
@@ -13,6 +13,11 @@ import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
 import DsWorkspace from "../components/workspace/DsWorkspace.vue";
 import BaWorkspace from "../components/workspace/BaWorkspace.vue";
 import { leaveRunObservation, observeRunStep } from '../lib/run-observations';
+import { answerIssue, taskIssue, attentionTarget, createAttention, type AttentionIssue } from '../lib/workspace-attention';
+import { actionIssue } from '../lib/ba-display';
+import { isProductRun, productInstructions } from '../lib/product-entry';
+import { api, ApiError, errorText } from '../lib/api';
+import type { ReportPage, ReportSummary } from '../types/reports';
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace(),
@@ -22,6 +27,95 @@ const help = ref<HTMLDialogElement | null>(null),
   copied = ref(false);
 const wide = ref(window.innerWidth >= 1024);
 const observationCore = ref<HTMLElement | null>(null);
+const workspaceBody = ref<HTMLElement | null>(null);
+const attention = createAttention();
+let attentionGeneration = 0;
+const clearAttention = () => { attentionGeneration += 1; attention.clear(); };
+const stopIdentityAttention = onIdentityChange(clearAttention);
+const closedReport = ref<ReportSummary | null>(null), reportLoading = ref(false), reportError = ref('');
+let reportGeneration = 0;
+function clearClosedReport() { reportGeneration += 1; closedReport.value = null; reportError.value = ''; reportLoading.value = false; }
+const stopIdentityReport = onIdentityChange(clearClosedReport);
+async function readClosedReport() {
+  const run = workspace.run;
+  if (!run || run.status !== 'CLOSED' || !isProductRun(run) || reportLoading.value || !auth.me) return;
+  const issuedAt = reportGeneration, ticket = identityRequest();
+  reportLoading.value = true;
+  try {
+    const page = await api<ReportPage>('/api/app/v1/reports?limit=50', { signal: ticket.signal });
+    if (!ticket.current() || issuedAt !== reportGeneration || workspace.run?.runId !== run.runId) return;
+    closedReport.value = page.items.find(item => item.reportType === 'EXPERIENCE' && item.majorCode === run.majorCode) || null;
+    reportError.value = '';
+  } catch (cause) {
+    if (!ticket.current() || issuedAt !== reportGeneration) return;
+    if (cause instanceof ApiError && cause.status === 401) auth.expire();
+    else reportError.value = errorText(cause);
+  } finally { ticket.finish(); if (issuedAt === reportGeneration) reportLoading.value = false; }
+}
+watch(() => [workspace.run?.runId, workspace.run?.status, workspace.run && isProductRun(workspace.run)], () => { clearClosedReport(); void readClosedReport(); });
+watch(() => [route.params.runId, workspace.selectedStep, workspace.reflectionMode, auth.me?.studentId], clearAttention, { flush: 'sync' });
+watch(() => [workspace.baContextConfirmed, workspace.baContextStale, workspace.execution?.executionId], () => attention.clear());
+async function guide(issue: AttentionIssue) {
+  const issuedAt = attentionGeneration;
+  await nextTick();
+  if (issuedAt !== attentionGeneration || !auth.me || !workspaceBody.value) return;
+  const target = attentionTarget(workspaceBody.value, issue.field) || workspaceBody.value.querySelector<HTMLElement>('[data-field-path="status"]');
+  if (target) attention.show(target, issue.message, !['execution', 'context', 'status', 'draft'].includes(issue.field));
+}
+function currentIssue(complete = true) {
+  return answerIssue(workspace.reflectionMode ? workspace.manifest?.reflection.inputSchema : workspace.step?.definition.inputSchema, workspace.answer, complete) || taskIssue(workspace.reflectionMode ? 'reflection' : workspace.selectedStep, workspace.answer, workspace.bindingConfiguration);
+}
+function contextIssue(): AttentionIssue | null {
+  if (workspace.conflict || workspace.recovered) return { field: 'draft', message: '先处理这里的草稿或版本差异，再继续。你的输入不会被覆盖。' };
+  if (workspace.baActionBlocked) return { field: 'context', message: workspace.baContextStale ? '依据已更新，请重新读取并确认，再提交当前方案。' : '请在这里查看并确认当前依据，再继续。' };
+  return null;
+}
+function businessIssue(): AttentionIssue | null {
+  if (workspace.selectedStep !== 'b6-action') return null;
+  const message = actionIssue(workspace.answer, workspace.baActionContext);
+  if (!message) return null;
+  const field = message.includes('目标群体') ? 'targetSegmentKey' : message.includes('基线') && !message.includes('超过100') ? 'successMetric' : message.includes('护栏') ? 'guardrailMaximum' : message.includes('复盘') ? 'reviewAfterDays' : 'targetChangePercentagePoints';
+  return { field, message };
+}
+async function guideFailure(complete = true) {
+  const issue = (complete || workspace.conflict || workspace.recovered ? contextIssue() : null) || currentIssue(complete);
+  if (issue) return guide(issue);
+  const message = workspace.executionError || workspace.error;
+  if (!message) return;
+  // Domain validation remains on the server; guide only to its relevant action.
+  const field = /批次|基准期|两期/.test(message) ? 'baselineStartWeek' : /两轴|分层依据|分析分支/.test(message) ? (workspace.selectedStep === 'd5-stratify' ? 'stratifyBy' : 'relationshipMode') : /运行|计算|评估|参数/.test(message) && workspace.step?.definition.operationKey ? 'execution' : 'status';
+  await guide({ field, message });
+}
+async function completeWithGuidance() {
+  clearAttention();
+  const issue = contextIssue() || currentIssue() || businessIssue();
+  if (issue) { await guide(issue); return; }
+  if (!workspace.reflectionMode && workspace.step?.definition.operationKey && !workspace.execution) {
+    await guide({ field: 'execution', message: '请先点击这里的运行按钮，查看当前数据结果后再完成这一步。' });
+    return;
+  }
+  const issuedAt = attentionGeneration;
+  await workspace.complete();
+  if (issuedAt === attentionGeneration) await guideFailure();
+}
+async function executeWithGuidance(practice = false) {
+  clearAttention();
+  const schema = workspace.step?.definition.inputSchema;
+  const operation = workspace.manifest?.operations.find(item => item.operationKey === workspace.step?.definition.operationKey);
+  const ownFields = operation?.ownResponseBindings?.map(item => item.sourceField) || Object.keys(operation?.parametersSchema.properties || {}).filter(key => !!schema?.properties[key]);
+  const issue = (workspace.conflict || workspace.recovered ? contextIssue() : null) || currentIssue(false) || (schema ? answerIssue({ ...schema, required: ownFields }, workspace.answer) : null);
+  if (issue) { await guide(issue); return; }
+  const issuedAt = attentionGeneration;
+  await (practice ? workspace.previewPractice() : workspace.executePreview());
+  if (issuedAt === attentionGeneration && (workspace.error || workspace.executionError)) await guideFailure(false);
+}
+function nativeInvalid(event: Event) {
+  if (!(event.target instanceof HTMLElement)) return;
+  event.preventDefault();
+  clearAttention();
+  const target = event.target as HTMLInputElement;
+  attention.show(target, target.validationMessage || '请检查这一项后继续。');
+}
 let stopObservation: (() => void) | undefined, observedPin = '', observationGeneration = 0;
 async function bindObservation() {
   const generation = ++observationGeneration;
@@ -49,7 +143,7 @@ const number = computed(() =>
 const isMajor = computed(() => workspace.run?.contentKind === "MAJOR");
 const isDs = computed(() => workspace.run?.majorCode === "DATA_SCIENCE");
 const isBa = computed(() => workspace.run?.majorCode === "BUSINESS_ANALYTICS");
-const preview = computed(() => workspace.run?.runMode === "REVIEW_PREVIEW");
+const preview = computed(() => !!workspace.run && workspace.run.runMode === "REVIEW_PREVIEW" && !isProductRun(workspace.run));
 const returnPath = computed(() =>
   isMajor.value
     ? preview.value
@@ -98,14 +192,25 @@ function accessible(key: string) {
   );
 }
 async function select(key: string) {
+  clearAttention();
+  const issuedAt = attentionGeneration;
   try {
     await workspace.select(key);
   } catch (cause) {
     await workspace.handle(cause);
   }
+  if (issuedAt === attentionGeneration && workspace.error) await guideFailure(false);
 }
 async function pause() {
+  clearAttention();
+  const issuedAt = attentionGeneration;
   if (await workspace.pause()) await router.push(returnPath.value);
+  else if (issuedAt === attentionGeneration) await guideFailure(false);
+}
+async function saveWithGuidance() {
+  clearAttention();
+  const issuedAt = attentionGeneration;
+  if (!(await workspace.flush()) && issuedAt === attentionGeneration) await guideFailure(false);
 }
 async function check() {
   workspace.connectionChanged();
@@ -120,6 +225,7 @@ async function check() {
     return;
   try {
     await workspace.checkState();
+    if (!closedReport.value || !closedReport.value.currentVersionId) void readClosedReport();
   } catch (cause) {
     await workspace.handle(cause);
   }
@@ -171,6 +277,8 @@ onMounted(() => {
   document.addEventListener('visibilitychange', bindObservation);
 });
 onBeforeUnmount(() => {
+  clearAttention(); stopIdentityAttention();
+  clearClosedReport(); stopIdentityReport();
   observationGeneration += 1; stopObservation?.();
   if (observedPin && auth.me) leaveRunObservation(observedPin);
   document.removeEventListener('visibilitychange', bindObservation);
@@ -339,7 +447,7 @@ onBeforeUnmount(() => {
         <p v-if="preview" class="preview-warning">{{ boundary }}</p>
       </aside>
       <main class="workspace-main" id="workspace-main">
-        <div class="workspace-main-body">
+        <div ref="workspaceBody" class="workspace-main-body" @input.capture="clearAttention" @change.capture="clearAttention" @invalid.capture="nativeInvalid">
           <div
             v-if="workspace.run.status === 'PAUSED'"
             class="workspace-notice"
@@ -373,16 +481,25 @@ onBeforeUnmount(() => {
                 preview
                   ? "预览记录已保存，不计正式专业完成，不生成正式推荐或专业报告。"
                   : isMajor
-                    ? "任务与反思已提交，报告状态以账户中实际记录为准。"
+                    ? "任务与反思已提交。体验报告会将你的实际操作和个人感受分开呈现，并说明仍不能判断的部分。"
                     : "演示不生成专业报告，也不构成专业适合度结论。"
               }}
             </p>
+            <div v-if="isMajor && !preview" class="workspace-closed-report">
+              <RouterLink v-if="closedReport" :to="`/app/reports/${closedReport.reportId}`" class="action-link action-small">
+                <span>{{ closedReport.currentVersionId ? '查看体验报告' : '查看报告进度' }}</span><span class="action-arrow"><ArrowIcon /></span>
+              </RouterLink>
+              <p v-else role="status">{{ reportError || '正在整理你的体验记录。报告就绪后，你可以在这里查看，也可以稍后从个人主页继续。' }}</p>
+              <button v-if="!closedReport || reportError" class="plain-button text-link" :disabled="reportLoading" @click="readClosedReport">
+                {{ reportLoading ? '正在读取报告状态…' : '刷新报告状态' }}
+              </button>
+            </div>
             <RouterLink :to="returnPath" class="text-link"
               >返回任务入口 →</RouterLink
             >
           </div>
           <template v-else>
-            <div class="workspace-title-row">
+            <div class="workspace-title-row" data-field-path="status">
               <h1>
                 {{
                   workspace.reflectionMode
@@ -401,7 +518,7 @@ onBeforeUnmount(() => {
               {{
                 workspace.reflectionMode
                   ? "没有标准答案，只记录你自己的感受。"
-                  : workspace.step?.definition.instructions
+                  : productInstructions(workspace.run, workspace.step?.definition.instructions)
               }}
             </p>
             <div
@@ -411,7 +528,7 @@ onBeforeUnmount(() => {
             >
               {{ workspace.iterationNotice }}
             </div>
-            <div v-if="workspace.error" class="error-notice" role="alert">
+            <div v-if="workspace.error" class="error-notice" role="alert" data-field-path="status">
               {{ workspace.error }}
             </div>
             <p
@@ -438,6 +555,7 @@ onBeforeUnmount(() => {
             <div
               v-if="workspace.recovered || workspace.conflict"
               class="workspace-notice"
+              data-field-path="draft"
             >
               <strong>{{
                 workspace.conflict
@@ -556,7 +674,7 @@ onBeforeUnmount(() => {
                 workspace.selectedStep === 'a5-evaluate' && workspace.step
               "
             >
-              <section class="classifier-binding">
+              <section class="classifier-binding" data-field-path="execution" data-attention-region>
                 <h2>
                   当前配置
                   <button
@@ -599,7 +717,8 @@ onBeforeUnmount(() => {
                     workspace.executing ||
                     !!workspace.recovered
                   "
-                  @click="workspace.executePreview"
+                  data-attention-control
+                  @click="executeWithGuidance()"
                 >
                   {{
                     workspace.executing
@@ -662,8 +781,8 @@ onBeforeUnmount(() => {
                 @update:model-value="workspace.edit"
               />
             </template>
-            <BaWorkspace v-else-if="isBa && workspace.step" />
-            <DsWorkspace v-else-if="isDs && workspace.step" />
+            <BaWorkspace v-else-if="isBa && workspace.step" @execute="executeWithGuidance()" />
+            <DsWorkspace v-else-if="isDs && workspace.step" @execute="executeWithGuidance()" />
             <StepFields
               v-else-if="workspace.step"
               :schema="workspace.step.definition.inputSchema"
@@ -749,6 +868,8 @@ onBeforeUnmount(() => {
             <section
               v-if="workspace.selectedStep === 'a4-configure'"
               class="classifier-practice"
+              data-field-path="execution"
+              data-attention-region
             >
               <div class="button-row">
                 <button
@@ -756,7 +877,8 @@ onBeforeUnmount(() => {
                   :disabled="
                     workspace.readOnly || workspace.busy || workspace.executing
                   "
-                  @click="workspace.previewPractice"
+                  data-attention-control
+                  @click="executeWithGuidance(true)"
                 >
                   {{
                     workspace.executing ? "正在隔离计算…" : "练习集预览"
@@ -790,7 +912,7 @@ onBeforeUnmount(() => {
                 workspace.step?.definition.operationKey === 'demo-summary-v1'
               "
             >
-              <div class="workspace-execution-actions">
+              <div class="workspace-execution-actions" data-field-path="execution" data-attention-region>
                 <button
                   v-if="!workspace.executing"
                   class="workspace-outline"
@@ -799,7 +921,8 @@ onBeforeUnmount(() => {
                     workspace.busy ||
                     !!workspace.recovered
                   "
-                  @click="workspace.executePreview"
+                  data-attention-control
+                  @click="executeWithGuidance()"
                 >
                   运行预览</button
                 ><button
@@ -922,22 +1045,19 @@ mean = total / count</code></pre>
               v-if="workspace.dirty"
               class="text-link plain-button"
               :disabled="workspace.saving || workspace.readOnly"
-              @click="workspace.flush"
+              @click="saveWithGuidance"
             >
               重试保存</button
             ><button
               class="action-link"
               :disabled="
-                (workspace.readOnly &&
+                (workspace.readOnly && !workspace.conflict &&
                   !(allCompleted && workspace.run.status === 'IN_PROGRESS')) ||
                 workspace.busy ||
                 workspace.executing ||
-                !workspace.selectionReady ||
-                !!workspace.recovered ||
-                workspace.baActionBlocked ||
-                workspace.conflict
+                !workspace.selectionReady
               "
-              @click="workspace.complete"
+              @click="completeWithGuidance"
             >
               <span>{{
                 workspace.busy

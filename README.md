@@ -6,6 +6,8 @@
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
+2026-09-21 真人验收修订已通过本地验收：主站改为完整专业体验入口，推荐栏直接开始／继续，缺项滚动定位，并以独立授权将本人已完成的 BA 记录接入真实报告。BA→DS→比较的真实模型与双浏览器流程通过，详见 [验收修订](docs/36-human-acceptance-product-flow.md)。本地产品授权与专业审核、公开部署分开，保留 REVIEW 与历史证据原貌。
+
 产品事实与设计入口见 [docs/README.md](docs/README.md)，实施范围见 [P0–P8 路线](docs/16-implementation-roadmap-and-traceability.md)，历史技术底座见 [P0 记录](docs/20-p0-implementation-evidence.md)。
 
 ## 本地运行（macOS Apple Silicon）
@@ -60,7 +62,9 @@ sh scripts/stop-local
 
 P2演示需要在忽略的 `.env.local` 中显式设置 `MP_P2_DEMO_ENABLED=true`，默认关闭；登录后从个人主页进入“工作区上手演示”。任务AI开关 `MP_EXPERIENCE_AI_ENABLED` 默认false，普通验收保持关闭，使用已审核静态提示；不伪装为模型生成。`test-p2-e2e`顺序运行真实HTTP和Chrome/Edge任务闭环，共创建并精确清理4个合成账户，仍遵守共享IP注册限额。
 
-P3的AI专业内容目前为REVIEW，尚待真人专业审核与目标用户计时。仅本地验证时可在 `.env.local` 显式设置 `MP_CONTENT_PREVIEW_ENABLED=true`，从个人主页打开“内容工程预览”。预览保存真实操作并在关闭后生成后台证据，但不计正式专业完成、不生成NEXT或正式报告。`test-p3-e2e`验证真实HTTP与Chrome/Edge任务闭环，共4个合成账户，仍遵守注册限额；普通测试保持任务AI关闭。`node scripts/test-p3-api.mjs --check`只做静态预检，不创建账户或调用服务。
+当前完整本地产品使用 `.env.local` 的 `MP_LOCAL_PRODUCT_ENABLED=true` 和逐任务 manifest hash 的管理授权。单独打开开关不会自动发布或授权内容；本地授权也不会把 REVIEW 改成 PUBLISHED。新体验使用 STANDARD 流程，完成后产生 NEXT、证据与私有报告。旧已完成预览只有经过精确历史接入授权才进入报告；原 runMode 和证据不改写。接口见 [本轮合同](contracts/openapi-product-flow.json)。
+
+以下 P3–P5 命令保留为旧工程预览边界回归，须使用独立预览配置，不能在完整产品开关开启的主站直接运行：P3 AI 内容仍须真人专业审核与目标用户计时；`MP_CONTENT_PREVIEW_ENABLED=true` 仅允许本地旧预览测试，主站已移除创建入口。未授权预览不计正式专业完成、不生成 NEXT 或报告。`test-p3-e2e` 创建并精确清理4个合成账户，遵守注册限额；普通测试保持任务AI关闭。`node scripts/test-p3-api.mjs --check` 只做静态预检。
 
 P4新增DS工程预览，仍受同一 `MP_CONTENT_PREVIEW_ENABLED` 本地开关控制。D1–D6覆盖质量策略、分箱频数、分组/散点关系、分层和结论；固定JS Worker预览加Java服务端复算，只读Python说明不执行代码。每个操作最多30种成功配置，相同配置复用免费，HTTP速率限制独立。`test-p4-e2e`先跑真实HTTP再跑Chrome/Edge，共4个合成账户；`node scripts/test-p4-api.mjs --check`只做静态预检。本地实现与最终验收状态见交付记录。
 
@@ -95,7 +99,7 @@ data/tools/node/bin/node scripts/report-spike.mjs --live --provider BAILIAN --ru
 交付约定（2026-09-20 用户确认）：每个完成的里程碑或重大变更，在相应验证通过后提交并推送 GitHub；保留提交和远端核验信息。推送不等于公网部署。项目协作规则见 [AGENTS.md](AGENTS.md)。
 
 - P0 的 `mp_p0_*` 表、探针接口和合成删除／邮件流程只用于技术验证，不是 P1/P7 实现。
-- 三个正式专业仍未开放；保存推荐或改选不创建 Experience Run。P7个人导出与账户删除已在本地真实流程验证；邮件仍仅进入本地Mailpit，真实SMTP、生产政策审核、外部副本/备份擦除并未因此完成。
+- 三专业完整流程可经逐任务本地授权开放，尚未通过专业公开发布门禁。推荐栏“开始”会记录真实选择并创建／启动体验；有其他活动体验时先确认暂停切换。P7个人导出与账户删除已在本地真实流程验证；邮件仍仅进入本地Mailpit，真实SMTP、生产政策审核、外部副本/备份擦除并未因此完成。
 - 可选研究授权默认拒绝，撤回不影响核心使用；页面观察和后台业务事实分开。P1 API 与页面不会输出能力总分、人格标签或录取概率。
 - 执行器不执行用户 Python／JavaScript：只接受受限参数，执行固定可信计算器。Pyodide 是否可用必须同时满足 CSP 和隔离，不能只以 Python 算出结果为准。
 - 本地验收、Git 提交／上传、公网部署是独立步骤；运行成功不代表已上传或已上线。

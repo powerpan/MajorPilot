@@ -7,6 +7,7 @@ import com.ruoyi.majorpilot.report.core.ReportInputException;
 import com.ruoyi.majorpilot.recommendation.NextRecommendations;
 import com.ruoyi.majorpilot.security.RateLimits;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
 import java.time.Duration;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
@@ -37,7 +38,7 @@ public class ReportService {
             boolean rebuild=input.evidenceMode().equals("REBUILD_EVIDENCE"),comparison=s(report,"report_type").equals("COMPARISON");
             if(comparison&&rebuild||!rebuild&&input.targetEvidenceRuleVersion()!=null)throw new ApiException(422,"EVIDENCE_RULE_UNSUPPORTED");
             if(comparison){queue.compare(student,true);var refreshed=store.report(n(report,"id"));if(refreshed.get("generation_target_version_id")==null)throw new ApiException(409,"REPORT_REGENERATION_IN_PROGRESS");var v=store.version(n(refreshed,"generation_target_version_id"));audit(operator,report,input,requestId,s(v,"public_id"));return new ReportDtos.Requested(id,s(v,"public_id"),"GENERATING",n(refreshed,"row_version"));}
-            long run=n(report,"experience_run_id");var r=store.db().queryForMap("SELECT * FROM mp_experience_run WHERE id=? AND student_id=? AND run_mode='STANDARD' AND status='CLOSED'",run,student);var closed=store.node(r.get("closed_input_manifest_json"));
+            long run=n(report,"experience_run_id");var r=store.db().queryForMap("SELECT r.* FROM mp_experience_run r WHERE r.id=? AND r.student_id=? AND "+ProductEligibility.sql("r")+" AND r.status='CLOSED'",run,student);var closed=store.node(r.get("closed_input_manifest_json"));
             String effective=rebuild?input.targetEvidenceRuleVersion():null;if(rebuild&&(effective==null||!Set.of("evidence-v3","ds-evidence-v2","ba-evidence-v2").contains(effective)))throw new ApiException(422,"EVIDENCE_RULE_UNSUPPORTED");
             if(rebuild){var task=store.db().queryForMap("SELECT t.public_id,t.manifest_sha256,t.manifest_json,m.code FROM mp_task_version t JOIN mp_major m ON m.id=t.major_id WHERE t.id=?",n(r,"task_version_id"));try{registry.requireCompatible(closed.path("evidenceRuleVersion").asText(),effective,closed.path("schemaVersion").asText(),s(task,"code"),s(task,"public_id"),s(task,"manifest_sha256"),store.node(task.get("manifest_json")).path("reflection").path("questionSetVersion").asText());}catch(ReportInputException unsupported){throw new ApiException(422,"EVIDENCE_RULE_UNSUPPORTED");}}
             var request=map("schemaVersion","report-request-v1","reportId",id,"reportType","EXPERIENCE","runId",s(r,"public_id"),"closedInputSha256",s(r,"closed_input_sha256"),"evidenceMode",input.evidenceMode(),"targetEvidenceRuleVersion",effective,"nextRecommendation",next.projection(student,run),"sourceVersionIds",List.of());

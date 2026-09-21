@@ -1,5 +1,15 @@
 # API contracts
 
+## Post-P7 local product flow amendment
+
+`openapi-product-flow.json` is the two-operation supplement for the owner's post-P7 acceptance feedback, **not P8 or public deployment**. It covers local-only exact-version release and exact CLOSED preview adoption. Both endpoints require the `local` profile, `MP_LOCAL_PRODUCT_ENABLED`, an authorized Operator, pinned revision/hash and explicit authorization reference/reason. Adoption requires **both** recovery and report-regeneration permissions, an owned READY Evidence Snapshot, matching immutable closure inputs and no other product Run for that Major.
+
+Release leaves content status `REVIEW` and does not invent professional review or timing approval. Adoption preserves `REVIEW_PREVIEW`, source answers, timestamps and evidence; only the separately audited exact Run is eligible for private reports and recommendations. Retry uses the same pinned authorization, not an `Idempotency-Key` receipt. `check-product-flow.mjs` compares route/permission inventory with the real local controller and exports `loadProductFlowContracts()` for HTTP validation.
+
+A **new** historical adoption returns HTTP 409 `PRODUCT_ADOPTION_ORDER_CONFLICT` if the Student already has another CLOSED product Run. This conservative boundary avoids retroactively distorting immutable NEXT chronology. The guard does not reject a retry of an existing matching adoption merely because that Student subsequently completed another Major; the original pinned authorization and evidence must still match.
+
+Shared Run responses accept an optional nullable `productEligible` field; only explicit `true` admits historical previews. Legacy omissions remain valid. The unchanged `runMode` is provenance, not itself a report grant. `reportStatus` now also accepts actual `PENDING`, `GENERATING`, `READY` and `FAILED` states. `sync-p5.mjs` applies this additive shared-wire change to P2–P5, and `sync-p7.mjs` inherits it into `P5Run`; the original P7 endpoint inventory remains 37 operations. `sync-product-flow.mjs` composes the separate amendment and never calls a provider, database or server.
+
 ## P7 operations and privacy
 
 `openapi-p7.json` describes 37 operations: the P7 account settings, private exports, deletion receipts, operations overview, administrative projections and page observations, plus the existing task/recovery/report management routes needed by the same operator interface. `sync-p7.mjs` composes the inherited schemas without modifying the earlier milestone contracts. `check-p7.mjs` verifies route and permission inventory against the current Spring controllers and exports `loadP7Contracts()` for runtime acceptance checks.
@@ -43,6 +53,8 @@ data/tools/node/bin/node contracts/check-p1.mjs
 data/tools/node/bin/node contracts/check-p2.mjs
 data/tools/node/bin/node contracts/sync-p7.mjs
 data/tools/node/bin/node contracts/check-p7.mjs
+data/tools/node/bin/node contracts/sync-product-flow.mjs
+data/tools/node/bin/node contracts/check-product-flow.mjs
 data/tools/node/bin/node contracts/check-content.mjs
 data/tools/node/bin/node --test contracts/tests/*.test.mjs scripts/ai-spike.test.mjs
 ```

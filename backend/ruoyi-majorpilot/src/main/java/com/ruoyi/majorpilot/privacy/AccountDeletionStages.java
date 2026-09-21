@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import static com.ruoyi.majorpilot.privacy.PrivacyStore.*;
 
-/** Physical deletion topology for V8. Shared content and Operator accounts are never deleted. */
+/** Physical deletion topology through V9. Shared content releases and Operator accounts are never deleted. */
 @Service @Profile("local")
 public class AccountDeletionStages {
     private final PrivacyStore store;private final PrivateObjectStore files;private final AccountDeletionOwnershipGuard ownership;
@@ -72,6 +72,8 @@ public class AccountDeletionStages {
         store.db.update("DELETE FROM mp_background_job WHERE owner_student_id=? AND job_type='STUDENT_EXPORT'",student);
     }
     private void metadata(long student){
+        // This is Student-owned provenance; shared task-release authorization is not.
+        store.db.update("DELETE FROM mp_run_product_adoption WHERE student_id=?",student);
         store.db.update("DELETE e FROM mp_product_event e LEFT JOIN mp_intake_session i ON i.id=e.intake_session_id WHERE e.student_id=? OR i.claimed_student_id=?",student,student);
         store.db.update("DELETE FROM mp_ai_call WHERE student_id=?",student);
         store.db.update("DELETE e FROM mp_idempotency_record e LEFT JOIN mp_intake_session i ON i.id=e.owner_intake_session_id WHERE e.owner_student_id=? OR i.claimed_student_id=?",student,student);

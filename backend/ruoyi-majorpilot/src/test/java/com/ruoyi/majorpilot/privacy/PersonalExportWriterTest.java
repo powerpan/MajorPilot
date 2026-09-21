@@ -16,6 +16,19 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class PersonalExportWriterTest {
+    @Test void adoptedPreviewExportPreservesOriginalModeAndOnlySafePersonalProvenance()throws Exception{
+        var run=new LinkedHashMap<String,Object>();run.put("id",9L);run.put("public_id","00000000000000000000000009");run.put("run_mode","REVIEW_PREVIEW");run.put("content_kind","MAJOR");run.put("task_public_id","00000000000000000000000010");run.put("profile_public_id","00000000000000000000000011");run.put("manifest_json","{\"title\":\"SYNTHETIC\"}");
+        when(db.queryForList(startsWith("SELECT r.id,r.public_id,r.content_kind"),eq(7L))).thenReturn(List.of(run));
+        var proof=new LinkedHashMap<String,Object>();proof.put("public_id","00000000000000000000000012");proof.put("original_run_mode","REVIEW_PREVIEW");proof.put("authority_code","PROJECT_OWNER_REQUEST");proof.put("authorized_at",Instant.parse("2026-09-21T00:00:00Z"));proof.put("authorized_by_operator_id",777L);proof.put("reason_text","PRIVATE_OPERATOR_REASON");proof.put("authorization_reference","PRIVATE_AUTHORIZATION_REFERENCE");proof.put("closed_input_sha256","PRIVATE_HASH");
+        when(db.queryForList(startsWith("SELECT a.* FROM mp_run_product_adoption"),eq(7L),eq(9L))).thenReturn(List.of(proof));
+        var files=unzip(writer.build(7,"FULL_PERSONAL_EXPORT",Instant.now()));var data=mapper.readTree(files.get("personal-data.json"));var exported=data.path("runs").get(0);
+        assertEquals("REVIEW_PREVIEW",exported.path("runMode").asText());var visible=exported.path("productAuthorization");var keys=new HashSet<String>();visible.fieldNames().forEachRemaining(keys::add);
+        assertEquals(Set.of("authorizationId","experienceRunId","taskVersionId","decisionProfileId","originalRunMode","authorityCode","authorizedAt"),keys);
+        assertEquals("PROJECT_OWNER_REQUEST",visible.path("authorityCode").asText());
+        for(String forbidden:List.of("PRIVATE_","authorized_by_operator_id","reason_text","authorization_reference","closed_input_sha256"))assertFalse(data.toString().contains(forbidden),forbidden);
+        var reportsOnly=unzip(writer.build(7,"REPORTS_ONLY",Instant.now()));assertFalse(reportsOnly.containsKey("personal-data.json"));
+    }
+
     final ObjectMapper mapper=new ObjectMapper().findAndRegisterModules();final JdbcTemplate db=mock(JdbcTemplate.class);PersonalExportWriter writer;
     @BeforeEach void setup(){writer=new PersonalExportWriter(db,mapper);TransactionSynchronizationManager.setActualTransactionActive(true);when(db.queryForList(startsWith("SELECT public_id,email_display,status"),eq(7L))).thenReturn(List.of(new LinkedHashMap<>(Map.of("public_id","00000000000000000000000007","email_display","export@example.invalid","status","ACTIVE"))));}
     @AfterEach void clear(){TransactionSynchronizationManager.setActualTransactionActive(false);}

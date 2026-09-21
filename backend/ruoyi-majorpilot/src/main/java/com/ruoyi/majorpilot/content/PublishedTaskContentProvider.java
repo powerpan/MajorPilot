@@ -2,6 +2,7 @@ package com.ruoyi.majorpilot.content;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ruoyi.majorpilot.shared.ApiException;
+import com.ruoyi.majorpilot.acceptance.LocalProductAccess;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -12,12 +13,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Service @Profile("local")
 public final class PublishedTaskContentProvider implements TaskContentProvider {
     private final JdbcTemplate db;private final TaskContentRepository repository;private final boolean demoEnabled,previewEnabled;
+    private LocalProductAccess local;
+    @Autowired public void localProductAccess(LocalProductAccess local){this.local=local;}
     @Autowired
     public PublishedTaskContentProvider(JdbcTemplate db,TaskContentRepository repository,@Value("${MP_P2_DEMO_ENABLED:false}") boolean demoEnabled,@Value("${MP_CONTENT_PREVIEW_ENABLED:false}")boolean previewEnabled){this.db=db;this.repository=repository;this.demoEnabled=demoEnabled;this.previewEnabled=previewEnabled;}
     public PublishedTaskContentProvider(JdbcTemplate db,TaskContentRepository repository,boolean demoEnabled){this(db,repository,demoEnabled,false);}
-    @Override public TaskContent.Version currentMajor(String majorCode){return one("t.content_kind='MAJOR' AND m.code=? AND m.status='ACTIVE' AND t.status='PUBLISHED'",majorCode);}
+    @Override public TaskContent.Version currentMajor(String majorCode){return one("t.content_kind='MAJOR' AND m.code=? AND m.status='ACTIVE' AND (t.status='PUBLISHED' OR (t.status='REVIEW' AND "+(local==null?"FALSE":local.releasedSql("t"))+")) ORDER BY (t.status='PUBLISHED') DESC,t.id DESC LIMIT 1",majorCode);}
     @Override public TaskContent.Version currentDemo(String demoKey){if(!demoEnabled)throw new ApiException(403,"DEMO_DISABLED");return one("t.content_kind='DEMO' AND t.demo_key=? AND t.status='PUBLISHED'",demoKey);}
-    @Override public TaskContent.Version pinned(String id){return one("t.public_id=? AND t.status IN ('PUBLISHED','RETIRED')",id);}
+    @Override public TaskContent.Version pinned(String id){return one("t.public_id=? AND (t.status IN ('PUBLISHED','RETIRED') OR (t.content_kind='MAJOR' AND t.status='REVIEW' AND "+LocalProductAccess.pinnedSql("t")+"))",id);}
     @Override public TaskContent.Version review(String id){preview();return one("t.public_id=? AND t.content_kind='MAJOR' AND t.status='REVIEW'",id);}
     @Override public TaskContent.Version pinnedForPreview(String id){preview();return one("t.public_id=? AND t.content_kind='MAJOR' AND t.status IN ('REVIEW','PUBLISHED','RETIRED')",id);}
     @Override public List<TaskContent.Version> reviewVersions(){preview();return db.queryForList("SELECT public_id FROM mp_task_version WHERE content_kind='MAJOR' AND status='REVIEW' ORDER BY id",String.class).stream().map(this::review).toList();}

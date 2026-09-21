@@ -331,6 +331,7 @@ const textLabels: Record<string, string> = {
         v-for="(item, index) in findings"
         :key="index"
         class="ds-finding"
+        :data-field-path="`findings.${index}`"
         :disabled="disabled"
       >
         <legend>发现 {{ index + 1 }}</legend>

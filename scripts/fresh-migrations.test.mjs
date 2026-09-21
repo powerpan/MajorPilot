@@ -8,8 +8,8 @@ test('migration probe imports without running and defaults to a fresh schema', (
   assert.deepEqual(parseMigrationArguments(['/tmp/validated.jar']), { artifactArgument: '/tmp/validated.jar', fromVersion: null });
 });
 
-test('both preserved V6 and new V7 baselines accept either argument order', () => {
-  for (const version of [6, 7]) {
+test('preserved V6/V7 and V8 baselines accept either argument order', () => {
+  for (const version of [6, 7, 8]) {
     const flag = `--upgrade-from-v${version}`;
     const expected = { artifactArgument: '/tmp/validated.jar', fromVersion: version };
     assert.deepEqual(parseMigrationArguments([flag, '/tmp/validated.jar']), expected);
@@ -23,9 +23,27 @@ test('migration probe rejects duplicate, conflicting and unsupported baselines',
     ['--upgrade-from-v6', '--upgrade-from-v7'],
     ['--upgrade-from-v6', '--upgrade-from-v6'],
     ['--upgrade-from-v7', '--upgrade-from-v7'],
-    ['--upgrade-from-v8'], ['--skip-cleanup'], ['--help'],
+    ['--upgrade-from-v8', '--upgrade-from-v8'],
+    ['--upgrade-from-v7', '--upgrade-from-v8'],
+    ['--upgrade-from-v9'], ['--skip-cleanup'], ['--help'],
     ['one.jar', 'two.jar'],
   ]) assert.throws(() => parseMigrationArguments(options));
+});
+
+test('V9 adds empty authorization tables and does not publish content or rewrite previews', () => {
+  const checker = readFileSync(new URL('./java/FreshMigrationCheck.java', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../database/migration/V9__local_product_authorizations.sql', import.meta.url), 'utf8');
+  const tables = [...migration.matchAll(/^CREATE TABLE (\w+)/gm)].map(match => match[1]);
+  assert.deepEqual(tables, ['mp_local_task_release', 'mp_run_product_adoption']);
+  assert.doesNotMatch(migration, /^\s*(INSERT|UPDATE|DELETE|REPLACE)\s/mi);
+  for (const table of tables) assert.ok(checker.includes(`'${table}'`));
+  for (const constraint of [...migration.matchAll(/CONSTRAINT (\w+)/g)].map(match => match[1])) assert.ok(checker.includes(`'${constraint}'`), constraint);
+  assert.match(checker, /require\(releases==0&&adoptions==0\)/);
+  assert.match(checker, /originalTask\.equals\(taskSnapshot\(connection\)\)/);
+  assert.match(checker, /originalPreview\.equals\(previewSnapshot\(connection\)\)/);
+  assert.match(checker, /'CLOSED','REVIEW_PREVIEW'/);
+  assert.match(checker, /'migration-sentinel','REVIEW'/);
+  assert.match(checker, /from\.equals\("8"\)/);
 });
 
 test('standalone P7 checker names all five frozen tables and checks actual owner enforcement', () => {

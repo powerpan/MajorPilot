@@ -61,8 +61,14 @@ The complete guided product journey for one Major, including preparation, a repr
 _Avoid_: Course, Test, Assessment
 
 **Task Version**:
-An immutable, reviewed release of the content, data, steps, hints, and evaluation rules used by a Major Experience.
+An immutable version of the content, data, steps, hints, and evaluation rules used by a Major Experience. Professional review and availability for local use are separate facts.
 _Avoid_: Task, Lesson Version
+
+**Local Product Release**:
+The project owner's explicit authorization to use one fixed Task Version in the complete local product flow; it does not claim professional approval or public release.
+
+**Historical Experience Adoption**:
+The explicit inclusion of one completed preview Experience Run in the report and further-exploration flow, preserving its original answers, evidence, and provenance.
 
 **Experience Run**:
 One Student's attempt at one Major, bound to exactly one Task Version when first started; pausing and resuming preserve the same attempt.

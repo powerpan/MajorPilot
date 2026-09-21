@@ -57,7 +57,7 @@ function reference(index: number, id: string) {
 <template>
   <div class="classifier-errors">
     <h2>公开练习 · 已选择 {{ selected().length }} / 8–10 条</h2>
-    <div class="classifier-practice-list">
+    <div class="classifier-practice-list" data-field-path="inspectedSampleIds" data-attention-region>
       <label v-for="sample in samples" :key="sample.sampleId"
         ><input
           type="checkbox"
@@ -84,6 +84,7 @@ function reference(index: number, id: string) {
       v-for="(value, index) in patterns()"
       :key="index"
       class="classifier-pattern"
+      :data-field-path="`errorPatterns.${index}`"
     >
       <h2>错误模式 {{ index + 1 }}</h2>
       <label class="workspace-select"

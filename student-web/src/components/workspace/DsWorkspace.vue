@@ -5,6 +5,7 @@ import DsFields from "./DsFields.vue";
 import DsResults from "./DsResults.vue";
 import DsDataReferences from "./DsDataReferences.vue";
 const workspace = useWorkspace();
+const emit = defineEmits<{ execute: [] }>();
 const operation = computed(() => workspace.step?.definition.operationKey || "");
 const buttonText = computed(
   () =>
@@ -54,7 +55,7 @@ const sources = computed(() =>
       @update:model-value="workspace.edit"
     >
       <template #analysis>
-        <div class="ds-run-actions">
+        <div class="ds-run-actions" data-field-path="execution" data-attention-region>
           <button
             class="workspace-outline"
             :disabled="
@@ -63,7 +64,8 @@ const sources = computed(() =>
               workspace.busy ||
               !!workspace.recovered
             "
-            @click="workspace.executePreview"
+            data-attention-control
+            @click="emit('execute')"
           >
             {{ workspace.executing ? "正在隔离计算并复核…" : buttonText }}
           </button>

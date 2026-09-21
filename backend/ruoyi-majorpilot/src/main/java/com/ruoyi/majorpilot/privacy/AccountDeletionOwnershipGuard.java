@@ -109,7 +109,7 @@ public class AccountDeletionOwnershipGuard {
         for(String name:List.of("mp_consent_record","mp_decision_profile","mp_product_event"))out.put(name,"SELECT t.*,COALESCE(t.student_id,i.claimed_student_id) AS deletion_owner FROM "+name+" t LEFT JOIN mp_intake_session i ON i.id=t.intake_session_id");
         out.put("mp_idempotency_record","SELECT t.*,COALESCE(t.owner_student_id,i.claimed_student_id) AS deletion_owner FROM mp_idempotency_record t LEFT JOIN mp_intake_session i ON i.id=t.owner_intake_session_id");
         out.put("mp_recommendation","SELECT t.*,COALESCE(t.student_id,p.student_id,i.claimed_student_id) AS deletion_owner FROM mp_recommendation t LEFT JOIN mp_decision_profile p ON p.id=t.decision_profile_id LEFT JOIN mp_intake_session i ON i.id=p.intake_session_id");
-        direct(out,"mp_recommendation_decision","student_id");
+        direct(out,"mp_recommendation_decision","student_id");direct(out,"mp_run_product_adoption","student_id");
         via(out,"mp_decision_answer","decision_profile_id","mp_decision_profile");via(out,"mp_recommendation_reason","recommendation_id","mp_recommendation");
         for(String name:List.of("mp_step_state","mp_execution_record","mp_hint_request","mp_reflection","mp_run_closure_request"))via(out,name,"experience_run_id","mp_experience_run");
         via(out,"mp_step_response_revision","step_state_id","mp_step_state");via(out,"mp_step_completion","step_state_id","mp_step_state");
@@ -144,6 +144,11 @@ public class AccountDeletionOwnershipGuard {
         edge(all,"mp_admin_export_student","student_id","mp_student_account");all.add(MEMBERSHIP);
         all.add(new Edge("mp_background_job","owner_operator_id","sys_user","user_id"));
         all.add(new Edge("mp_admin_export","operator_id","sys_user","user_id"));
+        edge(all,"mp_run_product_adoption","student_id","mp_student_account");
+        edge(all,"mp_run_product_adoption","experience_run_id","mp_experience_run");
+        edge(all,"mp_run_product_adoption","decision_profile_id","mp_decision_profile");
+        edge(all,"mp_run_product_adoption","task_version_id","mp_task_version");
+        all.add(new Edge("mp_run_product_adoption","authorized_by_operator_id","sys_user","user_id"));
         return Collections.unmodifiableSet(all);
     }
     private static void edge(Set<Edge> edges,String table,String column,String parent){edges.add(new Edge(table,column,parent,"id"));}

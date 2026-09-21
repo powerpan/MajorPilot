@@ -37,6 +37,8 @@
 
 P7 当前记录：[工程合同](./33-p7-engineering-plan.md)、[视觉合同](./34-p7-visual-contract.md)、[验收与交付台账](./35-p7-delivery-ledger.md)。
 
+2026-09-21 最新真人验收修订：[完整产品流程与可定位反馈](./36-human-acceptance-product-flow.md)、[本地授权与历史证据决策](./adr/0001-local-product-release-and-historical-evidence.md)。本地实现与真实报告/比较流程已通过；它取代旧“预览永不报告”的绝对限制，但不代替专业审核、计时、P8或公开部署门禁。
+
 ## 文档状态含义
 
 - **历史基线**：保留当时问题和假设，后续文档可以取代其中的实施判断；

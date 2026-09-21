@@ -6,6 +6,9 @@ import com.ruoyi.majorpilot.content.*;
 import com.ruoyi.majorpilot.shared.*;
 import com.ruoyi.majorpilot.datascience.DsSemantics;
 import com.ruoyi.majorpilot.businessanalytics.BaSemantics;
+import com.ruoyi.majorpilot.acceptance.LocalProductAccess;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
@@ -16,6 +19,8 @@ import static com.ruoyi.majorpilot.experience.RunStore.*;
 @Service @Profile("local")
 public class RunService {
     private final RunStore db;private final TaskContentProvider content;private final IdempotencyService idem;private final TransactionTemplate tx;
+    private LocalProductAccess local;
+    @Autowired public void localProductAccess(LocalProductAccess local){this.local=local;}
     public RunService(RunStore db,TaskContentProvider content,IdempotencyService idem,TransactionTemplate tx) {this.db=db;this.content=content;this.idem=idem;this.tx=tx;}
     public RunStore store() {return db;}
     public TaskContentProvider contentProvider() {return content;}
@@ -34,11 +39,11 @@ public class RunService {
             return result;});
     }
     public List<Map<String,Object>> previews(StudentPrincipal student) {
-        if(!db.previewEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");
+        if(!db.previewEnabled()||local!=null&&local.enabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");
         return tx.execute(status->{db.activeStudent(student);return content.reviewVersions().stream().map(v->map("taskVersionId",v.taskVersionId(),"majorCode",v.majorCode(),"title",v.manifest().path("title").asText(),"versionCode",v.versionCode(),"runMode","REVIEW_PREVIEW","reviewStatus","REVIEW","warning","工程预览；尚待专业审核与真实用户计时")).toList();});
     }
     public RunDtos.Run createPreview(StudentPrincipal student,String key,RunDtos.CreatePreview input) {
-        if(!db.previewEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");
+        if(!db.previewEnabled()||local!=null&&local.enabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");
         return write(student,"/review-preview-runs",key,input,RunDtos.Run.class,()->{
             if(!db.previewEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");var v=content.review(input.taskVersionId());
             var majors=db.jdbc().queryForList("SELECT id FROM mp_major WHERE code=? AND status='ACTIVE'",v.majorCode());if(majors.isEmpty())throw new ApiException(404,"CONTENT_UNAVAILABLE");long major=n(majors.getFirst(),"id");
@@ -46,7 +51,7 @@ public class RunService {
             String id=PublicIds.next();db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,run_mode,major_id,task_version_id) VALUES(?,?,'MAJOR','REVIEW_PREVIEW',?,?)",id,student.internalId(),major,v.internalId());var run=db.owned(student,id);db.event(run,"run.created",Map.of("contentKind","MAJOR"));return db.view(run);
         });
     }
-    public List<RunDtos.Run> list(StudentPrincipal student) {return tx.execute(status->{db.activeStudent(student);return db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? ORDER BY r.id",student.internalId()).stream().map(db::row).filter(r->(db.demoEnabled()||r.kind().equals("MAJOR"))&&(db.previewEnabled()||!r.mode().equals("REVIEW_PREVIEW"))).map(db::view).toList();});}
+    public List<RunDtos.Run> list(StudentPrincipal student) {return tx.execute(status->{db.activeStudent(student);return db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? ORDER BY r.id",student.internalId()).stream().map(db::row).filter(r->(db.demoEnabled()||r.kind().equals("MAJOR"))&&(db.previewEnabled()||!r.mode().equals("REVIEW_PREVIEW")||db.productEligible(r))).map(db::view).toList();});}
     public RunDtos.Run get(StudentPrincipal student,String id) {return tx.execute(status->{db.activeStudent(student);return db.view(db.owned(student,id));});}
     IdempotencyService.Owner owner(StudentPrincipal student) {return new IdempotencyService.Owner(student.internalId(),null,"student:"+student.publicId());}
     <T>T write(StudentPrincipal student,String path,String key,Object request,Class<T> type,java.util.function.Supplier<T> action) {
@@ -65,6 +70,10 @@ public class RunService {
             if(kind.equals("DEMO")){if(!db.demoEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");content.currentDemo(demo);}
             else {var choices=db.jdbc().queryForList("SELECT d.id,d.recommendation_id,m.id AS major_id FROM mp_recommendation_decision d JOIN mp_major m ON m.code=d.selected_major_code WHERE d.public_id=? AND d.student_id=? AND m.status='ACTIVE'",input.decisionId(),student.internalId());if(choices.isEmpty())throw new ApiException(404,"RESOURCE_NOT_FOUND");var choice=choices.getFirst();major=n(choice,"major_id");decision=n(choice,"id");recommendation=n(choice,"recommendation_id");}
             String lane=kind.equals("MAJOR")?"major:"+major:"demo:"+demo;
+            if(kind.equals("MAJOR")){
+                var adopted=db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? AND r.major_id=? AND r.run_mode='REVIEW_PREVIEW' AND "+ProductEligibility.sql("r"),student.internalId(),major);
+                if(!adopted.isEmpty())return db.view(db.row(adopted.getFirst()));
+            }
             var existing=db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? AND r.lane_key=? AND r.status<>'REPLACED'",student.internalId(),lane);
             if(!existing.isEmpty()) {var run=db.row(existing.getFirst());
                 if(run.status().equals("READY")&&run.origin()==null&&!Objects.equals(run.decisionId(),decision)){db.revision(run,input.expectedRevision());db.jdbc().update("UPDATE mp_experience_run SET source_decision_id=?,source_recommendation_id=?,row_version=row_version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=?",decision,recommendation,run.id());}
@@ -89,7 +98,7 @@ public class RunService {
             if(operation.equals("start")) {
                 version=run.taskPublicId()!=null?pinned(run):run.kind().equals("DEMO")?content.currentDemo(run.demoKey()):content.currentMajor(run.majorCode());
                 var locked=db.jdbc().queryForList("SELECT status FROM mp_task_version WHERE id=? FOR UPDATE",version.internalId());
-                if(locked.isEmpty()||run.taskPublicId()==null&&!"PUBLISHED".equals(s(locked.getFirst(),"status")))throw new ApiException(409,"TASK_VERSION_UNAVAILABLE");
+                if(locked.isEmpty()||run.taskPublicId()==null&&!(local==null?"PUBLISHED".equals(s(locked.getFirst(),"status")):local.canStart(version.internalId())))throw new ApiException(409,"TASK_VERSION_UNAVAILABLE");
                 if(profile==null){var profiles=run.kind().equals("DEMO")||run.mode().equals("REVIEW_PREVIEW")?db.jdbc().queryForList("SELECT id FROM mp_decision_profile WHERE student_id=? ORDER BY profile_version_no DESC LIMIT 1",student.internalId()):db.jdbc().queryForList("SELECT decision_profile_id AS id FROM mp_recommendation WHERE id=? AND student_id=?",run.recommendationId(),student.internalId());if(profiles.isEmpty())throw new ApiException(422,"DECISION_PROFILE_INVALID");profile=n(profiles.getFirst(),"id");}
             } else pinned(run);
             if(active!=null)pause(active);
@@ -107,7 +116,7 @@ public class RunService {
     }
     private void pause(Row run) {db.jdbc().update("UPDATE mp_experience_run SET paused_from_status=status,status='PAUSED',paused_at=UTC_TIMESTAMP(3),updated_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=?",run.id());db.event(run,"run.paused",map("pausedFromStatus",run.status(),"stepKey",run.currentStep()));}
     public JsonNode task(StudentPrincipal student,String id) {return tx.execute(status->{db.activeStudent(student);var run=db.owned(student,id);return TaskContentViews.publicManifest(version(run));});}
-    TaskContent.Version pinned(Row run) {return run.mode().equals("REVIEW_PREVIEW")?content.pinnedForPreview(run.taskPublicId()):content.pinned(run.taskPublicId());}
+    TaskContent.Version pinned(Row run) {return run.mode().equals("REVIEW_PREVIEW")&&!db.productEligible(run)?content.pinnedForPreview(run.taskPublicId()):content.pinned(run.taskPublicId());}
     TaskContent.Version version(Row run) {if(run.status().equals("REPLACED"))throw new ApiException(409,"RUN_REPLACED");if(run.taskPublicId()==null)throw new ApiException(409,"RUN_STATE_INVALID");return pinned(run);}
     JsonNode stepDefinition(Row run,String key) {for(var step:version(run).manifest().path("steps"))if(step.path("stepKey").asText().equals(key))return step;throw new ApiException(404,"STEP_NOT_AVAILABLE");}
     Map<String,Object> stepState(Row run,String key) {var rows=db.jdbc().queryForList("SELECT * FROM mp_step_state WHERE experience_run_id=? AND step_key=?",run.id(),key);if(rows.isEmpty())throw new ApiException(404,"STEP_NOT_AVAILABLE");return rows.getFirst();}

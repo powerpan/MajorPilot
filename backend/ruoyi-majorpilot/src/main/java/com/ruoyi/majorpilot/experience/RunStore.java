@@ -3,6 +3,7 @@ package com.ruoyi.majorpilot.experience;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
 import java.time.Instant;
 import java.sql.Timestamp;
 import java.util.*;
@@ -33,7 +34,8 @@ public class RunStore {
         if(rows.isEmpty())throw new ApiException(404,"RESOURCE_NOT_FOUND");Row run=row(rows.getFirst());demoGate(run);return run;
     }
     Row internal(long id) { var rows=jdbc.queryForList(SELECT+" WHERE r.id=?",id);if(rows.isEmpty())throw new ApiException(404,"RESOURCE_NOT_FOUND");return row(rows.getFirst()); }
-    void demoGate(Row run) { if(run.kind.equals("DEMO")&&!demoEnabled||run.mode.equals("REVIEW_PREVIEW")&&!previewEnabled)throw new ApiException(404,"RESOURCE_NOT_FOUND"); }
+    void demoGate(Row run) { if(run.kind.equals("DEMO")&&!demoEnabled||run.mode.equals("REVIEW_PREVIEW")&&!previewEnabled&&!productEligible(run))throw new ApiException(404,"RESOURCE_NOT_FOUND"); }
+    boolean productEligible(Row run){return run.kind.equals("MAJOR")&&(run.mode.equals("STANDARD")||ProductEligibility.eligible(jdbc,run.studentId,run.id));}
     void activeStudent(StudentPrincipal student) {
         var rows=jdbc.queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",student.internalId());
         if(rows.isEmpty())throw new ApiException(401,"AUTH_REQUIRED");String status=s(rows.getFirst(),"status");
@@ -50,9 +52,10 @@ public class RunStore {
     RunDtos.Run view(Row run) {
         var active=activeRun(run.studentId);var replacement=jdbc.queryForList("SELECT public_id FROM mp_experience_run WHERE origin_run_id=? ORDER BY attempt_no LIMIT 1",run.id);
         var steps=jdbc.queryForList("SELECT step_key,status,current_revision FROM mp_step_state WHERE experience_run_id=? ORDER BY id",run.id).stream().map(x->new RunDtos.StepSummary(s(x,"step_key"),s(x,"status"),n(x,"current_revision"))).toList();
-        var reports=run.kind.equals("MAJOR")&&run.mode.equals("STANDARD")?jdbc.queryForList("SELECT status FROM mp_report WHERE experience_run_id=?",run.id):List.<Map<String,Object>>of();
-        String report=run.kind.equals("DEMO")||run.mode.equals("REVIEW_PREVIEW")?"NOT_APPLICABLE":reports.isEmpty()?"NOT_REQUESTED":s(reports.getFirst(),"status");
-        return new RunDtos.Run(run.publicId,run.kind,run.majorCode,run.demoKey,run.status,run.revision,run.taskPublicId,run.currentStep,run.pausedFrom,active==null?null:active.publicId,replacement.isEmpty()?null:s(replacement.getFirst(),"public_id"),!Set.of("IN_PROGRESS","TASK_COMPLETED").contains(run.status),steps,run.started,run.closed,report,run.mode);
+        boolean eligible=productEligible(run);
+        var reports=eligible?jdbc.queryForList("SELECT status FROM mp_report WHERE experience_run_id=?",run.id):List.<Map<String,Object>>of();
+        String report=!eligible?"NOT_APPLICABLE":reports.isEmpty()?"NOT_REQUESTED":s(reports.getFirst(),"status");
+        return new RunDtos.Run(run.publicId,run.kind,run.majorCode,run.demoKey,run.status,run.revision,run.taskPublicId,run.currentStep,run.pausedFrom,active==null?null:active.publicId,replacement.isEmpty()?null:s(replacement.getFirst(),"public_id"),!Set.of("IN_PROGRESS","TASK_COMPLETED").contains(run.status),steps,run.started,run.closed,report,run.mode,eligible);
     }
     String json(Object object) { try{return mapper.writeValueAsString(object);}catch(Exception failure){throw new ApiException(422,"VALIDATION_ERROR");} }
     JsonNode node(Object value) { if(value==null)return NullNode.instance;try{return mapper.readTree(value.toString());}catch(Exception failure){throw new IllegalStateException("Invalid stored content");} }

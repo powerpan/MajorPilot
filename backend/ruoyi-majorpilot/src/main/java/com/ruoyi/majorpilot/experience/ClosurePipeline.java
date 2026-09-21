@@ -2,6 +2,7 @@ package com.ruoyi.majorpilot.experience;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
 import com.ruoyi.majorpilot.report.claims.EvidenceRuleRegistry;
 import com.ruoyi.majorpilot.report.core.ReportInputException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,7 @@ public class ClosurePipeline {
         db.jdbc().update("INSERT INTO mp_background_job(public_id,job_type,business_key,owner_student_id,target_type,target_id,checkpoint_json) VALUES(?,'EVIDENCE_BUILD',?,?,'EXPERIENCE_RUN',?,?)",PublicIds.next(),evidenceKey(run.publicId(),closedSha,rule),run.studentId(),run.id(),db.json(map("closedInputSha256",closedSha,"evidenceRuleVersion",rule)));
     }
     Long next(Row run,String style){
-        var completed=db.jdbc().queryForList("SELECT DISTINCT m.code FROM mp_experience_run r JOIN mp_major m ON m.id=r.major_id WHERE r.student_id=? AND r.run_mode='STANDARD' AND r.content_kind='MAJOR' AND r.status='CLOSED' ORDER BY m.code",String.class,run.studentId());
+        var completed=db.jdbc().queryForList("SELECT DISTINCT m.code FROM mp_experience_run r JOIN mp_major m ON m.id=r.major_id WHERE r.student_id=? AND "+ProductEligibility.sql("r")+" AND r.status='CLOSED' ORDER BY m.code",String.class,run.studentId());
         var choice=chooseNext(run.majorCode(),completed,style);if(choice==null)return null;String primary=choice.primary(),reason=choice.reason();var alternatives=choice.alternatives();String id=PublicIds.next();
         var result=map("schemaVersion","next-recommendation-v1","recommendationId",id,"recommendationType","NEXT","sourceRunId",run.publicId(),"decisionProfileId",run.profileId(),"ruleVersion",NEXT_RULE,"completedMajorCodes",completed,"primaryMajor",primary,"alternativeMajors",alternatives,"reasonCode",reason,"nextWorkStyle",style);
         db.jdbc().update("INSERT INTO mp_recommendation(public_id,student_id,decision_profile_id,recommendation_type,source_run_id,completed_major_codes_json,rule_version,primary_major_code,alternative_order_json,tie_detected,tie_break_rule,explanation_status,explanation_version,generated_at,safe_result_json) VALUES(?,?,?,'NEXT',?,?,?,?,?,FALSE,?,'STRUCTURED_ONLY','next-template-v1',UTC_TIMESTAMP(3),?)",id,run.studentId(),run.profileId(),run.id(),db.json(completed),NEXT_RULE,primary,db.json(alternatives),reason,db.json(result));
@@ -69,6 +70,13 @@ public class ClosurePipeline {
         db.jdbc().update("INSERT INTO mp_recommendation_reason(recommendation_id,reason_code,reason_type,major_code,reason_order,source_question_keys_json,display_text,rule_version) VALUES(?,?,'RANKING',?,1,?,?,?)",internal,reason,primary,db.json(List.of("nextWorkStyle")),text,NEXT_RULE);return internal;
     }
     record NextChoice(String primary,List<String> alternatives,String reason){}
+    /** Called under the same Student lock as the exact historical authorization. */
+    void initializeAdoption(Row run,JsonNode reflection){
+        if(!db.productEligible(run)||!run.status().equals("CLOSED"))throw new ApiException(409,"PRODUCT_ADOPTION_INVALID");
+        if(db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_report WHERE experience_run_id=?",Integer.class,run.id())>0)return;
+        Long next=next(run,reflection.path("nextWorkStyle").asText("SKIPPED"));
+        db.jdbc().update("INSERT INTO mp_report(public_id,student_id,report_type,experience_run_id,major_id,status,next_recommendation_id) VALUES(?,?,'EXPERIENCE',?,?,'PENDING',?)",PublicIds.next(),run.studentId(),run.id(),run.majorId(),next);
+    }
     static NextChoice chooseNext(String current,List<String> completed,String style){
         var candidates=new ArrayList<>(List.of("DATA_SCIENCE","AI","BUSINESS_ANALYTICS"));candidates.removeAll(completed);if(candidates.isEmpty())return null;
         String explicit=switch(style){case "MODEL_ITERATION"->"AI";case "DATA_REASONING"->"DATA_SCIENCE";case "BUSINESS_ACTION"->"BUSINESS_ANALYTICS";default->null;};

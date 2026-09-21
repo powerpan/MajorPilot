@@ -4744,7 +4744,11 @@
           "reportStatus": {
             "enum": [
               "NOT_APPLICABLE",
-              "NOT_REQUESTED"
+              "NOT_REQUESTED",
+              "PENDING",
+              "GENERATING",
+              "READY",
+              "FAILED"
             ]
           },
           "runMode": {
@@ -4752,6 +4756,17 @@
               "STANDARD",
               "REVIEW_PREVIEW"
             ]
+          },
+          "productEligible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Server-derived product eligibility. Optional for legacy receipts; only true admits a historical REVIEW_PREVIEW to the product report flow. Does not rewrite runMode or prove expert review/public release."
           }
         },
         "required": [

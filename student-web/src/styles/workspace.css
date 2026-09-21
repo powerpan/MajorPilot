@@ -1,3 +1,32 @@
+.workspace-attention {
+  outline: 2px solid var(--orange);
+  outline-offset: 8px;
+  border-radius: 3px;
+  scroll-margin-block: 100px;
+  animation: workspace-attention-ring 1.2s ease-out;
+}
+.workspace-attention-message {
+  flex-basis: 100%;
+  margin: 12px 0 4px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--orange);
+  background: #fff0e6;
+  color: #71320f;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.7;
+  white-space: normal;
+}
+.workspace-attention-message::before { content: "还差这一步 · "; font-weight: 700; }
+.workspace-attention [aria-invalid="true"] { border-color: var(--orange); }
+.workspace-attention:is(.ds-run-actions, .ba-run-actions, .workspace-execution-actions, .workspace-title-row) { flex-wrap: wrap; }
+@keyframes workspace-attention-ring {
+  0% { box-shadow: 0 0 0 11px #f45b3538; }
+  100% { box-shadow: 0 0 0 0 #f45b3500; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-attention { animation: none; scroll-behavior: auto; }
+}
 .workspace-header {
   position: sticky;
   top: 0;
@@ -523,6 +552,8 @@
   line-height: 1.8;
   font-size: 20px;
 }
+.workspace-closed-report { margin: 28px 0 24px; }
+.workspace-closed-report .action-link { white-space: nowrap; }
 .workspace-empty,
 .workspace-device {
   max-width: 850px;

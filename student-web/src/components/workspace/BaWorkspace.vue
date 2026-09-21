@@ -5,6 +5,7 @@ import { baLabel } from "../../lib/ba-display";
 import BaFields from "./BaFields.vue";
 import BaResults from "./BaResults.vue";
 const workspace = useWorkspace();
+const emit = defineEmits<{ execute: [] }>();
 const operation = computed(() => workspace.step?.definition.operationKey || "");
 const sql = computed(() =>
   workspace.baSql?.snippets.find(
@@ -114,6 +115,8 @@ const rawValue = (row: unknown, key: string) =>
     <section
       v-if="workspace.selectedStep === 'b6-action'"
       class="ba-context"
+      data-field-path="context"
+      data-attention-region
       :class="{ 'is-stale': workspace.baContextStale }"
     >
       <p v-if="workspace.baContextStale" class="warning-notice" role="status">
@@ -161,6 +164,7 @@ const rawValue = (row: unknown, key: string) =>
             workspace.baContextLoading ||
             workspace.readOnly
           "
+          data-attention-control
           @click="workspace.confirmBaContext"
         >
           {{
@@ -188,7 +192,7 @@ const rawValue = (row: unknown, key: string) =>
     >
       <template #analysis
         ><div class="ba-analysis">
-          <div class="ba-run-actions">
+          <div class="ba-run-actions" data-field-path="execution" data-attention-region>
             <button
               class="workspace-outline"
               :disabled="
@@ -197,7 +201,8 @@ const rawValue = (row: unknown, key: string) =>
                 workspace.busy ||
                 !!workspace.recovered
               "
-              @click="workspace.executePreview"
+              data-attention-control
+              @click="emit('execute')"
             >
               {{ workspace.executing ? "正在隔离计算并复核…" : button }}</button
             ><button

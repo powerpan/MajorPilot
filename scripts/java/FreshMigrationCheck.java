@@ -23,7 +23,7 @@ public final class FreshMigrationCheck {
             require(expected!=null&&expected.matches("[1-9][0-9]{0,2}"));
             int expectedVersion=Integer.parseInt(expected);
             String from=System.getenv("MP_MIGRATION_FROM_VERSION");
-            require(from==null||((from.equals("6")||from.equals("7"))&&expectedVersion>Integer.parseInt(from)));
+            require(from==null||((from.equals("6")||from.equals("7")||from.equals("8"))&&expectedVersion>Integer.parseInt(from)));
             boolean upgrade=from!=null;
             int fromVersion=upgrade?Integer.parseInt(from):0;
             String url="jdbc:mysql://127.0.0.1:13306/"+schema+"?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC";
@@ -43,6 +43,7 @@ public final class FreshMigrationCheck {
                 }
             }
             String originalStudent=null,originalJob=null;
+            String originalTask=null,originalPreview=null;
             List<List<String>> originalRoleGrants=null;
             if(upgrade){
                 var baseline=Flyway.configure().dataSource(url,account,password).locations("classpath:db/migration").target(from).cleanDisabled(true).load();
@@ -56,6 +57,11 @@ public final class FreshMigrationCheck {
                     originalStudent=studentSnapshot(connection);
                     originalJob=jobSnapshot(connection);
                     originalRoleGrants=roleGrantSnapshot(connection);
+                    if(fromVersion>=8){
+                        seedProductSentinel(connection);
+                        originalTask=taskSnapshot(connection);
+                        originalPreview=previewSnapshot(connection);
+                    }
                 }
             }
             Flyway flyway=Flyway.configure().dataSource(url,account,password).locations("classpath:db/migration").cleanDisabled(true).load();
@@ -67,6 +73,8 @@ public final class FreshMigrationCheck {
             int after,keyTables,p2Tables=0,p3Tables=0,p6Tables=0,p6ForeignKeys=0,p7Tables=0;
             boolean studentJobOwnership=false,p0QueuePreserved=false,existingStudentPreserved=false,existingJobPreserved=false,existingRoleGrantsPreserved=false;
             Map<String,Object> p7=new LinkedHashMap<>();
+            Map<String,Object> productAuthorization=new LinkedHashMap<>();
+            boolean existingTaskPreserved=false,existingPreviewPreserved=false;
             try(Connection connection=DriverManager.getConnection(url,account,password)) {
                 after=tableCount(connection);
                 try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT version,description,type,checksum,success FROM flyway_schema_history ORDER BY installed_rank")) {
@@ -101,6 +109,7 @@ public final class FreshMigrationCheck {
                     require(p7Tables==5);
                     p7=checkP7(connection);
                 }
+                if(expectedVersion>=9) productAuthorization=checkProductAuthorization(connection);
                 if(upgrade){
                     existingStudentPreserved=originalStudent.equals(studentSnapshot(connection));require(existingStudentPreserved);
                     existingJobPreserved=originalJob.equals(jobSnapshot(connection));require(existingJobPreserved);
@@ -109,10 +118,15 @@ public final class FreshMigrationCheck {
                         require(scalar(connection,"SELECT COUNT(*) FROM mp_student_account WHERE public_id='01JF6000000000000000000001' AND analytics_exclusion_code IS NULL")==1);
                         require(scalar(connection,"SELECT COUNT(*) FROM mp_background_job WHERE public_id='01JF6000000000000000000002' AND owner_operator_id IS NULL")==1);
                     }
+                    if(fromVersion>=8){
+                        existingTaskPreserved=originalTask.equals(taskSnapshot(connection));require(existingTaskPreserved);
+                        existingPreviewPreserved=originalPreview.equals(previewSnapshot(connection));require(existingPreviewPreserved);
+                    }
                 }
             }
             Map<String,Object> result=new LinkedHashMap<>();result.put("result","PASS");result.put("emptyTableCount",before);result.put("migratedTableCount",after);result.put("p1TableCount",keyTables);result.put("p2TableCount",p2Tables);result.put("p3TableCount",p3Tables);result.put("studentJobOwnership",studentJobOwnership);result.put("p0QueuePreserved",p0QueuePreserved);result.put("expectedVersion",expectedVersion);result.put("firstMigrationsExecuted",first.migrationsExecuted);result.put("secondMigrationsExecuted",second.migrationsExecuted);result.put("validated",true);result.put("history",history);
             result.put("migrationPath",upgrade?"V1-V"+fromVersion+" plus existing rows, then upgrade":"empty V1-latest");result.put("upgradeFromVersion",upgrade?fromVersion:null);result.put("existingStudentPreserved",existingStudentPreserved);result.put("existingJobPreserved",existingJobPreserved);result.put("existingRoleGrantsPreserved",existingRoleGrantsPreserved);result.put("p6TableCount",p6Tables);result.put("p6ForeignKeyCount",p6ForeignKeys);result.put("p7TableCount",p7Tables);result.put("p7Checks",p7);
+            result.put("productAuthorizationChecks",productAuthorization);result.put("existingTaskPreserved",existingTaskPreserved);result.put("existingPreviewPreserved",existingPreviewPreserved);
             System.out.println("MAJORPILOT_MIGRATION_RESULT="+new ObjectMapper().writeValueAsString(result));
         } catch(Exception failure) {
             // JDBC/Flyway diagnostics can contain connection identity or SQL. Do not log them.
@@ -120,6 +134,29 @@ public final class FreshMigrationCheck {
         }
     }
     private static int tableCount(Connection connection)throws Exception { try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")){rows.next();return rows.getInt(1);} }
+    private static void seedProductSentinel(Connection connection)throws Exception {
+        try(var statement=connection.createStatement()){
+            // A real V8 REVIEW task and CLOSED preview shape, with synthetic empty
+            // inputs, proves that schema upgrade alone cannot publish or adopt it.
+            statement.executeUpdate("INSERT INTO mp_task_version(public_id,content_kind,major_id,version_code,status,manifest_path,manifest_sha256,data_sha256,content_schema_version,manifest_json,row_version) SELECT '01JF9000000000000000000001','MAJOR',id,'migration-sentinel','REVIEW','MIGRATION_TEST_FIXTURE',REPEAT('a',64),REPEAT('b',64),'migration-test-v1',JSON_OBJECT('fixture',true),11 FROM mp_major WHERE code='AI'");
+            statement.executeUpdate("INSERT INTO mp_decision_profile(public_id,student_id,profile_version_no,questionnaire_version,submitted_at,profile_summary_json) SELECT '01JF9000000000000000000002',id,1,'migration-test-v1',UTC_TIMESTAMP(3),JSON_OBJECT('fixture',true) FROM mp_student_account WHERE public_id='01JF6000000000000000000001'");
+            statement.executeUpdate("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,task_version_id,decision_profile_id,status,run_mode,created_reason,closed_input_manifest_json,closed_input_sha256,closed_at,row_version) SELECT '01JF9000000000000000000003',s.id,'MAJOR',t.major_id,t.id,p.id,'CLOSED','REVIEW_PREVIEW','STUDENT_START',JSON_OBJECT('fixture',true),REPEAT('c',64),UTC_TIMESTAMP(3),13 FROM mp_student_account s JOIN mp_decision_profile p ON p.student_id=s.id AND p.public_id='01JF9000000000000000000002' JOIN mp_task_version t ON t.public_id='01JF9000000000000000000001' WHERE s.public_id='01JF6000000000000000000001'");
+        }
+    }
+    private static String taskSnapshot(Connection connection)throws Exception {try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT JSON_OBJECT('id',id,'publicId',public_id,'kind',content_kind,'major',major_id,'version',version_code,'status',status,'manifestPath',manifest_path,'manifestHash',manifest_sha256,'dataHash',data_sha256,'schema',content_schema_version,'manifest',manifest_json,'published',published_at,'retired',retired_at,'reviewer',reviewed_by_operator_id,'reviewNote',review_note,'reviewChecks',review_checks_json,'created',created_at,'updated',updated_at,'revision',row_version) FROM mp_task_version WHERE public_id='01JF9000000000000000000001'")){require(rows.next());return rows.getString(1);}}
+    private static String previewSnapshot(Connection connection)throws Exception {try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT JSON_OBJECT('id',id,'publicId',public_id,'student',student_id,'kind',content_kind,'major',major_id,'task',task_version_id,'profile',decision_profile_id,'recommendation',source_recommendation_id,'decision',source_decision_id,'status',status,'mode',run_mode,'attempt',attempt_no,'origin',origin_run_id,'reason',created_reason,'step',current_step_key,'started',started_at,'closed',closed_at,'input',closed_input_manifest_json,'inputHash',closed_input_sha256,'created',created_at,'updated',updated_at,'revision',row_version) FROM mp_experience_run WHERE public_id='01JF9000000000000000000003'")){require(rows.next());return rows.getString(1);}}
+    private static Map<String,Object> checkProductAuthorization(Connection connection)throws Exception {
+        Map<String,Object> result=new LinkedHashMap<>();
+        int tables=scalar(connection,"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('mp_local_task_release','mp_run_product_adoption') AND engine='InnoDB'");require(tables==2);
+        int foreignKeys=scalar(connection,"SELECT COUNT(*) FROM information_schema.key_column_usage WHERE table_schema=DATABASE() AND constraint_name IN ('fk_local_release_task','fk_local_release_operator','fk_product_adoption_student','fk_product_adoption_run','fk_product_adoption_task','fk_product_adoption_profile','fk_product_adoption_operator') AND referenced_table_name IS NOT NULL");require(foreignKeys==7);
+        int checks=scalar(connection,"SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name IN ('mp_local_task_release','mp_run_product_adoption') AND constraint_name IN ('ck_local_release_authority','ck_local_release_sha','ck_product_adoption_mode','ck_product_adoption_authority','ck_product_adoption_task_sha','ck_product_adoption_closed_sha') AND constraint_type='CHECK' AND enforced='YES'");require(checks==6);
+        require(scalar(connection,"SELECT COUNT(*) FROM information_schema.columns c JOIN information_schema.columns u ON u.table_schema=c.table_schema AND u.table_name='sys_user' AND u.column_name='user_id' WHERE c.table_schema=DATABASE() AND c.table_name IN ('mp_local_task_release','mp_run_product_adoption') AND c.column_name='authorized_by_operator_id' AND c.is_nullable='NO' AND c.column_type=u.column_type AND c.column_type NOT LIKE '%unsigned%'")==2);
+        require(scalar(connection,"SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND non_unique=0 AND seq_in_index=1 AND ((table_name='mp_local_task_release' AND column_name='task_version_id') OR (table_name='mp_run_product_adoption' AND column_name='experience_run_id'))")==2);
+        int releases=scalar(connection,"SELECT COUNT(*) FROM mp_local_task_release"),adoptions=scalar(connection,"SELECT COUNT(*) FROM mp_run_product_adoption");
+        require(releases==0&&adoptions==0);
+        result.put("tableCount",tables);result.put("foreignKeyCount",foreignKeys);result.put("enforcedCheckCount",checks);result.put("signedOperatorColumns",true);result.put("uniqueTaskAndRunBindings",true);result.put("automaticTaskReleases",releases);result.put("automaticRunAdoptions",adoptions);
+        return result;
+    }
     private static String studentSnapshot(Connection connection)throws Exception {try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT JSON_OBJECT('id',id,'publicId',public_id,'email',email_normalized,'display',email_display,'password',password_hash,'status',status,'verified',email_verified_at,'failures',failed_login_count,'locked',locked_until,'lastLogin',last_login_at,'deletionRequested',deletion_requested_at,'deleted',deleted_at,'revision',row_version,'created',created_at,'updated',updated_at) FROM mp_student_account WHERE public_id='01JF6000000000000000000001'")){require(rows.next());return rows.getString(1);}}
     private static String jobSnapshot(Connection connection)throws Exception {try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT JSON_OBJECT('id',id,'publicId',public_id,'type',job_type,'businessKey',business_key,'student',owner_student_id,'targetType',target_type,'targetId',target_id,'targetVersion',target_version,'status',status,'attempt',attempt_count,'available',available_at,'leaseUntil',lease_until,'leaseVersion',lease_version,'worker',worker_id,'checkpoint',checkpoint_json,'error',last_error_code,'started',started_at,'completed',completed_at,'created',created_at) FROM mp_background_job WHERE public_id='01JF6000000000000000000002'")){require(rows.next());return rows.getString(1);}}
     private static List<List<String>> roleGrantSnapshot(Connection connection)throws Exception {

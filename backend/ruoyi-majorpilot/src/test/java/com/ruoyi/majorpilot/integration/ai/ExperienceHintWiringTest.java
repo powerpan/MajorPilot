@@ -38,6 +38,7 @@ class ExperienceHintWiringTest {
             context.register(ReportConfiguration.class);
             context.registerBean(JdbcTemplate.class,()->mock(JdbcTemplate.class));
             context.registerBean(TransactionTemplate.class,()->mock(TransactionTemplate.class));
+            context.register(com.ruoyi.majorpilot.acceptance.LocalProductAccess.class);
             context.scan("com.ruoyi.majorpilot.content","com.ruoyi.majorpilot.integration.ai");
             assertDoesNotThrow(context::refresh);
             assertEquals(1,context.getBeansOfType(TaskContentProvider.class).size());

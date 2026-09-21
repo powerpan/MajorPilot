@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.majorpilot.intake.IntakeService;
 import com.ruoyi.majorpilot.security.RateLimits;
 import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.LocalProductAccess;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
 import org.springframework.context.annotation.Profile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -141,11 +143,12 @@ public class PageEventService {
         if(rows.isEmpty())throw invalid();var row=rows.getFirst();String kind=(String)row.get("content_kind"),mode=(String)row.get("run_mode");
         if(!java.util.Objects.equals(kind,row.get("task_kind"))||!java.util.Objects.equals(row.get("major_id"),row.get("task_major_id"))
             ||!java.util.Objects.equals(row.get("demo_key"),row.get("task_demo_key")))throw invalid();
+        long id=((Number)row.get("id")).longValue();
         if(row.get("started_at")==null||DbTimes.instant(row.get("started_at")).isAfter(clock.instant())||!Set.of("IN_PROGRESS","TASK_COMPLETED","PAUSED","CLOSED","REPLACED").contains(row.get("status"))
-            ||kind.equals("DEMO")&&!demoEnabled||mode.equals("REVIEW_PREVIEW")&&!previewEnabled)throw invalid();
+            ||kind.equals("DEMO")&&!demoEnabled||mode.equals("REVIEW_PREVIEW")&&!previewEnabled&&!ProductEligibility.eligible(jdbc,student,id))throw invalid();
         Set<String> readable=mode.equals("REVIEW_PREVIEW")?Set.of("REVIEW","PUBLISHED","RETIRED"):Set.of("PUBLISHED","RETIRED");
-        if(!readable.contains(row.get("task_status")))throw invalid();
-        long id=((Number)row.get("id")).longValue();String step=event.properties().path("stepKey").asText();
+        if(!readable.contains(row.get("task_status"))&&!(kind.equals("MAJOR")&&"REVIEW".equals(row.get("task_status"))&&jdbc.queryForObject("SELECT COUNT(*) FROM mp_task_version t WHERE t.id=? AND "+LocalProductAccess.pinnedSql("t"),Integer.class,row.get("task_version_id"))==1))throw invalid();
+        String step=event.properties().path("stepKey").asText();
         JsonNode manifest;try{manifest=mapper.readTree(row.get("manifest_json").toString());}catch(Exception corrupt){throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");}
         JsonNode definition=null;for(JsonNode candidate:manifest.path("steps"))if(step.equals(candidate.path("stepKey").asText()))definition=candidate;
         if(definition==null||!manifest.path("taskVersionId").asText().equals(row.get("task_public_id")))throw invalid();

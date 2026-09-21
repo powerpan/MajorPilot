@@ -1,0 +1,806 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MajorPilot post-P7 local product flow amendment",
+    "version": "7.1.0",
+    "description": "Explicit project-owner-authorized local acceptance only, not P8 or public deployment. Exact version release keeps REVIEW and missing human checks unchanged. Exact CLOSED preview adoption preserves original Run, answers, timestamps and immutable evidence; a separate audited grant admits only that Run into reports/recommendations. No blanket preview conversion."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:18080",
+      "description": "Managed local profile; MP_LOCAL_PRODUCT_ENABLED must be explicitly enabled"
+    }
+  ],
+  "paths": {
+    "/api/admin/v1/majorpilot/task-versions/{id}/local-product-release": {
+      "post": {
+        "operationId": "authorizeLocalProductRelease",
+        "description": "Pin the exact ACTIVE Major REVIEW version and manifest hash for owner-authorized local product starts. Does not mark PUBLISHED, fill review checks or authorize public deployment.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalProductRelease"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Audited local authorization; same matching authorization may be retried without creating a second grant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LocalProductReleaseAccepted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:task:publish"
+        ],
+        "x-permission-combination": "ALL",
+        "x-spring-profile": "local",
+        "x-feature-flag": "MP_LOCAL_PRODUCT_ENABLED",
+        "x-retry-policy": "Pinned revision, digest and authorizationReference must still match; no Idempotency-Key requirement.",
+        "x-safe-error-codes": [
+          "LOCAL_PRODUCT_DISABLED",
+          "VALIDATION_ERROR",
+          "AUTHORIZATION_REQUIRED",
+          "AUTHORIZATION_CONFLICT",
+          "CONTENT_UNAVAILABLE",
+          "REVISION_CONFLICT",
+          "CONTENT_STATE_CONFLICT",
+          "CONTENT_VERSION_IMMUTABLE"
+        ]
+      }
+    },
+    "/api/admin/v1/majorpilot/experience-runs/{id}/product-adoption": {
+      "post": {
+        "operationId": "adoptClosedPreviewForProduct",
+        "description": "Accept only the exact ACTIVE Student-owned CLOSED MAJOR REVIEW_PREVIEW, valid Decision Profile and READY owned Evidence Snapshot with matching frozen closure digest and released Task Version. Preserves original runMode and source facts, refuses another active product Run of the same Major, and initializes the actual private report/next pipeline. A new adoption is refused with HTTP409 PRODUCT_ADOPTION_ORDER_CONFLICT if that Student already has another CLOSED product Run, preventing retroactive distortion of immutable NEXT chronology. An existing matching adoption remains retryable after later Major completions; this chronology guard applies only when creating a new grant.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductAdoption"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Audited local authorization; same matching authorization may be retried without creating a second grant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProductAdoptionAccepted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error envelope; schema validity does not establish runtime enforcement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:recovery:create",
+          "majorpilot:report:regenerate"
+        ],
+        "x-permission-combination": "ALL",
+        "x-spring-profile": "local",
+        "x-feature-flag": "MP_LOCAL_PRODUCT_ENABLED",
+        "x-retry-policy": "Pinned revision, digest and authorizationReference must still match; no Idempotency-Key requirement.",
+        "x-safe-error-codes": [
+          "LOCAL_PRODUCT_DISABLED",
+          "VALIDATION_ERROR",
+          "AUTHORIZATION_REQUIRED",
+          "AUTHORIZATION_CONFLICT",
+          "RESOURCE_NOT_FOUND",
+          "ACCOUNT_LOCKED",
+          "RUN_REVISION_CONFLICT",
+          "PRODUCT_ADOPTION_INVALID",
+          "PRODUCT_ADOPTION_ORDER_CONFLICT",
+          "EVIDENCE_SOURCE_INVALID",
+          "LOCAL_RELEASE_REQUIRED",
+          "MAJOR_ALREADY_STARTED"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "apiVersion": {
+            "const": "v1"
+          }
+        },
+        "required": [
+          "requestId",
+          "apiVersion"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "fieldErrors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "code": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "code"
+                  ]
+                }
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "currentRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "activeRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "replacementRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "currentSourceRevisions": {
+                    "$ref": "#/components/schemas/SourceRevisions"
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fieldErrors",
+              "retryable"
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "requestId"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "SourceRevisions": {
+        "type": "object",
+        "maxProperties": 20,
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,79}$"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "Run": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "runId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "contentKind": {
+            "enum": [
+              "DEMO",
+              "MAJOR"
+            ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "DATA_SCIENCE",
+                  "BUSINESS_ANALYTICS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "demoKey": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DEMO_TABLE",
+                  "DEMO_COMPARE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "READY",
+              "IN_PROGRESS",
+              "TASK_COMPLETED",
+              "PAUSED",
+              "CLOSED",
+              "REPLACED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "taskVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentStepKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,79}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pausedFromStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "IN_PROGRESS",
+                  "TASK_COMPLETED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activeRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "replacementRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepSummary"
+            }
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reportStatus": {
+            "enum": [
+              "NOT_APPLICABLE",
+              "NOT_REQUESTED",
+              "PENDING",
+              "GENERATING",
+              "READY",
+              "FAILED"
+            ]
+          },
+          "runMode": {
+            "enum": [
+              "STANDARD",
+              "REVIEW_PREVIEW"
+            ]
+          },
+          "productEligible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Server-derived product eligibility. Optional for legacy receipts; only true admits a historical REVIEW_PREVIEW to the product report flow. Does not rewrite runMode or prove expert review/public release."
+          }
+        },
+        "required": [
+          "runId",
+          "contentKind",
+          "majorCode",
+          "demoKey",
+          "status",
+          "revision",
+          "taskVersionId",
+          "currentStepKey",
+          "pausedFromStatus",
+          "activeRunId",
+          "replacementRunId",
+          "readOnly",
+          "steps",
+          "startedAt",
+          "closedAt",
+          "reportStatus",
+          "runMode"
+        ]
+      },
+      "StepSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "status": {
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "stepKey",
+          "status",
+          "revision"
+        ]
+      },
+      "LocalProductRelease": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "manifestSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "authorizationReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$"
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "manifestSha256",
+          "authorizationReference",
+          "reasonText"
+        ]
+      },
+      "LocalProductReleaseAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "authorizationId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "reviewStatus": {
+            "const": "REVIEW"
+          },
+          "availability": {
+            "const": "AVAILABLE"
+          }
+        },
+        "required": [
+          "authorizationId",
+          "taskVersionId",
+          "reviewStatus",
+          "availability"
+        ]
+      },
+      "ProductAdoption": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "closedInputSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "evidenceSnapshotId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "authorizationReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$"
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "closedInputSha256",
+          "evidenceSnapshotId",
+          "authorizationReference",
+          "reasonText"
+        ]
+      },
+      "ProductAdoptionAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "authorizationId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "runId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "originalRunMode": {
+            "const": "REVIEW_PREVIEW"
+          },
+          "productEligible": {
+            "const": true
+          },
+          "reportId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "reportStatus": {
+            "enum": [
+              "PENDING",
+              "GENERATING",
+              "READY",
+              "FAILED"
+            ]
+          }
+        },
+        "required": [
+          "authorizationId",
+          "runId",
+          "originalRunMode",
+          "productEligible",
+          "reportId",
+          "reportStatus"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "AdminBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
