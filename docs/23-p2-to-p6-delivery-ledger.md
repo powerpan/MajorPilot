@@ -1,12 +1,12 @@
 # P2–P6 实施与验收记录
 
-> 2026-09-21：用户授权按既定路线持续推进至 P6；临时不能回答问题时，依据现有设计自主选择实现细节。非阻塞缺陷记录后继续推进，不绕过失败的核心门禁，也不把未验证的要求写成完成。
+> 2026-09-21：用户将持续推进目标延长至 P7；临时不能回答问题时，依据现有设计自主选择实现细节。仍按阶段依序实施，非阻塞缺陷记录后继续推进，不绕过失败的核心门禁，也不把未验证的要求写成完成。
 
 ## 1. 交付边界
 
 遵守 [实施路线](./16-implementation-roadmap-and-traceability.md)、[领域模型](./06-domain-model-and-data-boundaries.md)、[任务设计](./09-three-major-task-designs.md)、[报告设计](./10-report-and-evidence-design.md)。Vue 3 / Spring Boot 3 / MySQL / Redis 不变；每个完成的阶段或重大变更在适度验证后提交、推送并核对远端 SHA。Git 交付不代表公开部署。
 
-P1 的 AI 理由润色仍按用户确认延期；P2–P6 的分层提示、反思追问和报告生成是不同能力，仍按原合同实现。普通测试不产生付费调用；真实容量测试仍需负载与费用上限。
+P1 的 AI 理由润色仍按用户确认延期；P2–P6 的分层提示、反思追问和报告生成是不同能力，仍按原合同实现。普通测试不产生付费调用；2026-09-21用户授权开发时真实API能力验证，不要求费用上限。真实容量压测仍需明确负载范围，不能据此自动开展。
 
 ## 2. 分阶段清单
 
@@ -15,8 +15,9 @@ P1 的 AI 理由润色仍按用户确认延期；P2–P6 的分层提示、反�
 | P2 | 版本化内容、受控执行、三栏工作区、保存 revision、暂停/原子切换/恢复、撤回和审计恢复 | 本地实施与验收通过；已推送 `02e7552` 并核对远端 |
 | P3 | AI 教学分类器与隐藏集服务端评分、完整任务与反思、冻结证据输入 | 已推送 `37d77ab` 并核对远端；REVIEW预览，真人审核/计时仍待办 |
 | P4 | DS 数据质量与关系分析、可复核统计、非因果结论、完整任务 | 已推送 `8b9d616` 并核对远端；真人门禁仍待办 |
-| P5 | BA 指标/漏斗/分群、行动与验证指标、完整任务 | 本地工程验收通过；Git交付另记，真人门禁仍待办 |
-| P6 | 持久化证据与报告作业、校验/修复/回退、NEXT、私有比较报告和反馈/打印 | 设计准备，尚未代码实施 |
+| P5 | BA 指标/漏斗/分群、行动与验证指标、完整任务 | 已推送 `94f6acb` 并核对远端；真人门禁仍待办 |
+| P6 | 持久化证据与报告作业、校验/修复/回退、NEXT、私有比较报告和反馈/打印 | 本地工程验收通过；Git交付结果另记 |
+| P7 | 运营管理、分析与隐私工具 | 用户已授权，须待P6交付后依路线实施 |
 
 状态以实际证据更新，不以代码行数或绿色单元测试替代纵向闭环。
 
@@ -173,4 +174,36 @@ BA保持REVIEW预览，不计正式完成、NEXT或用户报告。B1–B6覆盖�
 - 主代理对照三张概念和实际截图发现B4宽表导致内部选择框被中心栏裁切，原“全页无横溢出”断言不能发现。已将BA grid列改为 `minmax(0,1fr)` 并对子项设 `min-width:0`；最终单测仍Node174/174、Java129通过/87显式跳过，学生端strict/build通过。修后再跑真实P5 Chrome/Edge完整8组流程均通过，并增加内部控件边界断言；日志 `/tmp/majorpilot-p5-browser-final.log`，两账户/邮件精确清理。
 - 无账号UI补检 `tests/e2e/p5-layout.mjs` 全API模拟，严格区分于真实业务验收：Chrome/Edge共10用例×4宽度40组几何检查通过，B4两维选择框/图表不被裁切；Tab/Space、帮助抽屉Enter/Tab/Escape和回焦、735字长输入完整性/光标首尾/滚动到底/底部不遮挡均通过。macOS原生选择菜单的箭头操作未断言，不把 `selectOption` 冒称键盘菜单验收。真实截图及主代理复核见 [P5视觉合同](./30-p5-ba-visual-direction.md)。
 
-P5本地工程门禁通过；真人专业审核、零代码目标用户试用及45–60分钟计时仍PENDING。Git提交与远端核对另记，不将本地通过写成已上线。
+P5本地工程门禁通过，提交 `94f6acb942c2f601df98f1f28b6533e777d58b19` 已推送并核对远端main完全一致，提交后工作树干净。源码/前端产物/日志1491文件扫描与103文件提交索引秘密/禁入路径检查均通过。暂存组合命令两次自动权限审查超时、未执行；缩小为已追踪与已核验新增文件的两条独立命令后通过，未绕过权限拒绝。真人专业审核、零代码目标用户试用及45–60分钟计时仍PENDING；未公开部署。
+
+## 9. P6 实施状态
+
+P5推送核验后开始代码实施。以[报告工程合同](./31-p6-engineering-plan.md)及[视觉合同](./32-p6-report-visual-direction.md)为准，纯目录/校验与持久作业分离；正式链路仅用隔离测试库和TEST_FIXTURE内容验证。下列分项与最终候选验证均已通过；Git交付结果另行记录，真实专业内容仍REVIEW。
+
+### P6 已通过分项与运行边界
+
+- 后端候选只读运行包SHA256 `d6027491533d7cf00704772abff0489799da3031bd33d31ad7fad5bcb9f258b3`。新V7追加五张报告/反馈表及外键，不修改V1–V6。初始隔离HTTP构建 `fbd2568d089e6eb0445b44a50661fcde9fc0ac3db23de7ee872f18837c4130b6`；加入仅测试源码的重启门闩后构建 `3677bef7d67503473f3f5df0e12991ca168c7987a6cf5c0143c873d9b2cb7cb1`，两者使用同一产品JAR。
+- 完整MySQL回归261项：259通过、2项明确付费探针跳过，0失败/错误，日志 `/tmp/majorpilot-p6-integration-final.log`。初跑两项旧Hint装配缺依赖已补真实配置，未降低断言。后加4项仅测试门闩单测通过；普通总入口Node208通过（89+60+59），Java265中159通过/106实库或付费条件跳过，不把跳过算通过。普通入口显式关闭真实模型测试开关。
+- `scripts/test-p6-api.mjs` 在实际Spring安全链/事务/队列/独立测试库上通过15/15新增operation响应合同：三专业正式TEST_FIXTURE闭环、AI一次成功、DS一次修复、BA修复后回退、2→3比较、NEXT、四种管理权限、幂等/旧current/版本冲突、反馈与页面事件。起初管理登录Origin使用错误，修成既有管理源15174而非放宽CORS；失败2账号与通过2账号均精确清理。日志 `/tmp/majorpilot-p6-api-second.log`，付费0。
+- R08执行 `scripts/test-p6-restart.mjs`：三个检查点真实SIGKILL测试JVM并从同一构建/密钥/Redis恢复，未修改SQL业务状态或缩短60秒租约。领取后PREPARED调用计数0→1；修复中REPAIR_REQUESTED保持retry_no=1、HTTP=2，被中断调用UNKNOWN后回退，无再次修复；发布前VALIDATED保持HTTP=1及正文hash。三阶段lease均1→2，真实旧lease heartbeat/publish均拒绝，current/claim/event不变。日志 `/tmp/majorpilot-p6-r08-runtime.log`；1账号精确清理，主站进程未变。
+- 空库V1→V7与“先V1→V6、加入合成既有行、再升V7”均通过：75表、新五表/七新增具名外键、重试及HTTP上限CHECK正常，第二次迁移0项；升级前后既有行完全相同。证据分别 `/tmp/majorpilot-fresh-migrations-aCSRMY/migration-evidence.json` 与 `/tmp/majorpilot-fresh-migrations-Fk9XDV/migration-evidence.json`，临时库/账号精确清理。随后主站同JAR升到V7，checksum1240588679；0Student/0Run/3真实MAJOR仍REVIEW，未发布正式内容。
+- 真实浏览器最终矩阵 `tests/e2e/p6.mjs`：Chrome153.0.8010.48及Edge151.0.4129.78均通过网页业务检查，9/8节、14/21格、1536/1366/768/390、NEXT介绍→决定→开始→暂停恢复、旧current和旧版反馈、print409/来源race、回退、ALL_COMPLETED、跨账户拒绝和跨tab退出。日志 `/tmp/majorpilot-p6-browser-final.log`，2账号精确清理，付费0。先前两轮分别为事件未满可见1秒和ALL_COMPLETED样式类误用，修测试时序/语义选择器，不放宽产品合同。
+- 上述浏览器PASS只证明HTML/DOM与流程。根代理检查实际PDF曾发现三专业比较正文缺失并有空白页，未因DOM存在21格而宣称PDF通过；后来用无账号探针复现，并将手机媒体查询限定screen，独立固定印刷列宽/间距。最终实际三专业闭环只用1个合成账号，两浏览器均单专业3页/比较6页，15/40声明与全部依据、7维/3专业/21格、版本页脚通过PDF文本核对。根代理逐页查看9张真实页图，无截断/空白/孤立页脚，Chrome与Edge渲染逐字节一致；日志 `/tmp/majorpilot-p6-print-actual.log`，账号/邮件精确清理，0付费。详见[视觉验收](./32-p6-report-visual-direction.md)。
+- 构建与同机干净源码演练已通过：`/tmp/majorpilot-clean-BD3wT1`、1234文件、新凭证、不复制API Key/数据库、不启动服务；该次在比较打印修复前，不能冒称最终修复版。最终源码/索引扫描另行追加结果。
+- 主站升到同一P6 JAR后，旧P3/P4/P5真实HTTP各27项响应合同通过；旧P2/P5 Chrome/Edge各6/8组业务流程通过。日志 `/tmp/majorpilot-p6-legacy-p3.log`、`-p4.log`、`-p5.log`、`-p2-browser.log`、`-p5-browser.log`。只将新关闭预期更新为已生效的evidence-v3/ds-evidence-v2/ba-evidence-v2，旧READY不重写、预览无正式报告/NEXT、UNVERIFIED分析claims=[]仍保留。6个API与4个浏览器合成账户/邮件精确清理，0付费，没有重置每小时注册限额。
+- 独立源码核查未发现新后端阻塞：归属/版本/租约再次校验后原子发布、首份有效答卷不可回填、正式NEXT与ALL_COMPLETED、一次修复与持久HTTP预算均有对应实库和重启证据。测试库账号授权同时收窄为字面 `majorpilot_test`，转义下划线避免MySQL库名通配授权；新grant已以实际账号连接和mysql.db元数据核验，没有扩大权限。
+
+### P6 最终候选验证
+
+- 打印CSS冻结后 `sh scripts/test-unit`：Node212/212（93+60+59），Java265项中159通过/106实库或付费条件跳过，0失败/错误；日志 `/tmp/majorpilot-p6-unit-delivery.log`。普通测试0付费。
+- 最后源码同机干净重建 `/tmp/majorpilot-clean-W8ezui`：1242文件、全新本地凭证、没有复制API Key或业务状态、未启动服务，依赖安装、两端类型/构建、合同、三个执行器及后端package均PASS。共享已核验工具/缓存，不称第二台机器；之后仅补交付文档和打印截图。
+- 实际打印完成后按登记PID/启动身份停止18081/15176，核对0Student及固定fixture hash后精确清理3个合成任务、带本轮标签的Operator/角色/菜单与专用Redis14，释放互斥锁。主库/主站不变，忽略的密钥文件、最小权限测试账号与不可变构建保留。停止审批首次超时未执行，按工具允许重试一次成功，未绕过拒绝。
+- 测试库释放后 `sh scripts/test-integration` 最终265项：263通过、2明确付费测试跳过，0失败/错误，日志 `/tmp/majorpilot-p6-integration-delivery.log`。包括新增4项重启门闩，完整实库业务回归仍通过。此前261项结果保留为中间证据，不代替本次最终统计。
+- Git前门禁：源码/前端产物/日志1584文件秘密扫描PASS；126个暂存文件逐一检查实际环境秘密、测试Operator派生凭证及禁入路径PASS；`git diff --check`与`git diff --cached --check`通过。主站health200，主库V7/checksum1240588679、0Student、3个真实MAJOR仍REVIEW/0PUBLISHED。提交与远端完整SHA在下一阶段开始前核对，不将本行当成已推送。
+
+### 真实模型能力验证（单列）
+
+2026-09-21用户授权开发中使用真实API且不要求费用上限。报告探针只发送四类合成白名单字段（reportType、requiredSectionOrder、statements、completeValidProposal），不含账户/问卷/学生分析/原始事件。普通测试仍0付费；容量压测和供应商真实数据条款是独立上线门禁。
+
+- 首次合成探针百炼qwen3.7-plus和DeepSeek deepseek-flash各1 HTTP，均AI_VALIDATED、16声明含1个受规则约束解释，耗时10794ms/1721ms；日志 `/tmp/majorpilot-p6-live-report.log`。
+- 补上持久防重放入口 `scripts/report-spike.mjs` 后，各平台再以独立run-id验证一次：均AI_VALIDATED、各1 HTTP、10517ms/2190ms，日志 `/tmp/majorpilot-p6-live-guarded.log`。本轮合计4次真实HTTP，不是“只调用2次”；没有使用回退冒称模型成功。费用未估算，不把未知费用记为0。每个入口仍45秒/最多2 HTTP，已有attempt标记不得自动重发。

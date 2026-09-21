@@ -222,7 +222,7 @@ async function runAcceptance() {
     while (!ready() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 500));
     assert.equal(ready(), 1, 'durable BA evidence ready');
     const frozen = JSON.parse(mysqlCommand(`USE majorpilot; SELECT closed_input_manifest_json FROM mp_experience_run WHERE public_id='${id}';`).trim());
-    assert.equal(frozen.schemaVersion, 'closed-input-v3'); assert.equal(frozen.evidenceRuleVersion, 'ba-evidence-v1'); assert.equal(frozen.steps.length, 6); assert.equal(frozen.executions.length, 3);
+    assert.equal(frozen.schemaVersion, 'closed-input-v3'); assert.equal(frozen.evidenceRuleVersion, 'ba-evidence-v2'); assert.equal(frozen.steps.length, 6); assert.equal(frozen.executions.length, 3);
     const evidence = mysqlCommand(`USE majorpilot; SELECT JSON_OBJECT('type',e.evidence_type,'claims',e.allowed_claim_types_json,'value',e.structured_value_json,'rule',e.rule_version) FROM mp_evidence_item e JOIN mp_evidence_snapshot s ON s.id=e.evidence_snapshot_id WHERE s.experience_run_id IN (${runSql}) AND s.status='READY' ORDER BY e.id;`).trim().split('\n').filter(Boolean).map(JSON.parse);
     const analysis = evidence.filter(item => item.type === 'STUDENT_ANALYSIS');
     assert.equal(analysis.length, 6, 'Every BA step retains its student-authored analysis separately');
@@ -235,7 +235,7 @@ async function runAcceptance() {
     assert.equal(scalar(`SELECT COUNT(*) FROM mp_ai_call WHERE experience_run_id IN (${runSql}) AND (http_attempts IS NULL OR http_attempts<>0);`), 0);
     const dashboard = expect(await client.call('/api/app/v1/dashboard'), 200, 'formal dashboard');
     assert.ok(dashboard.majors.every(major => major.status === 'NOT_STARTED' && major.availability === 'UNAVAILABLE'));
-    checks.push('Reflection CAS/pause/close; frozen ba-evidence-v1 with three verified calculations, unverified goals/claims[] and no formal report/NEXT/paid calls');
+    checks.push('Reflection CAS/pause/close; newly frozen ba-evidence-v2 with three verified calculations, unverified goals/claims[] and no formal report/NEXT/paid calls');
     const admin = '/api/admin/v1/majorpilot';
     expect(await client.call(`${admin}/task-versions`), 401, 'operator list denied');
     expect(await post(client, `${admin}/task-versions/validate`, { manifestPath: 'ba-learning/1.0.0/manifest.json' }), 401, 'operator validate denied');

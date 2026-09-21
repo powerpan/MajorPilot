@@ -20,6 +20,9 @@ public final class FreshMigrationCheck {
             require(password!=null&&password.matches("[0-9a-f]{64}"));
             require(expected!=null&&expected.matches("[1-9][0-9]{0,2}"));
             int expectedVersion=Integer.parseInt(expected);
+            String from=System.getenv("MP_MIGRATION_FROM_VERSION");
+            require(from==null||from.equals("6")&&expectedVersion>=7);
+            boolean upgrade=from!=null;
             String url="jdbc:mysql://127.0.0.1:13306/"+schema+"?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC";
             int before;
             try(Connection connection=DriverManager.getConnection(url,account,password)) {
@@ -36,14 +39,26 @@ public final class FreshMigrationCheck {
                     require(schemaGrant);
                 }
             }
+            String originalStudent=null;
+            if(upgrade){
+                var baseline=Flyway.configure().dataSource(url,account,password).locations("classpath:db/migration").target("6").cleanDisabled(true).load();
+                require(baseline.migrate().migrationsExecuted==6);
+                require(baseline.validateWithResult().validationSuccessful);
+                try(Connection connection=DriverManager.getConnection(url,account,password);var statement=connection.createStatement()){
+                    // Standalone synthetic row in a newly created schema, never a
+                    // product account or claim of a completed business workflow.
+                    statement.executeUpdate("INSERT INTO mp_student_account(public_id,email_normalized,email_display,status,row_version) VALUES('01JF6000000000000000000001','migration-sentinel@example.invalid','Migration TEST_FIXTURE','LOCKED',7)");
+                    originalStudent=studentSnapshot(connection);
+                }
+            }
             Flyway flyway=Flyway.configure().dataSource(url,account,password).locations("classpath:db/migration").cleanDisabled(true).load();
-            var first=flyway.migrate();require(first.migrationsExecuted==expectedVersion);
+            var first=flyway.migrate();require(first.migrationsExecuted==expectedVersion-(upgrade?6:0));
             require(flyway.validateWithResult().validationSuccessful);
             var second=flyway.migrate();require(second.migrationsExecuted==0);
             require(flyway.info().pending().length==0);
             List<Map<String,Object>> history=new ArrayList<>();
-            int after,keyTables,p2Tables=0,p3Tables=0;
-            boolean studentJobOwnership=false,p0QueuePreserved=false;
+            int after,keyTables,p2Tables=0,p3Tables=0,p6Tables=0,p6ForeignKeys=0;
+            boolean studentJobOwnership=false,p0QueuePreserved=false,existingStudentPreserved=false;
             try(Connection connection=DriverManager.getConnection(url,account,password)) {
                 after=tableCount(connection);
                 try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT version,description,type,checksum,success FROM flyway_schema_history ORDER BY installed_rank")) {
@@ -66,8 +81,17 @@ public final class FreshMigrationCheck {
                     try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='mp_p0_background_job' AND column_name='owner_student_id' AND data_type='char' AND character_maximum_length=36")) { rows.next();p0QueuePreserved=rows.getInt(1)==1; }
                     require(studentJobOwnership&&p0QueuePreserved);
                 }
+                if(expectedVersion>=7){
+                    try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('mp_report_version','mp_report_claim','mp_report_claim_evidence','mp_comparison_source','mp_student_feedback')")){rows.next();p6Tables=rows.getInt(1);}
+                    require(p6Tables==5);
+                    try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.key_column_usage WHERE table_schema=DATABASE() AND constraint_name IN ('fk_report_current_version','fk_report_target_version','fk_ai_report_version','fk_evidence_origin_job','fk_event_report','fk_event_report_version','fk_event_feedback') AND referenced_table_name IS NOT NULL")){rows.next();p6ForeignKeys=rows.getInt(1);}
+                    require(p6ForeignKeys==7);
+                    try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.check_constraints c JOIN information_schema.table_constraints t ON t.constraint_schema=c.constraint_schema AND t.constraint_name=c.constraint_name WHERE c.constraint_schema=DATABASE() AND t.table_name='mp_report_version' AND (c.check_clause LIKE '%retry_no%' OR c.check_clause LIKE '%http_attempt_count%')")){rows.next();require(rows.getInt(1)==2);}
+                }
+                if(upgrade){existingStudentPreserved=originalStudent.equals(studentSnapshot(connection));require(existingStudentPreserved);}
             }
             Map<String,Object> result=new LinkedHashMap<>();result.put("result","PASS");result.put("emptyTableCount",before);result.put("migratedTableCount",after);result.put("p1TableCount",keyTables);result.put("p2TableCount",p2Tables);result.put("p3TableCount",p3Tables);result.put("studentJobOwnership",studentJobOwnership);result.put("p0QueuePreserved",p0QueuePreserved);result.put("expectedVersion",expectedVersion);result.put("firstMigrationsExecuted",first.migrationsExecuted);result.put("secondMigrationsExecuted",second.migrationsExecuted);result.put("validated",true);result.put("history",history);
+            result.put("migrationPath",upgrade?"V1-V6 plus existing row, then upgrade":"empty V1-latest");result.put("existingStudentPreserved",existingStudentPreserved);result.put("p6TableCount",p6Tables);result.put("p6ForeignKeyCount",p6ForeignKeys);
             System.out.println("MAJORPILOT_MIGRATION_RESULT="+new ObjectMapper().writeValueAsString(result));
         } catch(Exception failure) {
             // JDBC/Flyway diagnostics can contain connection identity or SQL. Do not log them.
@@ -75,5 +99,6 @@ public final class FreshMigrationCheck {
         }
     }
     private static int tableCount(Connection connection)throws Exception { try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")){rows.next();return rows.getInt(1);} }
+    private static String studentSnapshot(Connection connection)throws Exception {try(var statement=connection.createStatement();var rows=statement.executeQuery("SELECT JSON_OBJECT('id',id,'publicId',public_id,'email',email_normalized,'display',email_display,'password',password_hash,'status',status,'verified',email_verified_at,'failures',failed_login_count,'locked',locked_until,'lastLogin',last_login_at,'deletionRequested',deletion_requested_at,'deleted',deleted_at,'revision',row_version,'created',created_at,'updated',updated_at) FROM mp_student_account WHERE public_id='01JF6000000000000000000001'")){require(rows.next());return rows.getString(1);}}
     private static void require(boolean value){if(!value)throw new IllegalStateException("Migration assertion failed");}
 }

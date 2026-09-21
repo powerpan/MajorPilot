@@ -20,7 +20,13 @@
       <resource><directory>../../database/baseline</directory><targetPath>upstream-baseline</targetPath></resource>
       <resource><directory>../../database/migration</directory><targetPath>db/migration</targetPath></resource>
       <resource><directory>../../content</directory><targetPath>task-content</targetPath></resource>
+      <resource><directory>../../contracts/schemas</directory><targetPath>report-schemas</targetPath><includes><include>report-v1.json</include><include>report-proposal-v1.json</include></includes></resource>
     </resources>
+    <testResources>
+      <testResource><directory>src/test/resources</directory></testResource>
+      <testResource><directory>../../contracts/examples/reports</directory><targetPath>report-goldens</targetPath></testResource>
+      <testResource><directory>../../contracts/examples</directory><targetPath>experience-fixtures</targetPath><includes><include>p4-ds-run.json</include><include>p5-ba-run.json</include></includes></testResource>
+    </testResources>
     <plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.3</version></plugin></plugins>
   </build>
 </project>

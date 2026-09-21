@@ -1,0 +1,239 @@
+{
+  "schemaVersion": "report-v1",
+  "reportId": "00000000000000000000000901",
+  "reportVersionId": "00000000000000000000000951",
+  "versionNo": 1,
+  "reportType": "EXPERIENCE",
+  "majorCode": "BUSINESS_ANALYTICS",
+  "generatedAt": "2026-09-21T00:00:00Z",
+  "generationMode": "AI",
+  "sections": [
+    {
+      "sectionKey": "OVERVIEW",
+      "title": "本次体验概览",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "这是一份关于本次“商业分析：从指标变化到可检验行动”体验的记录，分别呈现偏好、操作与任务结果，不是专业适合度评定。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "WHAT_YOU_DID",
+      "title": "你完成了什么",
+      "claims": [
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“界定业务问题与可决定的范围”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“定义指标并比较成熟批次”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“比较漏斗并选择重点环节”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“选择值得优先验证的群体”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“分开观察、原因假设与未知信息”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "EXPERIENCE_PREFERENCE",
+      "title": "本次体验偏好",
+      "claims": [
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示愿意继续尝试类似工作；这是本次继续意愿，不是最终专业选择。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示本次感兴趣的环节包括：“界定业务问题与可决定的范围”。这里保留本次自述，不对多个环节排序。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "CURRENT_PREPARATION",
+      "title": "当前准备与支持",
+      "claims": [
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示本次困难来源为：工具操作。这不是客观能力评分。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在本次任务中完成了一个受引导的操作或选择；这只说明本次提交行为，不证明已独立掌握相关知识。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "TASK_PERFORMANCE",
+      "title": "固定任务结果",
+      "claims": [
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "基准批次1–6，对比批次7–12，均按每人入组后28天观察。以报名人数为分母，完成率从100/180（55.5556%）变为58/179（32.4022%），变化-23.153321个百分点；差异不是原因。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "基准批次1–6，对比批次7–12，均按每人入组后28天观察。完成课程阶段累计到达率以报名人数为分母：基准55.5556%、对比32.4022%。相邻转化率另以上一环节为分母，不混用两者。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "基准批次1–6，对比批次7–12，均按每人入组后28天观察。对比期群体结果为基础课程：25/65，支持联系152.307692次/100名报名者；应用课程：33/114，支持联系149.122807次/100名报名者。联系次数不是百分比，不能据此预测行动收益。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "WORK_STYLE_CONNECTION",
+      "title": "与工作方式的联系",
+      "claims": [
+        {
+          "claimType": "BOUNDED_INTERPRETATION",
+          "text": "你在本次体验中提到了感兴趣的环节，并表示愿意继续类似工作；这是继续探索这类任务的一条线索，不代表已经确定专业方向或具备稳定能力。",
+          "confidence": "BOUNDED",
+          "basisSummary": "依据同一次反思中的兴趣环节和继续意愿，由版本化保守规则生成；只适用于本次体验。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "LIMITATION",
+          "text": "本次BA任务关注指标口径、群体比较与行动验证；行动目标不是预测收益。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "EVIDENCE_BOUNDARIES",
+      "title": "证据边界",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "本次使用固定合成数据。服务端复核只验证固定输入与算法下的结果，不验证学生分析、因果判断或预期收益。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "BUSINESS_ANALYTICS",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "OTHER_MAJOR_DIFFERENCES",
+      "title": "其他专业的工作方式",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "AI侧重模型行为与迭代，DS侧重数据质量、关系与不确定性，BA侧重指标口径和行动验证；这些是工作方式差异，不是难度或适合度排名。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": null,
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "NEXT_EXPERIENCE",
+      "title": "下一次体验",
+      "claims": [
+        {
+          "claimType": "NEXT_STEP",
+          "text": "依照固定的下一专业规则，建议继续体验人工智能（AI），比较不同工作方式。你仍可选择其他未完成方向；推荐不是能力评定。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": null,
+          "dimensionKey": null
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "本报告仅基于本次固定任务与反思，不提供总分、人格、录取或职业保证。"
+  ],
+  "sources": [
+    {
+      "majorCode": "BUSINESS_ANALYTICS",
+      "experienceRunId": "00000000000000000000000102",
+      "taskVersionId": "01JB1000000000000000000001",
+      "taskVersionCode": "1.0.0",
+      "taskTitle": "商业分析：从指标变化到可检验行动",
+      "sourceReport": null
+    }
+  ],
+  "nextRecommendation": {
+    "state": "RECOMMENDED",
+    "recommendationId": "00000000000000000000000800",
+    "sourceRunId": "00000000000000000000000102",
+    "ruleVersion": "next-recommendation-v1",
+    "completedMajorCodes": [
+      "BUSINESS_ANALYTICS"
+    ],
+    "primaryMajor": "AI",
+    "alternativeMajors": [
+      "DATA_SCIENCE"
+    ],
+    "reasonCodes": [
+      "ADJACENT_BASELINE"
+    ]
+  }
+}

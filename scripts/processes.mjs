@@ -7,7 +7,7 @@ const runDir = path.join(ROOT, 'data/run');
 const logDir = path.join(ROOT, 'logs');
 mkdirSync(runDir, { recursive: true, mode: 0o700 });
 mkdirSync(logDir, { recursive: true, mode: 0o700 });
-const valid = new Set(['mysql', 'redis', 'mailpit', 'backend', 'student', 'admin', 'executor']);
+const valid = new Set(['mysql', 'redis', 'mailpit', 'backend', 'student', 'admin', 'executor', 'p6-test-backend', 'p6-test-student']);
 function file(name) { if (!valid.has(name)) throw new Error('Unknown component'); return path.join(runDir, `${name}.json`); }
 function identity(pid) {
   try { return execFileSync('/bin/ps', ['-p', String(pid), '-o', 'lstart=', '-o', 'command='], { encoding: 'utf8' }).trim(); } catch { return null; }

@@ -227,7 +227,7 @@ async function runAcceptance() {
     while (!ready() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 500));
     assert.equal(ready(), 1, 'durable DS evidence must be READY');
     const frozen = JSON.parse(mysqlCommand(`USE majorpilot; SELECT closed_input_manifest_json FROM mp_experience_run WHERE public_id='${id}';`).trim());
-    assert.equal(frozen.schemaVersion, 'closed-input-v3'); assert.equal(frozen.evidenceRuleVersion, 'ds-evidence-v1');
+    assert.equal(frozen.schemaVersion, 'closed-input-v3'); assert.equal(frozen.evidenceRuleVersion, 'ds-evidence-v2');
     assert.equal(frozen.steps.length, 6); assert.equal(frozen.executions.length, 4);
     const evidence = mysqlCommand(`USE majorpilot; SELECT JSON_OBJECT('type',e.evidence_type,'claims',e.allowed_claim_types_json,'value',e.structured_value_json,'rule',e.rule_version) FROM mp_evidence_item e JOIN mp_evidence_snapshot s ON s.id=e.evidence_snapshot_id WHERE s.experience_run_id IN (${runSql}) AND s.status='READY' ORDER BY e.id;`).trim().split('\n').filter(Boolean).map(JSON.parse);
     const analysis = evidence.filter(e => e.type === 'STUDENT_ANALYSIS');

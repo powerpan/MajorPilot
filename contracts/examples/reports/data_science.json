@@ -1,0 +1,247 @@
+{
+  "schemaVersion": "report-v1",
+  "reportId": "00000000000000000000000902",
+  "reportVersionId": "00000000000000000000000952",
+  "versionNo": 1,
+  "reportType": "EXPERIENCE",
+  "majorCode": "DATA_SCIENCE",
+  "generatedAt": "2026-09-21T00:00:00Z",
+  "generationMode": "AI",
+  "sections": [
+    {
+      "sectionKey": "OVERVIEW",
+      "title": "本次体验概览",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "这是一份关于本次“数据科学：从学习记录到有限结论”体验的记录，分别呈现偏好、操作与任务结果，不是专业适合度评定。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "WHAT_YOU_DID",
+      "title": "你完成了什么",
+      "claims": [
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“理解数据与分析问题”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“检查并处理数据质量”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“查看分布与统计分母”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“探索两个变量的关系”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“分层检查解释与不确定性”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "EXPERIENCE_PREFERENCE",
+      "title": "本次体验偏好",
+      "claims": [
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示愿意继续尝试类似工作；这是本次继续意愿，不是最终专业选择。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示本次感兴趣的环节包括：“理解数据与分析问题”。这里保留本次自述，不对多个环节排序。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "CURRENT_PREPARATION",
+      "title": "当前准备与支持",
+      "claims": [
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示本次困难来源为：工具操作。这不是客观能力评分。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在本次任务中完成了一个受引导的操作或选择；这只说明本次提交行为，不证明已独立掌握相关知识。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "TASK_PERFORMANCE",
+      "title": "固定任务结果",
+      "claims": [
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "固定清洗配置下，输入360行，保留359行；本项分析使用359行。删除的精确重复为1行，因缺失删除0行。保留缺失不等于将其补成0，不适用也不是缺失。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "固定清洗配置下，输入360行，保留359行；本项分析使用298行。所选平均学习时长有298个有效值，中位数为27分钟。缺失10条、不适用51条分别列出，不能用来推断因果。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "固定清洗配置下，输入360行，保留359行；本项分析使用359行。各组完成率使用各自有效样本为分母：桌面设备 61/137（44.5255%）；移动设备 49/122（40.1639%）；混合设备 48/100（48%）。这些关系不证明因果。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "固定清洗配置下，输入360行，保留359行；本项分析使用359行。沿用同一关系进行分层。前期层：有效分析180行；后期层：有效分析179行。层内差异仍不证明因果，不能把总体关系自动推广到每一层。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "WORK_STYLE_CONNECTION",
+      "title": "与工作方式的联系",
+      "claims": [
+        {
+          "claimType": "BOUNDED_INTERPRETATION",
+          "text": "你在本次体验中提到了感兴趣的环节，并表示愿意继续类似工作；这是继续探索这类任务的一条线索，不代表已经确定专业方向或具备稳定能力。",
+          "confidence": "BOUNDED",
+          "basisSummary": "依据同一次反思中的兴趣环节和继续意愿，由版本化保守规则生成；只适用于本次体验。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "LIMITATION",
+          "text": "本次DS任务关注数据质量、描述统计和不确定性；相关关系不能直接解释为因果。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "EVIDENCE_BOUNDARIES",
+      "title": "证据边界",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "本次使用固定合成数据。服务端复核只验证固定输入与算法下的结果，不验证学生分析、因果判断或预期收益。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "DATA_SCIENCE",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "OTHER_MAJOR_DIFFERENCES",
+      "title": "其他专业的工作方式",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "AI侧重模型行为与迭代，DS侧重数据质量、关系与不确定性，BA侧重指标口径和行动验证；这些是工作方式差异，不是难度或适合度排名。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": null,
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "NEXT_EXPERIENCE",
+      "title": "下一次体验",
+      "claims": [
+        {
+          "claimType": "NEXT_STEP",
+          "text": "依照固定的下一专业规则，建议继续体验人工智能（AI），比较不同工作方式。你仍可选择其他未完成方向；推荐不是能力评定。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": null,
+          "dimensionKey": null
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "本报告仅基于本次固定任务与反思，不提供总分、人格、录取或职业保证。"
+  ],
+  "sources": [
+    {
+      "majorCode": "DATA_SCIENCE",
+      "experienceRunId": "00000000000000000000000103",
+      "taskVersionId": "01JD1000000000000000000001",
+      "taskVersionCode": "1.0.0",
+      "taskTitle": "数据科学：从学习记录到有限结论",
+      "sourceReport": null
+    }
+  ],
+  "nextRecommendation": {
+    "state": "RECOMMENDED",
+    "recommendationId": "00000000000000000000000800",
+    "sourceRunId": "00000000000000000000000103",
+    "ruleVersion": "next-recommendation-v1",
+    "completedMajorCodes": [
+      "DATA_SCIENCE"
+    ],
+    "primaryMajor": "AI",
+    "alternativeMajors": [
+      "BUSINESS_ANALYTICS"
+    ],
+    "reasonCodes": [
+      "ADJACENT_BASELINE"
+    ]
+  }
+}

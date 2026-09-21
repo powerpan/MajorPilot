@@ -1,0 +1,223 @@
+{
+  "schemaVersion": "report-v1",
+  "reportId": "00000000000000000000000900",
+  "reportVersionId": "00000000000000000000000950",
+  "versionNo": 1,
+  "reportType": "EXPERIENCE",
+  "majorCode": "AI",
+  "generatedAt": "2026-09-21T00:00:00Z",
+  "generationMode": "AI",
+  "sections": [
+    {
+      "sectionKey": "OVERVIEW",
+      "title": "本次体验概览",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "这是一份关于本次“AI：让支持请求分类更可靠”体验的记录，分别呈现偏好、操作与任务结果，不是专业适合度评定。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "WHAT_YOU_DID",
+      "title": "你完成了什么",
+      "claims": [
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“认识支持请求分类任务”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“理解覆盖率与错误代价”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“检查公开练习中的错误”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“设计有限配置修改”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在“在固定评价集上比较结果”环节提交了选择、配置或分析；记录提交行为不等于确认分析正确。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "EXPERIENCE_PREFERENCE",
+      "title": "本次体验偏好",
+      "claims": [
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示愿意继续尝试类似工作；这是本次继续意愿，不是最终专业选择。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示本次感兴趣的环节包括：“认识支持请求分类任务”。这里保留本次自述，不对多个环节排序。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "CURRENT_PREPARATION",
+      "title": "当前准备与支持",
+      "claims": [
+        {
+          "claimType": "STUDENT_SELF_REPORT",
+          "text": "你表示本次困难来源为：工具操作。这不是客观能力评分。",
+          "confidence": "SELF_REPORTED",
+          "basisSummary": "依据本次已提交反思中的明确选项；保留学生自述归属。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "你在本次任务中完成了一个受引导的操作或选择；这只说明本次提交行为，不证明已独立掌握相关知识。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "TASK_PERFORMANCE",
+      "title": "固定任务结果",
+      "claims": [
+        {
+          "claimType": "OBSERVED_FACT",
+          "text": "固定评估样本共48条；本次配置自动处理39条，其中正确27条，自动处理准确率为69.2308%，覆盖率为81.25%。这些是固定数据与配置的结果，不是学生能力分数。",
+          "confidence": "DIRECT",
+          "basisSummary": "依据固定任务版本下保存的操作或服务端复核执行记录；不验证学生分析结论。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "WORK_STYLE_CONNECTION",
+      "title": "与工作方式的联系",
+      "claims": [
+        {
+          "claimType": "BOUNDED_INTERPRETATION",
+          "text": "你在本次体验中提到了感兴趣的环节，并表示愿意继续类似工作；这是继续探索这类任务的一条线索，不代表已经确定专业方向或具备稳定能力。",
+          "confidence": "BOUNDED",
+          "basisSummary": "依据同一次反思中的兴趣环节和继续意愿，由版本化保守规则生成；只适用于本次体验。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        },
+        {
+          "claimType": "LIMITATION",
+          "text": "本次AI任务关注模型输出、错误分析与受控迭代；完成任务不等于已经适合AI专业。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "EVIDENCE_BOUNDARIES",
+      "title": "证据边界",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "本次使用固定合成数据。服务端复核只验证固定输入与算法下的结果，不验证学生分析、因果判断或预期收益。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": "AI",
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "OTHER_MAJOR_DIFFERENCES",
+      "title": "其他专业的工作方式",
+      "claims": [
+        {
+          "claimType": "LIMITATION",
+          "text": "AI侧重模型行为与迭代，DS侧重数据质量、关系与不确定性，BA侧重指标口径和行动验证；这些是工作方式差异，不是难度或适合度排名。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": null,
+          "dimensionKey": null
+        }
+      ]
+    },
+    {
+      "sectionKey": "NEXT_EXPERIENCE",
+      "title": "下一次体验",
+      "claims": [
+        {
+          "claimType": "NEXT_STEP",
+          "text": "依照固定的下一专业规则，建议继续体验商业分析（BA），比较不同工作方式。你仍可选择其他未完成方向；推荐不是能力评定。",
+          "confidence": "RULE_BASED",
+          "basisSummary": "依据已注册的报告边界、任务说明或下一专业规则。",
+          "majorCode": null,
+          "dimensionKey": null
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "本报告仅基于本次固定任务与反思，不提供总分、人格、录取或职业保证。"
+  ],
+  "sources": [
+    {
+      "majorCode": "AI",
+      "experienceRunId": "00000000000000000000000101",
+      "taskVersionId": "01JA1000000000000000000001",
+      "taskVersionCode": "1.0.0",
+      "taskTitle": "AI：让支持请求分类更可靠",
+      "sourceReport": null
+    }
+  ],
+  "nextRecommendation": {
+    "state": "RECOMMENDED",
+    "recommendationId": "00000000000000000000000800",
+    "sourceRunId": "00000000000000000000000101",
+    "ruleVersion": "next-recommendation-v1",
+    "completedMajorCodes": [
+      "AI"
+    ],
+    "primaryMajor": "BUSINESS_ANALYTICS",
+    "alternativeMajors": [
+      "DATA_SCIENCE"
+    ],
+    "reasonCodes": [
+      "ADJACENT_BASELINE"
+    ]
+  }
+}

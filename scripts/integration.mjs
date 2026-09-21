@@ -1,4 +1,43 @@
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ROOT } from './local-config.mjs';
 import { runtimeEnv } from './env.mjs';
-execFileSync(`${ROOT}/backend/mvnw`, [`-Dmaven.repo.local=${ROOT}/.local/m2`, 'test'], { cwd: `${ROOT}/backend`, env: { ...runtimeEnv({ secrets: true }), MP_RUN_MYSQL_TESTS: 'true', MAVEN_USER_HOME: `${ROOT}/data/maven-user` }, stdio: 'inherit' });
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { record, processInspectionAvailable } from './processes.mjs';
+
+export const testDatabaseLock = path.join(ROOT, 'data/run/majorpilot-test-lock.json');
+const fail = () => new Error('Another test scope owns majorpilot_test; no shared state was changed');
+export function readTestLock(file = testDatabaseLock) {
+  const stat = lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o077)) throw fail();
+  return JSON.parse(readFileSync(file, 'utf8'));
+}
+export function acquireTestLock(owner, { file = testDatabaseLock, resume = false } = {}) {
+  mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const stat = lstatSync(path.dirname(file));
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw fail();
+  if (existsSync(file)) {
+    if (!resume || JSON.stringify(readTestLock(file)) !== JSON.stringify(owner)) throw fail();
+    return owner;
+  }
+  try { writeFileSync(file, JSON.stringify(owner), { flag: 'wx', mode: 0o600 }); }
+  catch { throw fail(); }
+  return owner;
+}
+export function releaseTestLock(owner, { file = testDatabaseLock } = {}) {
+  if (JSON.stringify(readTestLock(file)) !== JSON.stringify(owner)) throw fail();
+  unlinkSync(file);
+}
+export function runIntegration() {
+  if (!processInspectionAvailable()) throw new Error('Process inspection required before sharing the integration database');
+  if (record('p6-test-backend') || record('p6-test-student')) throw fail();
+  const owner = acquireTestLock({ pid: process.pid, scope: 'majorpilot_test integration', nonce: randomUUID() });
+  try {
+    execFileSync(`${ROOT}/backend/mvnw`, [`-Dmaven.repo.local=${ROOT}/.local/m2`, 'test'], {
+      cwd: `${ROOT}/backend`, env: { ...runtimeEnv({ secrets: true }), MP_RUN_MYSQL_TESTS: 'true', MP_RUN_LIVE_REPORT_TESTS: 'false', MP_RUN_BAILIAN_TEST: 'false', MAVEN_USER_HOME: `${ROOT}/data/maven-user` }, stdio: 'inherit',
+    });
+  } finally { releaseTestLock(owner); }
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) runIntegration();

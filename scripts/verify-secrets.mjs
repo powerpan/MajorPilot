@@ -1,8 +1,20 @@
-import { readdirSync, readFileSync, lstatSync } from 'node:fs';
+import { readdirSync, readFileSync, lstatSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { ROOT } from './local-config.mjs';
-import { readLocalEnv } from './env.mjs';
-const secrets = Object.entries(readLocalEnv()).filter(([k,v]) => /KEY|SECRET|PASSWORD/.test(k) && v.length >= 12).map(([,v]) => v);
+import { readLocalEnv, parseEnv } from './env.mjs';
+const environments = [readLocalEnv()];
+// Test identities are private too. Read only this documented, ignored file,
+// never follow a symlink or scan arbitrary environment stores.
+const harnessEnvironment = path.join(ROOT, '.env.p6-test.local');
+if (existsSync(harnessEnvironment)) {
+  const stat = lstatSync(harnessEnvironment);
+  if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o077)) throw new Error('P6 test environment must be a mode-600 regular file; values suppressed');
+  environments.push(parseEnv(readFileSync(harnessEnvironment, 'utf8')));
+}
+const secrets = [...new Set(environments.flatMap(environment => Object.entries(environment).filter(([k,v]) => /KEY|SECRET|PASSWORD/.test(k) && v.length >= 12).map(([,v]) => v)))];
+// The test Operator uses the first 20 characters to honor RuoYi's retained
+// password-length contract; check the actual credential as well as its seed.
+for (const environment of environments) if (environment.MP_P6_RUN_TAG && environment.MP_P0_ADMIN_PASSWORD?.length === 64) secrets.push(environment.MP_P0_ADMIN_PASSWORD.slice(0, 20));
 secrets.push('MAJORPILOT_TEST_SECRET_DO_NOT_SHIP_91d370');
 const skipped = new Set(['.git', '.local', '.agents', '.codex', 'node_modules', 'target', 'artifacts']);
 let files = 0;

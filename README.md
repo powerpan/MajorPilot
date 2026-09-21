@@ -2,7 +2,7 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P5 BA专业工程闭环已完成本地实施和验收**：在账户推荐、任务引擎及AI/DS体验上，新增BA指标定义、两期漏斗、群体比较、原因假设、行动验证及冻结证据。隔离JS计算与Java复核、来源版本、30种配置配额、Chrome/Edge完整流程与旧阶段回归均通过。三专业内容仍为REVIEW工程预览，尚待真人专业审核及目标用户计时，不计正式完成或生成正式报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [BA视觉验收](docs/30-p5-ba-visual-direction.md)。报告及完整MVP继续按P6–P8推进；不声称公网生产已就绪。
+**P6 报告、比较与下一项体验已完成本地工程验收**：在AI/DS/BA任务闭环上，新增持久化报告生成、证据约束与回退、版本化私有报告、跨专业比较、NEXT、反馈和打印。真实HTTP、Chrome/Edge、实际PDF、JVM重启恢复及旧阶段回归均通过。百炼/DeepSeek合成报告能力已真实验证，普通测试仍0付费。正式报告链用隔离TEST_FIXTURE验证；主站三专业内容仍REVIEW，尚待真人专业审核及目标用户计时，不会因工程验收自动发布。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [报告视觉验收](docs/32-p6-report-visual-direction.md)。接着依路线推进P7管理/隐私，P8完整MVP硬化及公网部署另行验收。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
@@ -76,7 +76,15 @@ P5新增BA工程预览，沿用同一本地开关。B1–B6覆盖指标、漏斗
 
 真实密钥只在 `.env.local`，权限 `0600`；`.env.example` 只列出变量。启动器只给后端注入秘密，前端通过环境白名单启动，不继承供应商密钥。正常构建和单元测试不调用付费模型。
 
-百炼 P0 使用北京地域和合成输入；生产模型与真实用户数据条款仍须后续评估。**不要把 `scripts/ai-spike.mjs --live` 加入 CI**：这会发出有额度消耗的真实请求。DeepSeek 本轮没有调用。
+百炼使用北京地域；生产模型与真实用户数据条款仍须后续评估。2026-09-21用户已授权开发中真实调用，P6合成报告探针已分别验证百炼与DeepSeek；结果见交付记录。**不要把真实探针加入CI**。普通测试保持0付费调用；显式报告测试入口如下，必须使用新run-id，已尝试标记即使超时也保留，不自动重发。每轮最多2次HTTP/45秒，区分AI_VALIDATED与FALLBACK_VALIDATED。
+
+```sh
+data/tools/node/bin/node scripts/report-spike.mjs --check
+# 以下命令会真实调用所选平台；密钥只从忽略的.env.local读取。
+data/tools/node/bin/node scripts/report-spike.mjs --live --provider BAILIAN --run-id your-new-probe-id
+```
+
+`MP_REPORT_AI_ENABLED`是正式报告单独的启用开关，默认false；`MP_REPORT_AI_PROVIDER`支持BAILIAN或DEEPSEEK。它不把REVIEW预览变成正式内容，不更改任务提示开关。隔离P6浏览器验收使用测试源码harness（18081/15176、majorpilot_test、Redis14及独立`.env.p6-test.local`），不会继承供应商Key；与MySQL集成测试由同一归属锁互斥。按 `prepare → start → test-p6-api / tests/e2e/p6 / test-p6-restart → stop → cleanup` 顺序使用 `scripts/p6-harness.mjs`，不得并行清理共享测试库或重置限流。
 
 ## 当前边界
 

@@ -93,12 +93,23 @@ export function createFixtureScope(prefix = 'p2') {
     const responses = `SELECT id FROM mp_step_response_revision WHERE step_state_id IN (${steps})`;
     const reflections = `SELECT id FROM mp_reflection WHERE experience_run_id IN (${runs})`;
     const hasEvidence = mysqlCommand("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='majorpilot' AND table_name='mp_evidence_snapshot';").trim() === '1';
+    const hasReportVersions = mysqlCommand("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='majorpilot' AND table_name='mp_report_version';").trim() === '1';
+    const versions = `SELECT v.id FROM mp_report_version v JOIN mp_report p ON p.id=v.report_id WHERE p.student_id IN (${accounts})`;
+    const versionCleanup = hasReportVersions ? `
+      DELETE FROM mp_sensitive_audit WHERE (target_type='REPORT' AND target_public_id IN (SELECT public_id FROM mp_report WHERE student_id IN (${accounts}))) OR (target_type='REPORT_VERSION' AND target_public_id IN (SELECT public_id FROM mp_report_version WHERE id IN (${versions})));
+      UPDATE mp_report SET current_version_id=NULL,generation_target_version_id=NULL WHERE student_id IN (${accounts});
+      DELETE FROM mp_comparison_source WHERE comparison_report_version_id IN (${versions});
+      DELETE FROM mp_report_claim_evidence WHERE report_claim_id IN (SELECT id FROM mp_report_claim WHERE report_version_id IN (${versions}));
+      DELETE FROM mp_report_claim WHERE report_version_id IN (${versions});
+      DELETE FROM mp_student_feedback WHERE student_id IN (${accounts});
+      DELETE FROM mp_report_version WHERE report_id IN (SELECT id FROM mp_report WHERE student_id IN (${accounts}));` : '';
     const evidenceCleanup = hasEvidence ? `
       DELETE FROM mp_ai_call WHERE student_id IN (${accounts});
-      DELETE FROM mp_background_job WHERE owner_student_id IN (${accounts});
+      ${versionCleanup}
       DELETE FROM mp_report WHERE student_id IN (${accounts});
       DELETE FROM mp_evidence_item WHERE evidence_snapshot_id IN (SELECT id FROM mp_evidence_snapshot WHERE student_id IN (${accounts}));
       DELETE FROM mp_evidence_snapshot WHERE student_id IN (${accounts});
+      DELETE FROM mp_background_job WHERE owner_student_id IN (${accounts});
       UPDATE mp_recommendation SET source_run_id=NULL WHERE student_id IN (${accounts}) AND source_run_id IN (${runs});` : '';
     // Fail closed on new dependencies: FK errors roll back rather than disabling
     // checks or deleting anything outside this invocation's exact owner set.
@@ -106,8 +117,8 @@ export function createFixtureScope(prefix = 'p2') {
     ownedRuns.forEach(id => assert.match(id, /^[0-9]+$/));
     mysqlCommand(`USE majorpilot; START TRANSACTION;
       SELECT id FROM mp_student_account WHERE email_normalized IN (${list(emails)}) ORDER BY id FOR UPDATE;
-      ${evidenceCleanup}
       DELETE FROM mp_product_event WHERE student_id IN (${accounts}) OR intake_session_id IN (${intakeIds}) OR recommendation_id IN (${recommendations});
+      ${evidenceCleanup}
       DELETE FROM mp_sensitive_audit WHERE target_type='EXPERIENCE_RUN' AND target_public_id IN (SELECT public_id FROM mp_experience_run WHERE student_id IN (${accounts}));
       DELETE FROM mp_response_execution WHERE response_revision_id IN (${responses});
       DELETE FROM mp_execution_record WHERE experience_run_id IN (${runs});

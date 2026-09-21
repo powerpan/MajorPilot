@@ -46,6 +46,9 @@ class ExperienceWiringTest {
         context.registerBean(com.ruoyi.majorpilot.classifier.ClassifierEngine.class,()->mock(com.ruoyi.majorpilot.classifier.ClassifierEngine.class));
         context.registerBean(com.ruoyi.majorpilot.datascience.DsStatsEngine.class,()->mock(com.ruoyi.majorpilot.datascience.DsStatsEngine.class));
         context.registerBean(com.ruoyi.majorpilot.businessanalytics.BaMetricsEngine.class,()->mock(com.ruoyi.majorpilot.businessanalytics.BaMetricsEngine.class));
+        context.registerBean(com.ruoyi.majorpilot.report.claims.EvidenceRuleRegistry.class,()->new com.ruoyi.majorpilot.report.claims.EvidenceRuleRegistry());
+        context.registerBean(com.ruoyi.majorpilot.integration.ai.ReportGateway.class,()->mock(com.ruoyi.majorpilot.integration.ai.ReportGateway.class));
+        context.register(com.ruoyi.majorpilot.report.ReportConfiguration.class,com.ruoyi.majorpilot.report.ReportStore.class,com.ruoyi.majorpilot.report.ReportCoordinator.class,com.ruoyi.majorpilot.report.ReportJobs.class,com.ruoyi.majorpilot.report.ReportService.class,com.ruoyi.majorpilot.report.ReportController.class,com.ruoyi.majorpilot.report.ReportAdminController.class,com.ruoyi.majorpilot.report.FeedbackService.class,com.ruoyi.majorpilot.report.FeedbackController.class,com.ruoyi.majorpilot.recommendation.NextRecommendations.class);
         context.register(RunStore.class,RunService.class,HintService.class,FixedExecutionCalculator.class,ExecutionService.class,ReflectionService.class,FollowUpService.class,ClosurePipeline.class,EvidenceJobs.class,RunController.class);
         context.refresh();assertTrue(AopUtils.isCglibProxy(context.getBean(RunStore.class)),"The production repository proxy boundary must be exercised");
         return context;
@@ -64,5 +67,5 @@ class ExperienceWiringTest {
             verifyNoInteractions(context.getBean(HintProvider.class));
         }
     }
-    @Test void completeProductionExperienceGraphAndEvidenceSchedulerAreWired(){try(var context=context(true)){assertNotNull(context.getBean(RunController.class));assertNotNull(context.getBean(ReflectionService.class));assertNotNull(context.getBean(FixedExecutionCalculator.class));assertDoesNotThrow(()->context.getBean(EvidenceJobs.class).tick());verify(context.getBean(JdbcTemplate.class)).queryForList(startsWith("SELECT id,owner_student_id FROM mp_background_job"));}}
+    @Test void completeProductionExperienceGraphAndEvidenceSchedulerAreWired(){try(var context=context(true)){assertNotNull(context.getBean(RunController.class));assertNotNull(context.getBean(ReflectionService.class));assertNotNull(context.getBean(FixedExecutionCalculator.class));assertNotNull(context.getBean(com.ruoyi.majorpilot.report.ReportController.class));assertNotNull(context.getBean(com.ruoyi.majorpilot.report.ReportAdminController.class));assertNotNull(context.getBean(com.ruoyi.majorpilot.report.ReportJobs.class));assertNotNull(context.getBean(com.ruoyi.majorpilot.report.ReportCoordinator.class));assertDoesNotThrow(()->context.getBean(EvidenceJobs.class).tick());verify(context.getBean(JdbcTemplate.class)).queryForList(startsWith("SELECT id,owner_student_id FROM mp_background_job"));}}
 }

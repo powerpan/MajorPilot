@@ -1,0 +1,70 @@
+<script setup lang="ts">
+import type { Report } from "../../types/reports";
+import { major } from "../../data/majors";
+import ReportClaimRow from "./ReportClaimRow.vue";
+import ReportDimensions from "./ReportDimensions.vue";
+defineProps<{ report: Report; printing?: boolean }>();
+const grouped = new Set([
+  "WORK_COMPLETED",
+  "SELF_REPORTED_EXPERIENCE",
+  "MAJOR_SPECIFIC_EXPERIENCE",
+]);
+</script>
+<template>
+  <section
+    v-for="(section, index) in report.sections"
+    :id="`section-${section.sectionKey}`"
+    :key="section.sectionKey"
+    class="report-section"
+    tabindex="-1"
+    :aria-labelledby="`title-${section.sectionKey}`"
+  >
+    <h2 :id="`title-${section.sectionKey}`" class="serif">
+      <span class="report-section-number">{{
+        String(index + 1).padStart(2, "0")
+      }}</span
+      >{{ section.title }}
+    </h2>
+    <ReportDimensions
+      v-if="section.sectionKey === 'COMMON_DIMENSIONS'"
+      :claims="section.claims"
+      :sources="report.sources"
+      :printing="printing"
+    />
+    <div
+      v-else-if="
+        report.reportType === 'COMPARISON' && grouped.has(section.sectionKey)
+      "
+      class="report-major-columns"
+    >
+      <section v-for="source in report.sources" :key="source.majorCode">
+        <h3>{{ major(source.majorCode).name }}</h3>
+        <ReportClaimRow
+          v-for="claim in section.claims.filter(
+            (value) => value.majorCode === source.majorCode,
+          )"
+          :key="claim.text"
+          :claim="claim"
+          :printing="printing"
+        />
+      </section>
+    </div>
+    <template v-else
+      ><ReportClaimRow
+        v-for="(claim, claimIndex) in section.claims"
+        :key="claimIndex"
+        :claim="claim"
+        :printing="printing"
+    /></template>
+    <slot
+      v-if="
+        section.sectionKey === 'NEXT_EXPERIENCE' ||
+        section.sectionKey === 'REMAINING_MAJOR'
+      "
+      name="next"
+    />
+  </section>
+  <aside class="report-limitations" aria-label="本次报告的边界">
+    <p v-for="limit in report.limitations" :key="limit">{{ limit }}</p>
+  </aside>
+</template>

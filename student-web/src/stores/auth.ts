@@ -2,11 +2,24 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { api, ApiError } from "../lib/api";
 import type { Me } from "../types";
-import { lockTaskDrafts, purgeTaskDrafts, verifyTaskDraftOwner, hasTaskDrafts } from "../lib/task-drafts";
+import {
+  lockTaskDrafts,
+  purgeTaskDrafts,
+  verifyTaskDraftOwner,
+  hasTaskDrafts,
+} from "../lib/task-drafts";
+import { verifyFeedbackOwner, hasFeedbackDrafts } from "../lib/feedback-drafts";
 
 type IdentityReason = "LOGIN" | "LOGOUT" | "CLAIM" | "SESSION_EXPIRED";
-interface IdentityMessage { version: 1; reason: IdentityReason; nonce: string }
-interface IdentityNotice { reason: IdentityReason; remote: boolean }
+interface IdentityMessage {
+  version: 1;
+  reason: IdentityReason;
+  nonce: string;
+}
+interface IdentityNotice {
+  reason: IdentityReason;
+  remote: boolean;
+}
 const SIGNAL = "mp:identity-signal:v1";
 const listeners = new Set<(notice: IdentityNotice) => void>();
 const requests = new Set<AbortController>();
@@ -16,8 +29,16 @@ let channel: BroadcastChannel | null = null;
 
 function clearLocalDraft() {
   // Only our exact namespaces; never clear the browser's whole storage.
-  try { sessionStorage.removeItem("mp:intake-draft:v1"); } catch { /* Storage denied. */ }
-  try { localStorage.removeItem("mp:intake-pointer:v1"); } catch { /* Storage denied. */ }
+  try {
+    sessionStorage.removeItem("mp:intake-draft:v1");
+  } catch {
+    /* Storage denied. */
+  }
+  try {
+    localStorage.removeItem("mp:intake-pointer:v1");
+  } catch {
+    /* Storage denied. */
+  }
 }
 function remember(nonce: string) {
   if (seen.has(nonce)) return false;
@@ -31,49 +52,91 @@ function invalidate(notice: IdentityNotice) {
   requests.clear();
   clearLocalDraft();
   if (notice.reason !== "CLAIM") lockTaskDrafts();
-  if (notice.reason === "LOGOUT") void purgeTaskDrafts().catch(() => { /* Locked even if browser storage is denied. */ });
+  if (notice.reason === "LOGOUT")
+    void purgeTaskDrafts().catch(() => {
+      /* Locked even if browser storage is denied. */
+    });
   for (const listener of listeners) listener(notice);
   window.dispatchEvent(new Event("mp:logout"));
-  window.dispatchEvent(new CustomEvent("mp:identity-cleared", { detail: notice }));
+  window.dispatchEvent(
+    new CustomEvent("mp:identity-cleared", { detail: notice }),
+  );
 }
 function receive(value: unknown) {
   if (!value || typeof value !== "object") return;
   const message = value as Partial<IdentityMessage>;
-  if (message.version !== 1 || !["LOGIN", "LOGOUT", "CLAIM", "SESSION_EXPIRED"].includes(message.reason || "") ||
-      typeof message.nonce !== "string" || !/^[a-f0-9-]{36}$/.test(message.nonce) || !remember(message.nonce)) return;
+  if (
+    message.version !== 1 ||
+    !["LOGIN", "LOGOUT", "CLAIM", "SESSION_EXPIRED"].includes(
+      message.reason || "",
+    ) ||
+    typeof message.nonce !== "string" ||
+    !/^[a-f0-9-]{36}$/.test(message.nonce) ||
+    !remember(message.nonce)
+  )
+    return;
   invalidate({ reason: message.reason!, remote: true });
 }
 try {
   if (typeof BroadcastChannel !== "undefined") {
     channel = new BroadcastChannel("majorpilot-identity-v1");
-    channel.addEventListener("message", event => receive(event.data));
+    channel.addEventListener("message", (event) => receive(event.data));
   }
-} catch { /* Storage events remain the fallback when channels are blocked. */ }
-window.addEventListener("storage", event => {
+} catch {
+  /* Storage events remain the fallback when channels are blocked. */
+}
+window.addEventListener("storage", (event) => {
   if (event.key !== SIGNAL || !event.newValue) return;
-  try { receive(JSON.parse(event.newValue)); } catch { /* Ignore corrupt notifications. */ }
+  try {
+    receive(JSON.parse(event.newValue));
+  } catch {
+    /* Ignore corrupt notifications. */
+  }
 });
 
 /** No account IDs, answers, credentials or email ever enter cross-tab messages. */
 export function identityChanged(reason: IdentityReason) {
-  const message: IdentityMessage = { version: 1, reason, nonce: crypto.randomUUID() };
+  const message: IdentityMessage = {
+    version: 1,
+    reason,
+    nonce: crypto.randomUUID(),
+  };
   remember(message.nonce);
   invalidate({ reason, remote: false });
-  try { channel?.postMessage(message); } catch { /* Fall back below. */ }
+  try {
+    channel?.postMessage(message);
+  } catch {
+    /* Fall back below. */
+  }
   // Also send the fallback so mixed supported/blocked tabs remain coherent.
-  try { localStorage.setItem(SIGNAL, JSON.stringify(message)); localStorage.removeItem(SIGNAL); } catch { /* Storage denied. */ }
+  try {
+    localStorage.setItem(SIGNAL, JSON.stringify(message));
+    localStorage.removeItem(SIGNAL);
+  } catch {
+    /* Storage denied. */
+  }
 }
-export function onIdentityChange(listener: (notice: IdentityNotice) => void) { listeners.add(listener); return () => listeners.delete(listener); }
+export function onIdentityChange(listener: (notice: IdentityNotice) => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 export function identityRequest() {
   const issuedAt = epoch;
   const controller = new AbortController();
-  const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]);
+  const signal = AbortSignal.any([
+    controller.signal,
+    AbortSignal.timeout(20000),
+  ]);
   requests.add(controller);
   return {
     signal,
     current: () => issuedAt === epoch,
-    assertCurrent() { if (issuedAt !== epoch) throw new ApiError(409, "IDENTITY_CHANGED"); },
-    finish() { requests.delete(controller); },
+    assertCurrent() {
+      if (issuedAt !== epoch) throw new ApiError(409, "IDENTITY_CHANGED");
+    },
+    finish() {
+      requests.delete(controller);
+    },
   };
 }
 
@@ -82,13 +145,14 @@ export const useAuth = defineStore("auth", () => {
   const checked = ref(false);
   let request: Promise<void> | null = null;
   let refreshing: ReturnType<typeof identityRequest> | null = null;
-  onIdentityChange(notice => {
+  onIdentityChange((notice) => {
     request = null;
     refreshing = null;
     // Claim ends the anonymous credential, not an already logged-in account.
     if (notice.reason !== "CLAIM") {
       me.value = null;
-      checked.value = notice.reason === "LOGOUT" || notice.reason === "SESSION_EXPIRED";
+      checked.value =
+        notice.reason === "LOGOUT" || notice.reason === "SESSION_EXPIRED";
     }
   });
   async function refresh(force = false) {
@@ -101,8 +165,15 @@ export const useAuth = defineStore("auth", () => {
         const next = await api<Me>("/api/app/v1/me", { signal: ticket.signal });
         ticket.assertCurrent();
         me.value = next;
-        await verifyTaskDraftOwner(next.studentId).catch(() => { /* Task view reports persistence failure; auth stays usable. */ });
+        await verifyTaskDraftOwner(next.studentId).catch(() => {
+          /* Task view reports persistence failure; auth stays usable. */
+        });
         ticket.assertCurrent();
+        try {
+          verifyFeedbackOwner(next.studentId);
+        } catch {
+          /* Feedback view reports local persistence failures. */
+        }
       } catch (cause) {
         ticket.assertCurrent();
         if (!(cause instanceof ApiError) || cause.status !== 401) throw cause;
@@ -111,7 +182,10 @@ export const useAuth = defineStore("auth", () => {
       } finally {
         if (ticket.current()) checked.value = true;
         ticket.finish();
-        if (refreshing === ticket) { request = null; refreshing = null; }
+        if (refreshing === ticket) {
+          request = null;
+          refreshing = null;
+        }
       }
     })();
     return request;
@@ -120,7 +194,9 @@ export const useAuth = defineStore("auth", () => {
     const ticket = identityRequest();
     try {
       const next = await api<Me>("/api/public/v1/auth/login", {
-        method: "POST", body: { email, password }, signal: ticket.signal,
+        method: "POST",
+        body: { email, password },
+        signal: ticket.signal,
       });
       ticket.assertCurrent();
       ticket.finish();
@@ -129,26 +205,62 @@ export const useAuth = defineStore("auth", () => {
       checked.value = true;
       const completed = identityRequest();
       try {
-        await verifyTaskDraftOwner(next.studentId).catch(() => { /* Never grant a cache read on storage failure. */ });
+        await verifyTaskDraftOwner(next.studentId).catch(() => {
+          /* Never grant a cache read on storage failure. */
+        });
         completed.assertCurrent();
-      } finally { completed.finish(); }
-    } catch (cause) { ticket.assertCurrent(); throw cause; }
-    finally { ticket.finish(); }
+        try {
+          verifyFeedbackOwner(next.studentId);
+        } catch {
+          /* Core authentication does not depend on storage permission. */
+        }
+      } finally {
+        completed.finish();
+      }
+    } catch (cause) {
+      ticket.assertCurrent();
+      throw cause;
+    } finally {
+      ticket.finish();
+    }
   }
   async function logout() {
-    if (await hasTaskDrafts().catch(() => false)) {
-      if (!window.confirm("退出将清除这台设备上的未同步草稿。取消后可先返回任务保存，确定退出吗？")) throw new Error("已取消退出，未同步草稿仍保留在这台设备。");
+    let feedbackDrafts = false;
+    try {
+      feedbackDrafts = hasFeedbackDrafts();
+    } catch {
+      /* Browser storage may be blocked. */
+    }
+    if ((await hasTaskDrafts().catch(() => false)) || feedbackDrafts) {
+      if (
+        !window.confirm(
+          "退出将清除这台设备上的未同步任务与反馈草稿。取消后可先返回保存或提交，确定退出吗？",
+        )
+      )
+        throw new Error("已取消退出，未同步草稿仍保留在这台设备。");
     }
     const ticket = identityRequest();
     try {
-      await api<void>("/api/app/v1/auth/logout", { method: "POST", body: {}, signal: ticket.signal });
+      await api<void>("/api/app/v1/auth/logout", {
+        method: "POST",
+        body: {},
+        signal: ticket.signal,
+      });
       ticket.assertCurrent();
       ticket.finish();
       clear();
-    } catch (cause) { ticket.assertCurrent(); throw cause; }
-    finally { ticket.finish(); }
+    } catch (cause) {
+      ticket.assertCurrent();
+      throw cause;
+    } finally {
+      ticket.finish();
+    }
   }
-  function clear() { identityChanged("LOGOUT"); }
-  function expire() { identityChanged("SESSION_EXPIRED"); }
+  function clear() {
+    identityChanged("LOGOUT");
+  }
+  function expire() {
+    identityChanged("SESSION_EXPIRED");
+  }
   return { me, checked, refresh, login, logout, clear, expire };
 });

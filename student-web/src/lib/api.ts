@@ -67,6 +67,12 @@ const messages: Record<string, string> = {
   EVALUATION_LIMIT_REACHED:
     "不同配置的运行次数已用完。已经运行过的配置仍可查看。",
   CONTENT_UNAVAILABLE: "任务内容暂不可用，请稍后重试；已保存的进度不会被清空。",
+  REPORT_VERSION_CHANGED:
+    "报告版本已更新。请返回报告并刷新后，再查看依据或打印。",
+  REPORT_PRINT_VERSION_REQUIRED: "请先打开报告，再从当前阅读版本进入打印。",
+  REPORT_GENERATION_FAILED: "体验已完成，报告准备异常。请稍后刷新状态。",
+  FEEDBACK_INVALID: "请至少填写一项有效反馈；评分须为1–5，评论最多1000字。",
+  MAJOR_ALREADY_COMPLETED: "这个正式专业已经完成，请选择其他尚未完成的方向。",
 };
 export class ApiError extends Error {
   constructor(

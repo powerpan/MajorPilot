@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from "vue";
+import { onMounted, onBeforeUnmount, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { api, ApiError, errorText, stableOperation } from "../lib/api";
-import { useAuth } from "../stores/auth";
+import { useAuth, identityRequest, onIdentityChange } from "../stores/auth";
 import { major } from "../data/majors";
 import { observeRecommendation } from "../lib/events";
 import type { Dashboard, MajorCode, Decision } from "../types";
 import RecommendationDetails from "../components/RecommendationDetails.vue";
 import type { PreviewTask, Run } from "../types/workspace";
+import type { ReportPage, ComparisonResponse } from "../types/reports";
+import { waitingLabels } from "../lib/report-display";
+import NextRecommendationPanel from "../components/reports/NextRecommendationPanel.vue";
 const previewAvailable = ref(false),
   formalRuns = ref<Run[]>([]);
 const auth = useAuth(),
@@ -23,31 +26,90 @@ const auth = useAuth(),
   success = ref(""),
   operation = stableOperation();
 let dispose: undefined | (() => void);
+let epoch = 0;
+const reportPage = ref<ReportPage | null>(null),
+  comparison = ref<ComparisonResponse | null>(null),
+  reportError = ref("");
+const activeRecommendation = computed(
+  () =>
+    dashboard.value?.nextRecommendation ||
+    (dashboard.value?.nextStep === "ALL_COMPLETED"
+      ? null
+      : dashboard.value?.recommendation),
+);
+const unsubscribe = onIdentityChange(() => {
+  epoch++;
+  dashboard.value = null;
+  formalRuns.value = [];
+  reportPage.value = null;
+  comparison.value = null;
+  reportError.value = "";
+  choosing.value = null;
+  dispose?.();
+});
+async function request<T>(
+  path: string,
+  options: Parameters<typeof api>[1] = {},
+) {
+  const ticket = identityRequest(),
+    issued = epoch;
+  try {
+    const value = await api<T>(path, { ...options, signal: ticket.signal });
+    ticket.assertCurrent();
+    if (issued !== epoch) throw new ApiError(409, "IDENTITY_CHANGED");
+    return value;
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 401) auth.expire();
+    throw cause;
+  } finally {
+    ticket.finish();
+  }
+}
 async function load() {
+  const issued = epoch;
   loading.value = true;
   error.value = "";
   try {
     await auth.refresh(true);
+    if (issued !== epoch) return;
     if (!auth.me) {
       await router.replace("/login?returnTo=/app");
       return;
     }
     if (!auth.me.emailVerified) return;
-    dashboard.value = await api<Dashboard>("/api/app/v1/dashboard");
+    dashboard.value = await request<Dashboard>("/api/app/v1/dashboard");
     const [previews, runs] = await Promise.all([
-      api<PreviewTask[]>("/api/app/v1/review-preview-tasks").catch(() => []),
-      api<Run[]>("/api/app/v1/experience-runs").catch(() => []),
+      request<PreviewTask[]>("/api/app/v1/review-preview-tasks").catch(
+        () => [],
+      ),
+      request<Run[]>("/api/app/v1/experience-runs").catch(() => []),
     ]);
+    if (issued !== epoch || !dashboard.value) return;
     previewAvailable.value = previews.length > 0;
     formalRuns.value = runs.filter(
       (value) => value.contentKind === "MAJOR" && value.runMode === "STANDARD",
     );
-    if (dashboard.value.recommendation) {
+    if (
+      dashboard.value.recommendation &&
+      !dashboard.value.nextRecommendation &&
+      dashboard.value.nextStep !== "ALL_COMPLETED"
+    ) {
       dispose?.();
       dispose = observeRecommendation(
         dashboard.value.recommendation.recommendationId,
         "app",
       );
+    }
+    reportError.value = "";
+    try {
+      const [reports, compared] = await Promise.all([
+        request<ReportPage>("/api/app/v1/reports?limit=50"),
+        request<ComparisonResponse>("/api/app/v1/comparison-report"),
+      ]);
+      reportPage.value = reports;
+      comparison.value = compared;
+    } catch (cause) {
+      reportError.value = errorText(cause);
     }
   } catch (cause) {
     error.value = errorText(cause);
@@ -76,7 +138,7 @@ function choose(code: MajorCode) {
   success.value = "";
 }
 async function save() {
-  const recommendation = dashboard.value?.recommendation;
+  const recommendation = activeRecommendation.value;
   if (!recommendation || !choosing.value) return;
   busy.value = true;
   error.value = "";
@@ -90,7 +152,7 @@ async function save() {
           }
         : {}),
     };
-    const decision = await api<Decision>(
+    const decision = await request<Decision>(
       `/api/app/v1/recommendations/${recommendation.recommendationId}/decision`,
       { method: "POST", body, key: operation(body) },
     );
@@ -115,13 +177,13 @@ async function startFormal(code: MajorCode) {
     const body = { decisionId: decision.decisionId };
     const next =
       existing ||
-      (await api<Run>("/api/app/v1/experience-runs", {
+      (await request<Run>("/api/app/v1/experience-runs", {
         method: "POST",
         body,
         key: operation(body),
       }));
     if (["READY", "PAUSED"].includes(next.status)) {
-      const runs = await api<Run[]>("/api/app/v1/experience-runs"),
+      const runs = await request<Run[]>("/api/app/v1/experience-runs"),
         active = runs.find(
           (value) =>
             value.runId !== next.runId &&
@@ -144,11 +206,14 @@ async function startFormal(code: MajorCode) {
           : {}),
       };
       const action = next.status === "PAUSED" ? "resume" : "start";
-      await api<Run>(`/api/app/v1/experience-runs/${next.runId}/${action}`, {
-        method: "POST",
-        body: transition,
-        key: operation({ action, ...transition }),
-      });
+      await request<Run>(
+        `/api/app/v1/experience-runs/${next.runId}/${action}`,
+        {
+          method: "POST",
+          body: transition,
+          key: operation({ action, ...transition }),
+        },
+      );
     }
     await router.push(`/app/runs/${next.runId}`);
   } catch (cause) {
@@ -158,7 +223,11 @@ async function startFormal(code: MajorCode) {
   }
 }
 onMounted(load);
-onBeforeUnmount(() => dispose?.());
+onBeforeUnmount(() => {
+  epoch++;
+  dispose?.();
+  unsubscribe();
+});
 </script>
 <template>
   <main class="dashboard-page">
@@ -183,7 +252,11 @@ onBeforeUnmount(() => dispose?.());
     </div>
     <template v-else-if="dashboard"
       ><section
-        v-if="dashboard.recommendation"
+        v-if="
+          dashboard.recommendation &&
+          !dashboard.nextRecommendation &&
+          dashboard.nextStep !== 'ALL_COMPLETED'
+        "
         class="dashboard-recommendation"
       >
         <span class="dashboard-major serif">{{
@@ -202,9 +275,32 @@ onBeforeUnmount(() => dispose?.());
         </div>
       </section>
       <RecommendationDetails
-        v-if="showReasons && dashboard.recommendation"
+        v-if="
+          showReasons &&
+          dashboard.recommendation &&
+          !dashboard.nextRecommendation &&
+          dashboard.nextStep !== 'ALL_COMPLETED'
+        "
         :value="dashboard.recommendation"
       />
+      <section
+        v-if="dashboard.nextRecommendation"
+        class="dashboard-next-recommendation"
+      >
+        <h2 class="serif">下一次体验建议</h2>
+        <NextRecommendationPanel
+          :recommendation-id="dashboard.nextRecommendation.recommendationId"
+        />
+      </section>
+      <section
+        v-else-if="dashboard.nextStep === 'ALL_COMPLETED'"
+        class="dashboard-next-recommendation"
+      >
+        <h2 class="serif">三个方向，都留下了你的体验。</h2>
+        <p>
+          你可以继续阅读报告、比较不同的工作方式。完成体验不是最终专业决定，也不需要重复开始已完成方向。
+        </p>
+      </section>
       <div v-if="success" class="success-notice" role="status">
         {{ success }}
       </div>
@@ -236,22 +332,32 @@ onBeforeUnmount(() => dispose?.());
           <div class="button-row">
             <button
               class="quiet-button"
-              :disabled="busy"
+              :disabled="
+                busy || item.status === 'CLOSED' || !activeRecommendation
+              "
               @click="choose(item.majorCode)"
             >
               {{
                 dashboard.currentDecision?.selectedMajorCode === item.majorCode
                   ? "已选 · 修改选择"
-                  : dashboard.recommendation?.primaryMajor === item.majorCode
+                  : activeRecommendation?.primaryMajor === item.majorCode
                     ? "接受这个建议"
                     : "选择这个方向"
               }}</button
-            ><RouterLink :to="`/majors/${item.majorCode}`" class="text-link"
+            ><RouterLink
+              :to="{
+                path: `/app/experiences/${item.majorCode}`,
+                query: activeRecommendation
+                  ? { recommendationId: activeRecommendation.recommendationId }
+                  : {},
+              }"
+              class="text-link"
               >了解任务</RouterLink
             >
           </div>
           <button
             v-if="
+              item.status !== 'CLOSED' &&
               item.availability === 'AVAILABLE' &&
               dashboard.currentDecision?.selectedMajorCode === item.majorCode
             "
@@ -289,8 +395,10 @@ onBeforeUnmount(() => dispose?.());
         <h2 id="decision-title" class="serif">
           先从 {{ major(choosing).name }} 开始了解。
         </h2>
-        <p>本次仅保存选择。正式任务内容仍在准备中，不会创建体验记录。</p>
-        <template v-if="choosing !== dashboard.recommendation?.primaryMajor"
+        <p>
+          本次仅保存选择，不会创建或开始体验记录。正式内容是否开放，以当前状态为准。
+        </p>
+        <template v-if="choosing !== activeRecommendation?.primaryMajor"
           ><label for="override-reason">愿意补充改选原因吗？（可选）</label
           ><select id="override-reason" v-model="reason">
             <option value="DECLINED">不愿回答</option>
@@ -321,12 +429,64 @@ onBeforeUnmount(() => dispose?.());
           </button>
         </div>
       </section>
-      <div class="comparison-empty">
-        <h2 class="serif">比较报告</h2>
-        <p>
-          专业任务开放并完成两个方向后，才会形成基于真实体验证据的比较。当前没有报告。
+      <section class="dashboard-reports">
+        <h2 class="serif">我的体验报告</h2>
+        <p v-if="reportError" class="error-notice" role="alert">
+          {{ reportError }}
+          <button class="plain-button text-link" @click="load">重新读取</button>
         </p>
-      </div></template
+        <template v-else-if="reportPage"
+          ><p
+            v-if="
+              !reportPage.items.some((item) => item.reportType === 'EXPERIENCE')
+            "
+          >
+            正式专业任务与反思完成后，报告会在这里准备。工程预览不产生正式报告。
+          </p>
+          <article
+            v-for="item in reportPage.items.filter(
+              (value) => value.reportType === 'EXPERIENCE',
+            )"
+            :key="item.reportId"
+            class="dashboard-report-row"
+          >
+            <div>
+              <h3>
+                {{ item.majorCode ? major(item.majorCode).name : "体验" }} 报告
+              </h3>
+              <p>
+                {{
+                  item.currentVersionId
+                    ? `报告版本 ${item.versionNo} 已就绪`
+                    : item.status === "FAILED"
+                      ? "报告准备异常；体验仍已完成"
+                      : "体验已完成，报告正在准备"
+                }}
+              </p>
+            </div>
+            <RouterLink
+              :to="`/app/reports/${item.reportId}`"
+              class="text-link"
+              >{{
+                item.currentVersionId ? "阅读报告 →" : "查看状态 →"
+              }}</RouterLink
+            >
+          </article></template
+        >
+      </section>
+      <section class="comparison-empty">
+        <h2 class="serif">专业体验比较</h2>
+        <template v-if="comparison"
+          ><p v-if="comparison.state === 'WAITING'">
+            {{ waitingLabels[comparison.reason] }}
+          </p>
+          <p v-else>把不同专业的经历并排，不合成为总分，也不替你作最终决定。</p>
+          <RouterLink to="/app/comparison" class="text-link">{{
+            comparison.state === "READY" ? "阅读比较报告 →" : "查看比较状态 →"
+          }}</RouterLink></template
+        >
+        <p v-else-if="!reportError">正在读取比较状态…</p>
+      </section></template
     >
     <div v-if="error" class="error-notice" role="alert">
       {{ error }}<button class="quiet-button" @click="load">重试</button>

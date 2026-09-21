@@ -1,4 +1,5 @@
 import "./lib/mail-token";
+import "./lib/feedback-drafts";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
@@ -9,6 +10,7 @@ import "./styles/workspace.css";
 import "./styles/classifier.css";
 import "./styles/ds.css";
 import "./styles/ba.css";
+import "./styles/reports.css";
 import { useAuth } from "./stores/auth";
 const HomeView = () => import("./views/HomeView.vue");
 import IntakeView from "./views/IntakeView.vue";
@@ -23,6 +25,9 @@ const P0View = () => import("./views/P0View.vue");
 const DemoView = () => import("./views/DemoView.vue");
 const WorkspaceView = () => import("./views/WorkspaceView.vue");
 const PreviewView = () => import("./views/PreviewView.vue");
+const ReportReaderView = () => import("./views/ReportReaderView.vue");
+const FormalIntroductionView = () =>
+  import("./views/FormalIntroductionView.vue");
 
 const pinia = createPinia();
 const router = createRouter({
@@ -50,6 +55,24 @@ const router = createRouter({
     { path: "/app", component: DashboardView, meta: { private: true } },
     { path: "/app/settings", component: SettingsView, meta: { private: true } },
     {
+      path: "/app/reports/:reportId",
+      name: "report-reader",
+      component: ReportReaderView,
+      meta: { private: true, reader: true },
+    },
+    {
+      path: "/app/reports/:reportId/print",
+      name: "report-print",
+      component: ReportReaderView,
+      meta: { private: true, reader: true },
+    },
+    {
+      path: "/app/comparison",
+      name: "comparison-report",
+      component: ReportReaderView,
+      meta: { private: true, reader: true },
+    },
+    {
       path: "/app/demos/:demoKey?",
       component: DemoView,
       meta: { private: true },
@@ -66,7 +89,8 @@ const router = createRouter({
     },
     {
       path: "/app/experiences/:major",
-      redirect: (to) => `/majors/${String(to.params.major)}`,
+      component: FormalIntroductionView,
+      meta: { private: true },
     },
     { path: "/:pathMatch(.*)*", component: NotFoundView },
   ],

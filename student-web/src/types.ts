@@ -90,6 +90,7 @@ export interface Decision {
 }
 export interface Dashboard {
   recommendation: Recommendation | null;
+  nextRecommendation?: import("./types/reports").NextRecommendation | null;
   majors: (MajorDifference & { status: string })[];
   currentDecision: Decision | null;
   nextStep: string;

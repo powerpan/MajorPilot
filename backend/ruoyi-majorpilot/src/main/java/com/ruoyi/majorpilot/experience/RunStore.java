@@ -56,8 +56,7 @@ public class RunStore {
     }
     String json(Object object) { try{return mapper.writeValueAsString(object);}catch(Exception failure){throw new ApiException(422,"VALIDATION_ERROR");} }
     JsonNode node(Object value) { if(value==null)return NullNode.instance;try{return mapper.readTree(value.toString());}catch(Exception failure){throw new IllegalStateException("Invalid stored content");} }
-    String hash(JsonNode value){return Secrets.hash(json(canonical(value)));}
-    private JsonNode canonical(JsonNode value){if(value.isObject()){var result=mapper.createObjectNode();var keys=new TreeSet<String>();value.fieldNames().forEachRemaining(keys::add);for(String key:keys)result.set(key,canonical(value.get(key)));return result;}if(value.isArray()){var result=mapper.createArrayNode();value.forEach(v->result.add(canonical(v)));return result;}return value;}
+    String hash(JsonNode value){return CanonicalJson.hash(mapper,value);}
     static long n(Map<String,Object> row,String key) { return ((Number)row.get(key)).longValue(); }
     static Long nullable(Map<String,Object> row,String key) { return row.get(key)==null?null:n(row,key); }
     static String s(Map<String,Object> row,String key) { return (String)row.get(key); }

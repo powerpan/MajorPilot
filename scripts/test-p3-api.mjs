@@ -254,7 +254,7 @@ async function runAcceptance() {
     assert.equal(scalar(`SELECT COUNT(*) FROM mp_recommendation WHERE source_run_id IN (${runSql});`), 0, 'Preview must not generate NEXT');
     const snapshot = JSON.parse(mysqlCommand(`USE majorpilot; SELECT JSON_OBJECT('snapshotSha256',snapshot_sha256,'closedInputSha256',closed_input_sha256,'ruleVersion',evidence_rule_version) FROM mp_evidence_snapshot WHERE experience_run_id IN (${runSql}) AND status='READY';`).trim());
     assert.match(snapshot.snapshotSha256, /^[a-f0-9]{64}$/); assert.match(snapshot.closedInputSha256, /^[a-f0-9]{64}$/);
-    assert.equal(snapshot.ruleVersion, 'evidence-v2');
+    assert.equal(snapshot.ruleVersion, 'evidence-v3');
     const frozen = JSON.parse(mysqlCommand(`USE majorpilot; SELECT closed_input_manifest_json FROM mp_experience_run WHERE public_id='${id}';`).trim());
     assert.equal(frozen.schemaVersion, 'closed-input-v3'); assert.equal(frozen.evidenceRuleVersion, snapshot.ruleVersion); assert.equal(frozen.runMode, 'REVIEW_PREVIEW'); assert.equal(frozen.steps.length, 6);
     assert.ok(frozen.executions.length > 0 && frozen.executions.every(e => e.sourceRevisions['a4-configure'] === stepRevision.get('a4-configure')));

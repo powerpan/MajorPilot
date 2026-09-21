@@ -1,6 +1,6 @@
 # P6 报告、下一专业与比较：工程实施接缝
 
-> 2026-09-21：P4 验收期间的设计准备，根代理已依据用户离线自主决策授权审阅并锁定下述实施选择，**不代表 P6 已实现或验收通过**。只明确后续合同，不提前实施 P6，不将工程预览变成正式专业发布。
+> 2026-09-21：P4验收期间完成设计准备；P5提交94f6acb推送并核对远端后开始P6实施。下文保留实施前基线及锁定合同；P6本地工程验证结果以[交付记录第9节](./23-p2-to-p6-delivery-ledger.md#9-p6-实施状态)为准，不将工程预览变成正式专业发布。
 >
 > 依据：[报告与证据](./10-report-and-evidence-design.md)、[逻辑数据模型](./11-logical-data-model.md)、[API 合同](./12-api-contract-design.md)、[工程与测试](./15-engineering-and-test-design.md)、[实施路线](./16-implementation-roadmap-and-traceability.md)。NEXT 规则沿用 [08](./08-intake-and-recommendation-design.md)，反馈与事件沿用 [13](./13-analytics-security-and-privacy-design.md)，BA 保留 [P5 计划](./29-p5-engineering-plan.md)中的 `ba-evidence-v1`。
 
@@ -192,7 +192,7 @@ Dashboard 保留 INITIAL 数据兼容，增 `nextRecommendation`、报告摘要�
 
 ## 9. API、错误与权限合同
 
-所有响应沿用标准 envelope、X-Request-Id、camelCase/public ID/UTC；严格拒绝未知请求字段。学生私有内容 `Cache-Control: private, no-store`，不进入 IndexedDB、localStorage、Service Worker 报告缓存或公开 URL。
+所有响应沿用标准 envelope、X-Request-Id、camelCase/public ID/UTC；严格拒绝未知请求字段。学生私有内容沿统一边界使用 `Cache-Control: no-store`（私有及共享缓存均不得存储），不进入 IndexedDB、localStorage、Service Worker 报告缓存或公开 URL。
 
 ### 9.1 学生 API
 
@@ -265,6 +265,8 @@ Dashboard 保留 INITIAL 数据兼容，增 `nextRecommendation`、报告摘要�
 
 正常构建、合同、MySQL 和浏览器测试全部 fake/replay/stub，不调用付费平台。真实报告模型能力验证若被授权，单列合成最小上下文、调用次数/费用上限、持久尝试 guard 与结果；不把 stub 成功称真实供应商成功，容量压测继续是上线前门禁。
 
+2026-09-21用户已授权开发过程真实调用API且不要求费用上限；据此允许小量合成能力验证，不再逐次等待成本确认。工程探针仍限制每次45秒/至多2次HTTP，使用独立持久尝试标记防止误重放；普通回归入口显式关闭付费测试。容量压测仍需负载范围，不由本授权自动触发。报告真实探针为 `scripts/report-spike.mjs`，结果严格区分 AI_VALIDATED 与 FALLBACK_VALIDATED。
+
 ## 13. 必须落到自动与浏览器验收的清单
 
 | ID | 可测试合同 | 通过证据 |
@@ -301,3 +303,12 @@ Dashboard 保留 INITIAL 数据兼容，增 `nextRecommendation`、报告摘要�
 5. 由根代理审核证据和当前剩余人工门禁，再决定 P6 工程里程碑是否可提交推送；本文件不能作为“已通过”记录。
 
 根代理已裁定采用：受约束声明目录与两个版本化保守解释规则；ReportVersion分离请求/完整输入两份manifest；重生成单活动target；`majorpilot:report:history:view`/`majorpilot:report:sensitive:view`专门权限；最终JSON128KiB/一般每节8条（完成动作5、共同维度严格14或21）/单条400 code point等上述上限；报告读取每Student每分钟120次、管理重生成每Operator每分钟5次、反馈每Student每分钟5次。文中“建议/拟定”据本段固定为P6工程默认。按用户授权不等待额外产品确认，P6开始前同步OpenAPI和测试，各端不得自行放宽。
+
+### 14.1 开工时固定的接线细节
+
+- INITIAL推荐保持原DTO（没有recommendationType、字段为majorDifferences）；NEXT独立DTO带 `recommendationType=NEXT` 与 `differences`，用严格union兼容，不改旧INITIAL正文。
+- 普通报告GET的200 data直接是 `report-v1`；202 data为状态DTO。比较GET的READY data固定 `{state:"READY",report:report-v1,generation}`，WAITING为独立分支，不由各端另套一层。
+- report-v1字段固定为schemaVersion/reportId/reportVersionId/versionNo/reportType/majorCode/generatedAt/generationMode/sections/limitations/sources/nextRecommendation。section为sectionKey/title/claims；claim为claimType/text/confidence/basisSummary/majorCode/dimensionKey，后两项不适用时显式null。confidence仅DIRECT/SELF_REPORTED/BOUNDED/RULE_BASED，表示声明归属类别，不是概率或能力置信分数。
+- 七维enum顺序固定PROBLEM_INTEREST、QUANTITATIVE_COMFORT、UNCERTAINTY_HANDLING、WORK_FOCUS、HELP_AND_ITERATION、EXPLANATION_INTEREST、CONTINUATION_WILLINGNESS；仅共同维度节带dimensionKey。来源摘要含majorCode/experienceRunId/taskVersionId/taskVersionCode/taskTitle/sourceReport；比较sourceReport为reportId/reportVersionId/versionNo，单专业为null。不将可漂移的isCurrent写入不可变正文；导航时另查当前版本并核对。
+- 冻结NextProjection为state（RECOMMENDED或ALL_COMPLETED）、recommendationId（可空）、sourceRunId、ruleVersion、completedMajorCodes、primaryMajor（可空）、alternativeMajors、reasonCodes。单专业使用自身关闭NEXT；比较请求受理时固定当时最新STANDARD+MAJOR CLOSED产生的NEXT/ALL_COMPLETED，即使第三专业报告未READY，也不再劝其首次体验已经关闭的第三项。以后完成变化不改已冻结正文，当前可用性另由导航DTO提供。
+- SOURCE/CATALOG_INVALID直接作为来源/规则错误终止，不伪装成模型故障；只有proposal不合法进入一次修复。gateway一次调用只发一次HTTP，持久次数、预算、租约与回退由作业层负责。共享canonical JSON保留原RunStore的对象key排序/数组顺序，旧snapshot hash不得加入新字段重算。

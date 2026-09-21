@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://majorpilot.local/schemas/report-proposal-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportType",
+    "sections"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "report-proposal-v1"
+    },
+    "reportType": {
+      "enum": [
+        "EXPERIENCE",
+        "COMPARISON"
+      ]
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sectionKey",
+          "selections"
+        ],
+        "properties": {
+          "sectionKey": {
+            "enum": [
+              "OVERVIEW",
+              "WHAT_YOU_DID",
+              "EXPERIENCE_PREFERENCE",
+              "CURRENT_PREPARATION",
+              "TASK_PERFORMANCE",
+              "WORK_STYLE_CONNECTION",
+              "EVIDENCE_BOUNDARIES",
+              "OTHER_MAJOR_DIFFERENCES",
+              "NEXT_EXPERIENCE",
+              "SCOPE_AND_SOURCES",
+              "WORK_COMPLETED",
+              "SELF_REPORTED_EXPERIENCE",
+              "COMMON_DIMENSIONS",
+              "MAJOR_SPECIFIC_EXPERIENCE",
+              "UNKNOWNS",
+              "NEXT_VERIFICATION",
+              "REMAINING_MAJOR"
+            ]
+          },
+          "selections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "statementKey",
+                "phrasingKey"
+              ],
+              "properties": {
+                "statementKey": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9:_-]{1,180}$"
+                },
+                "phrasingKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,39}$"
+                }
+              }
+            },
+            "minItems": 1,
+            "maxItems": 21
+          }
+        }
+      },
+      "minItems": 8,
+      "maxItems": 9
+    }
+  }
+}
