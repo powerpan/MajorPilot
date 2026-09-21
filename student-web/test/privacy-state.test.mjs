@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import { randomUUID } from 'node:crypto';
+import ts from 'typescript';
+const source=ts.transpileModule(readFileSync(new URL('../src/stores/privacy.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+class ApiError extends Error{constructor(status,code){super(code);this.status=status;this.code=code}}
+const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
+const copy=value=>JSON.parse(JSON.stringify(value));
+const deletion={requestId:'01ARZ3NDEKTSV4RRFFQ69G5FAV',receiptId:'01ARZ3NDEKTSV4RRFFQ69G5FAW',confirmedAt:null};
+function harness(handler){let epoch=0;const listeners=[],calls=[],clicks=[],tickets=[];const exports={};
+  const change=()=>{epoch++;for(const listener of listeners)listener({reason:'LOGOUT',remote:true})};
+  const auth={me:{studentId:'current'},refresh:async()=>{},clear(){this.me=null;change()},expire(){this.me=null;change()}};
+  const identityRequest=()=>{const issued=epoch,controller=new AbortController();const ticket={signal:controller.signal,current:()=>issued===epoch,assertCurrent(){if(issued!==epoch)throw new ApiError(409,'IDENTITY_CHANGED')},finish(){},abort:()=>controller.abort()};tickets.push(ticket);return ticket};
+  const api=(path,options={})=>{calls.push({path,options});return handler(path,options)};
+  vm.runInNewContext(source,{exports,crypto:{randomUUID},setTimeout:fn=>fn(),URL:{createObjectURL:()=> 'blob:private',revokeObjectURL(){}},document:{createElement:()=>({click(){clicks.push('download')}})},require(name){if(name==='pinia')return{defineStore:(_key,setup)=>setup};if(name==='vue')return{ref:value=>({value}),computed:fn=>({get value(){return fn()}})};if(name==='./auth')return{useAuth:()=>auth,identityRequest,onIdentityChange:fn=>listeners.push(fn)};if(name==='../lib/api')return{api,privateDownload:api,ApiError,errorText:e=>e.code,stableOperation:()=>()=>randomUUID()};throw new Error(name)}});
+  return{store:exports.usePrivacy(),auth,change,calls,clicks,exports,tickets};
+}
+test('late personal export response cannot repopulate state after identity clears',async()=>{const pending=deferred(),h=harness(()=>pending.promise);const request=h.store.requestExport('REPORTS_ONLY');h.change();pending.resolve({exportId:'old',status:'READY'});await assert.rejects(request,{code:'IDENTITY_CHANGED'});assert.equal(h.store.currentExport.value,null)});
+test('current password error preserves account session and no private values in safe error',async()=>{const h=harness(()=>Promise.reject(new ApiError(422,'CURRENT_PASSWORD_INVALID')));await assert.rejects(h.store.changePassword('never-stored','also-not-stored'));assert.equal(h.auth.me.studentId,'current');assert.equal(h.store.error.value,'CURRENT_PASSWORD_INVALID')});
+test('password success clears identity and all privacy state',async()=>{const h=harness(()=>Promise.resolve());h.store.consents.value=[{documentType:'RESEARCH'}];await h.store.changePassword('old','new');assert.equal(h.auth.me,null);assert.deepEqual(copy(h.store.consents.value),[])});
+test('lost deletion response resolves through pre-issued receipt before clearing normal identity',async()=>{const h=harness(path=>path.endsWith('/confirm')?Promise.reject(new ApiError(0,'NETWORK_ERROR')):Promise.resolve({confirmedAt:'2026-09-21T00:00:00Z'}));h.store.deletion.value=deletion;assert.equal(await h.store.confirmDeletion('not-retained'),deletion.receiptId);assert.equal(h.auth.me,null);assert.match(h.calls[1].path,/public\/v1\/deletion-receipts/)});
+test('late receipt recovery cannot log out a newly switched identity',async()=>{const pending=deferred();const h=harness(path=>path.endsWith('/confirm')?Promise.reject(new ApiError(401,'AUTH_REQUIRED')):pending.promise);h.store.deletion.value=deletion;const request=h.store.confirmDeletion('not-retained');await new Promise(resolve=>setImmediate(resolve));h.change();h.auth.me={studentId:'new-account'};pending.resolve({confirmedAt:'2026-09-21T00:00:00Z'});await assert.rejects(request,{code:'IDENTITY_CHANGED'});assert.equal(h.auth.me.studentId,'new-account')});
+test('download completion after identity switch never creates a usable link',async()=>{const pending=deferred(),h=harness(()=>pending.promise);h.store.currentExport.value={exportId:'old',status:'READY'};const request=h.store.download();h.change();pending.resolve(new Blob(['private']));await assert.rejects(request,{code:'IDENTITY_CHANGED'});assert.equal(h.clicks.length,0)});
+test('receipt recovery receives a fresh deadline after the entire confirmation timeout',async()=>{const pending=deferred();const h=harness((path,options)=>{if(path.endsWith('/confirm'))return pending.promise;assert.equal(options.signal.aborted,false,'recovery must not reuse expired POST/boundary signal');return Promise.resolve({confirmedAt:'2026-09-21T00:00:00Z'})});h.store.deletion.value=deletion;const request=h.store.confirmDeletion('not-retained');h.tickets[0].abort();h.tickets[1].abort();pending.reject(new ApiError(0,'NETWORK_UNAVAILABLE'));assert.equal(await request,deletion.receiptId);assert.equal(h.auth.me,null)});

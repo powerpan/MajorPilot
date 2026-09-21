@@ -35,16 +35,25 @@ public class StudentSecurityConfig {
                 if(student) {
                     var principal=sessions.authenticate(session);req.setAttribute("mp.student",principal);
                     SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(principal,null,List.of(new SimpleGrantedAuthority("STUDENT"))));
-                    if(!principal.status().equals("ACTIVE")&&!Set.of("/api/app/v1/me","/api/app/v1/auth/csrf","/api/app/v1/auth/logout","/api/app/v1/consents","/api/app/v1/consents/research/withdraw").contains(path))throw new ApiException(403,"EMAIL_NOT_VERIFIED");
+                    if(!principal.status().equals("ACTIVE")&&!pendingAccountPath(path))throw new ApiException(403,"EMAIL_NOT_VERIFIED");
                 }
-                if(!Set.of("GET","HEAD","OPTIONS").contains(req.getMethod())) {
-                    if(req.getContentType()==null||!req.getContentType().split(";",2)[0].trim().equalsIgnoreCase("application/json"))throw new ApiException(415,"JSON_REQUIRED");
+                boolean download=student&&path.matches("/api/app/v1/data-export-requests/[0-7][0-9A-HJKMNP-TV-Z]{25}/download");
+                if(download||!Set.of("GET","HEAD","OPTIONS").contains(req.getMethod())) {
+                    if(!download&&(req.getContentType()==null||!req.getContentType().split(";",2)[0].trim().equalsIgnoreCase("application/json")))throw new ApiException(415,"JSON_REQUIRED");
                     String cookie=ApiResponses.cookie(req,student?"MP_CSRF":"MP_PUBLIC_CSRF"),intake=ApiResponses.cookie(req,"MP_INTAKE");
                     String binding=student?Secrets.hash(session):intake==null?null:Secrets.hash(intake);
-                    if(!origin.equals(req.getHeader("Origin"))||!Secrets.equal(cookie,req.getHeader("X-CSRF-Token"))||!csrf.valid(cookie,student?"student":"public",binding))throw new ApiException(403,"CSRF_INVALID");
+                    // Browsers omit Origin on same-origin GET. Fetch metadata is the narrow
+                    // fallback for this one private download; all writes still require Origin.
+                    boolean sameOrigin=origin.equals(req.getHeader("Origin"))||(download&&req.getHeader("Origin")==null&&"same-origin".equals(req.getHeader("Sec-Fetch-Site")));
+                    if(!sameOrigin||!Secrets.equal(cookie,req.getHeader("X-CSRF-Token"))||!csrf.valid(cookie,student?"student":"public",binding))throw new ApiException(403,"CSRF_INVALID");
                 }
                 chain.doFilter(req,res);
             } catch(ApiException rejected) { fail(mapper,req,res,rejected); }
+        }
+        static boolean pendingAccountPath(String path){
+            return Set.of("/api/app/v1/me","/api/app/v1/auth/csrf","/api/app/v1/auth/logout","/api/app/v1/consents","/api/app/v1/consents/research/withdraw","/api/app/v1/me/password","/api/app/v1/me/email","/api/app/v1/me/email/confirm","/api/app/v1/data-export-requests","/api/app/v1/account-deletion-requests").contains(path)
+                ||path.matches("/api/app/v1/data-export-requests/[0-7][0-9A-HJKMNP-TV-Z]{25}(/download)?")
+                ||path.matches("/api/app/v1/account-deletion-requests/[0-7][0-9A-HJKMNP-TV-Z]{25}(/confirm)?");
         }
     }
 }

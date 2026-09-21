@@ -73,6 +73,14 @@ const messages: Record<string, string> = {
   REPORT_GENERATION_FAILED: "体验已完成，报告准备异常。请稍后刷新状态。",
   FEEDBACK_INVALID: "请至少填写一项有效反馈；评分须为1–5，评论最多1000字。",
   MAJOR_ALREADY_COMPLETED: "这个正式专业已经完成，请选择其他尚未完成的方向。",
+  CURRENT_PASSWORD_INVALID: "当前密码不正确，请检查后重试。",
+  PASSWORD_POLICY_INVALID: "密码需要15–128个字符，不能包含控制字符。",
+  SECURITY_SERVICE_UNAVAILABLE: "安全验证服务暂不可用，请稍后重试。",
+  EXPORT_IN_PROGRESS: "已有资料正在整理，请等待当前请求完成。",
+  EXPORT_NOT_AVAILABLE: "文件尚未就绪、已过期或已撤销，请刷新状态。",
+  EXPORT_EXPIRED: "这份导出文件已过期，请重新申请。",
+  EXPORT_NOT_READY: "资料仍在准备，请稍后刷新。",
+  ACCOUNT_DELETION_PENDING: "账户删除已确认，请通过专用回执查看处理状态。",
 };
 export class ApiError extends Error {
   constructor(
@@ -169,6 +177,29 @@ export function errorText(cause: unknown) {
     : cause instanceof Error
       ? cause.message
       : "操作暂未完成，请重试。";
+}
+/** GET download still proves Session-bound CSRF. The browser supplies
+ * Sec-Fetch-Site=same-origin; JavaScript must never forge an Origin header. */
+export async function privateDownload(path: string, signal: AbortSignal, refreshed = false): Promise<Blob> {
+  if (!/^\/api\/app\/v1\/data-export-requests\/[0-7][0-9A-HJKMNP-TV-Z]{25}\/download$/.test(path))
+    throw new ApiError(422, "VALIDATION_ERROR");
+  if (!cookie("MP_CSRF")) await csrf("app");
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      credentials: "same-origin", cache: "no-store",
+      signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+      headers: { "X-CSRF-Token": cookie("MP_CSRF") },
+    });
+  } catch { throw new ApiError(0, "NETWORK_UNAVAILABLE"); }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { error?: ApiErrorBody };
+    if (payload.error?.code === "CSRF_INVALID" && !refreshed) {
+      await csrf("app"); return privateDownload(path, signal, true);
+    }
+    throw new ApiError(response.status, payload.error?.code || "REQUEST_FAILED");
+  }
+  return response.blob();
 }
 export function safeReturn(value: unknown) {
   return typeof value === "string" &&

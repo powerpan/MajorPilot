@@ -2,7 +2,7 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P6 报告、比较与下一项体验已完成本地工程验收**：在AI/DS/BA任务闭环上，新增持久化报告生成、证据约束与回退、版本化私有报告、跨专业比较、NEXT、反馈和打印。真实HTTP、Chrome/Edge、实际PDF、JVM重启恢复及旧阶段回归均通过。百炼/DeepSeek合成报告能力已真实验证，普通测试仍0付费。正式报告链用隔离TEST_FIXTURE验证；主站三专业内容仍REVIEW，尚待真人专业审核及目标用户计时，不会因工程验收自动发布。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [报告视觉验收](docs/32-p6-report-visual-direction.md)。接着依路线推进P7管理/隐私，P8完整MVP硬化及公网部署另行验收。
+**P7 管理、分析与账户隐私的本地功能验收已通过，正在收尾 Git 交付**：七个运营页面、可复算指标、受控CSV、个人ZIP、账户安全、研究撤回及持久化删除已实现；真实HTTP、Chrome/Edge、两次实际JVM崩溃恢复、V7→V8与空库迁移已验证。完整结果与尚待交付项见 [P7台账](docs/35-p7-delivery-ledger.md) 和 [真实页面截图](docs/34-p7-visual-contract.md)。P0–P6已推送，P6报告/比较/打印证据见 [原交付记录](docs/23-p2-to-p6-delivery-ledger.md)。普通测试仍0付费；正式报告链用隔离TEST_FIXTURE验证，主站三专业内容仍REVIEW，尚待真人专业审核及目标用户计时，不因工程验收自动发布。当前范围止于P7；P8完整MVP硬化及公网部署均未开展。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
@@ -72,6 +72,10 @@ P5新增BA工程预览，沿用同一本地开关。B1–B6覆盖指标、漏斗
 
 全新空库迁移可用 `data/tools/node/bin/node scripts/test-fresh-migrations.mjs` 验证；脚本检查项目实例，为本轮创建隔离 schema／最小权限账号，最终精确删除这两个临时资源，不清空主库或测试库。
 
+P7管理页面从“MajorPilot运营”菜单进入；Student从个人主页打开“账户与隐私”。个人ZIP和内部CSV是异步私有文件，申请成功不等于文件已就绪；下载须当前身份及归属校验，24小时过期。账户删除确认即撤销会话，后台分阶段处理；预置Cookie支持查看专用回执，受理不等于物理删除完成。已执行V8不得修改，修正必须新增迁移。
+
+P7验证入口：`data/tools/node/bin/node scripts/test-p7-api.mjs --check`仅静态预检；加 `--run` 才会在主站创建、验证并精确清理合成账户及临时最小权限Operator。`data/tools/node/bin/node tests/e2e/p7.mjs`验证真实Chrome/Edge流程，`tests/e2e/p7-layout.mjs`仅为无账号mock布局检查，两者不能互相替代。`scripts/test-p7-restart.mjs`须在已prepare/start的隔离harness中单独执行，与MySQL集成测试互斥；它实际终止测试JVM，不应与其他测试并行。全部普通入口保持模型调用关闭，不重置正式注册限流。
+
 ## 密钥及外部调用
 
 真实密钥只在 `.env.local`，权限 `0600`；`.env.example` 只列出变量。启动器只给后端注入秘密，前端通过环境白名单启动，不继承供应商密钥。正常构建和单元测试不调用付费模型。
@@ -91,7 +95,7 @@ data/tools/node/bin/node scripts/report-spike.mjs --live --provider BAILIAN --ru
 交付约定（2026-09-20 用户确认）：每个完成的里程碑或重大变更，在相应验证通过后提交并推送 GitHub；保留提交和远端核验信息。推送不等于公网部署。项目协作规则见 [AGENTS.md](AGENTS.md)。
 
 - P0 的 `mp_p0_*` 表、探针接口和合成删除／邮件流程只用于技术验证，不是 P1/P7 实现。
-- P1 三个专业均为未开始／任务尚未开放；保存推荐或改选不创建 Experience Run。邮件仅进入本地 Mailpit，真实 SMTP、数据导出／账户删除和生产政策审核均未在本轮冒充完成。
+- 三个正式专业仍未开放；保存推荐或改选不创建 Experience Run。P7个人导出与账户删除已在本地真实流程验证；邮件仍仅进入本地Mailpit，真实SMTP、生产政策审核、外部副本/备份擦除并未因此完成。
 - 可选研究授权默认拒绝，撤回不影响核心使用；页面观察和后台业务事实分开。P1 API 与页面不会输出能力总分、人格标签或录取概率。
 - 执行器不执行用户 Python／JavaScript：只接受受限参数，执行固定可信计算器。Pyodide 是否可用必须同时满足 CSP 和隔离，不能只以 Python 算出结果为准。
 - 本地验收、Git 提交／上传、公网部署是独立步骤；运行成功不代表已上传或已上线。

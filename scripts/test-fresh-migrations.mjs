@@ -8,15 +8,26 @@ import { mysqlCommand } from './infra.mjs';
 
 // Requires explicit task authorization for temporary schema/account creation.
 // No server is started/stopped and no provider/application credentials are copied.
-// Usage: node scripts/test-fresh-migrations.mjs [validated-ruoyi-admin.jar] [--upgrade-from-v6]
-const arguments_ = process.argv.slice(2), upgradeFromV6 = arguments_.includes('--upgrade-from-v6');
-const artifacts = arguments_.filter(argument => argument !== '--upgrade-from-v6');
-assert.ok(artifacts.length <= 1 && arguments_.filter(argument => argument === '--upgrade-from-v6').length <= 1);
-const artifact = path.resolve(artifacts[0] || path.join(ROOT, 'backend/ruoyi-admin/target/ruoyi-admin.jar'));
+// Usage: node scripts/test-fresh-migrations.mjs [validated-ruoyi-admin.jar] [--upgrade-from-v6|--upgrade-from-v7]
+// Parsing is exported without running the probe so ordinary tests never create a
+// schema, connect to MySQL, extract an artifact or invoke a provider.
+export function parseMigrationArguments(arguments_) {
+  const options = arguments_.filter(argument => argument.startsWith('--'));
+  const artifacts = arguments_.filter(argument => !argument.startsWith('--'));
+  assert.ok(options.every(option => ['--upgrade-from-v6', '--upgrade-from-v7'].includes(option)), 'Unknown migration option');
+  assert.ok(options.length <= 1, 'Select at most one upgrade baseline');
+  assert.ok(artifacts.length <= 1, 'Select at most one validated build JAR');
+  return { artifactArgument: artifacts[0] ?? null, fromVersion: options.length ? Number(options[0].slice(-1)) : null };
+}
+
+function main() {
+const { artifactArgument, fromVersion } = parseMigrationArguments(process.argv.slice(2));
+const artifact = path.resolve(artifactArgument || path.join(ROOT, 'backend/ruoyi-admin/target/ruoyi-admin.jar'));
 const sqlVersions = readdirSync(path.join(ROOT, 'database/migration')).map(name => name.match(/^V([0-9]+)__.+\.sql$/)?.[1]).filter(Boolean).map(Number).sort((a, b) => a - b);
 // V1 is the immutable Java upstream bootstrap. SQL migrations must stay contiguous.
 assert.deepEqual(sqlVersions, Array.from({ length: sqlVersions.length }, (_, index) => index + 2), 'Migration versions must remain contiguous after V1');
 const expectedVersion = sqlVersions.at(-1) || 1;
+assert.ok(fromVersion === null || expectedVersion > fromVersion, 'Upgrade baseline must precede the latest migration');
 assert.ok(existsSync(artifact) && lstatSync(artifact).isFile() && !lstatSync(artifact).isSymbolicLink(), 'Expected a regular validated build JAR');
 const scratch = mkdtempSync('/tmp/majorpilot-fresh-migrations-');
 const classes = path.join(scratch, 'classes');mkdirSync(classes);
@@ -55,7 +66,7 @@ try {
   mysqlCommand(`CREATE DATABASE \`${schema}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
     CREATE USER '${account}'@'127.0.0.1' IDENTIFIED BY '${password}';
     GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER,INDEX,REFERENCES ON \`${schema}\`.* TO '${account}'@'127.0.0.1';`);
-  const output = command(java, ['-cp', `${classes}${path.delimiter}${classpath}`, 'FreshMigrationCheck'], `Isolated Flyway V1-V${expectedVersion} check`, { MP_MIGRATION_SCHEMA: schema, MP_MIGRATION_ACCOUNT: account, MP_MIGRATION_PASSWORD: password, MP_MIGRATION_EXPECTED_VERSION: String(expectedVersion), ...(upgradeFromV6 ? { MP_MIGRATION_FROM_VERSION: '6' } : {}) });
+  const output = command(java, ['-cp', `${classes}${path.delimiter}${classpath}`, 'FreshMigrationCheck'], `Isolated Flyway V1-V${expectedVersion} check`, { MP_MIGRATION_SCHEMA: schema, MP_MIGRATION_ACCOUNT: account, MP_MIGRATION_PASSWORD: password, MP_MIGRATION_EXPECTED_VERSION: String(expectedVersion), ...(fromVersion === null ? {} : { MP_MIGRATION_FROM_VERSION: String(fromVersion) }) });
   const line = output.split(/\r?\n/).find(value => value.startsWith('MAJORPILOT_MIGRATION_RESULT='));
   assert.ok(line, 'Missing sanitized migration evidence');
   result = JSON.parse(line.slice('MAJORPILOT_MIGRATION_RESULT='.length));assert.equal(result.result, 'PASS');
@@ -76,3 +87,6 @@ const evidence = { scope: 'new empty schema on the existing isolated project MyS
 const evidenceFile = path.join(scratch, 'migration-evidence.json');writeFileSync(evidenceFile, JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
 console.log(JSON.stringify({ ...evidence, evidenceFile }));
 if (failure) throw failure;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === new URL(import.meta.url).pathname) main();

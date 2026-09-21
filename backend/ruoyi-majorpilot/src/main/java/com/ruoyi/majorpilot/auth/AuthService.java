@@ -20,7 +20,7 @@ public class AuthService {
     public AuthDtos.Registered register(AuthDtos.Register body,String intakeHash,String key,String source,String requestId) {
         String email=AuthInputs.email(body.email());AuthInputs.newPassword(body.password());validateConsents(body.consents());
         limits.require("register-ip",source,10,Duration.ofHours(1));limits.require("register-email",email,5,Duration.ofHours(1));
-        String passwordHash=passwords.hash(body.password());AtomicReference<String> outgoing=new AtomicReference<>();
+        String passwordHash=passwords.hash(body.password());AtomicReference<String> outgoing=new AtomicReference<>();AtomicReference<Long> outgoingStudent=new AtomicReference<>();
         AuthDtos.RegistrationIdentity registered;
         try { registered=tx.execute(status->{
             var claimable=intake.lockClaimable(body.intakeSessionId(),intakeHash);
@@ -31,12 +31,12 @@ public class AuthService {
                 intake.claimAll(claimable.intakeInternalId(),studentId);
                 for(var consent:body.consents()) jdbc.update("INSERT INTO mp_consent_record(student_id,intake_session_id,document_type,document_version,decision) VALUES(?,?,?,?,?)",studentId,claimable.intakeInternalId(),consent.documentType(),consent.documentVersion(),consent.decision());
                 jdbc.update("UPDATE mp_idempotency_record SET owner_student_id=? WHERE owner_intake_session_id=?",studentId,claimable.intakeInternalId());
-                outgoing.set(issueEmailToken(studentId,"VERIFY_EMAIL",source));audit.record(studentId,"REGISTRATION_COMPLETED",source,requestId);
+                outgoing.set(issueEmailToken(studentId,"VERIFY_EMAIL",source));outgoingStudent.set(studentId);audit.record(studentId,"REGISTRATION_COMPLETED",source,requestId);
                 events.record(studentId,claimable.intakeInternalId(),null,"student.registration.completed",Map.of("questionnaireVersion",claimable.questionnaireVersion(),"acquisitionChannelCode",claimable.acquisitionChannelCode()));
                 return new AuthDtos.RegistrationIdentity(publicId,"PENDING_VERIFICATION","VERIFY_EMAIL");
             }).data();
         }); } catch(DuplicateKeyException duplicate) { throw new ApiException(409,"EMAIL_ALREADY_REGISTERED"); }
-        boolean delivered=outgoing.get()!=null&&mail.send(email,"VERIFY_EMAIL",outgoing.get());
+        boolean delivered=outgoing.get()!=null&&mail.send(outgoingStudent.get(),"VERIFY_EMAIL",outgoing.get());
         return new AuthDtos.Registered(registered.studentId(),registered.status(),registered.nextAction(),delivered?"SENT":"RETRY_REQUIRED");
     }
     public AuthDtos.LoginResult login(AuthDtos.Login body,String source,String requestId) {
@@ -75,14 +75,14 @@ public class AuthService {
     public void requestMail(AuthDtos.Email body,String purpose,String source,String requestId) {
         String email;try{email=AuthInputs.email(body.email());}catch(ApiException invalid){email="invalid";}
         limits.require("mail-ip",source,20,Duration.ofHours(1));limits.require("mail-email",email,3,Duration.ofHours(1));
-        final String normalized=email;String token=tx.execute(status->{
+        final String normalized=email;AtomicReference<Long> outgoingStudent=new AtomicReference<>();String token=tx.execute(status->{
             var rows=jdbc.queryForList("SELECT * FROM mp_student_account WHERE email_normalized=? FOR UPDATE",normalized);
             if(rows.isEmpty())return null;var account=rows.getFirst();String state=(String)account.get("status");
             if(Set.of("DELETED","DELETION_PENDING").contains(state)||("LOCKED".equals(state)&&account.get("locked_until")==null))return null;
             if(purpose.equals("VERIFY_EMAIL")&&account.get("email_verified_at")!=null)return null;
-            long id=number(account,"id");audit.record(id,purpose+"_REQUESTED",source,requestId);return issueEmailToken(id,purpose,source);
+            long id=number(account,"id");outgoingStudent.set(id);audit.record(id,purpose+"_REQUESTED",source,requestId);return issueEmailToken(id,purpose,source);
         });
-        if(token!=null)mail.sendAsync(email,purpose,token);
+        if(token!=null)mail.sendAsync(outgoingStudent.get(),purpose,token);
     }
     public void verify(String token,String source,String requestId) { limits.require("email-token-ip",source,30,Duration.ofMinutes(15));consume(token,"VERIFY_EMAIL",null,source,requestId); }
     public void reset(AuthDtos.Reset body,String source,String requestId) { limits.require("email-token-ip",source,30,Duration.ofMinutes(15));String hash=passwords.hash(body.newPassword());consume(body.token(),"RESET_PASSWORD",hash,source,requestId); }

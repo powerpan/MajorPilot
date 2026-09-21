@@ -1,5 +1,15 @@
 # API contracts
 
+## P7 operations and privacy
+
+`openapi-p7.json` describes 37 operations: the P7 account settings, private exports, deletion receipts, operations overview, administrative projections and page observations, plus the existing task/recovery/report management routes needed by the same operator interface. `sync-p7.mjs` composes the inherited schemas without modifying the earlier milestone contracts. `check-p7.mjs` verifies route and permission inventory against the current Spring controllers and exports `loadP7Contracts()` for runtime acceptance checks.
+
+Select each response validator by its actual HTTP status. HTTP 204 has no body; export downloads are binary ZIP or CSV and must be checked as bytes using `responseMedia`, not parsed as a JSON success envelope. Private download authorization, headers, ownership, expiry and deletion fencing require separate runtime tests. `GET /api/app/v1/data-export-requests` returns `{data:{items:[...]},meta}` with at most the most recent 20 requests; it does not expose storage paths or download credentials.
+
+The personal export GET requires Session-bound CSRF and either an exact Student Origin, or an absent Origin with `Sec-Fetch-Site: same-origin`. Explicit foreign or `null` Origin is always rejected; Fetch Metadata does not override it. This narrow browser GET exception does not apply to mutations, which still require an explicit Origin.
+
+The `metrics-v2` shapes preserve anchors, observation windows, numerator/denominator counts, unknown values and coverage notes. A zero denominator has a `null` rate, not zero. Page visibility is an untrusted observation, not proof of attention or a server-generated task-start fact. Static contract checks do not demonstrate empirical KPI performance, database migration success or runtime privacy enforcement; ordinary tests make no paid model calls.
+
 ## P2 task engine
 
 `openapi-p2.json` describes 25 content/run/step/execution/hint/reflection and operator operations. `check-p2.mjs` exports `loadP2Contracts()` with request validators and status-keyed response validators, including real 401/403 operator errors. Public task payloads exclude private assets and internal audit data. `schemas/task-manifest-v1.json` and `check-content.mjs` validate versioned content, references, public/private boundaries and reviewed publication metadata.
@@ -31,6 +41,8 @@ data/tools/node/bin/node data/tools/npm/bin/npm-cli.js ci --prefix contracts
 data/tools/node/bin/node contracts/check.mjs
 data/tools/node/bin/node contracts/check-p1.mjs
 data/tools/node/bin/node contracts/check-p2.mjs
+data/tools/node/bin/node contracts/sync-p7.mjs
+data/tools/node/bin/node contracts/check-p7.mjs
 data/tools/node/bin/node contracts/check-content.mjs
 data/tools/node/bin/node --test contracts/tests/*.test.mjs scripts/ai-spike.test.mjs
 ```

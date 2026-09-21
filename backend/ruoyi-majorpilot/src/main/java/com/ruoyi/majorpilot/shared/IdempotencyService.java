@@ -31,6 +31,16 @@ public class IdempotencyService {
         });
     }
     public <T> Result<T> execute(Owner owner,String method,String resourcePath,String key,Object request,Class<T> responseType,Supplier<T> action) {
+        return executeScoped(owner,method,resourcePath,key,request,responseType,action,false);
+    }
+    /** Explicit Operator action: caller supplies fresh Operator permission checks before this call
+     * and inside action. Student ownership remains persisted and locked, including on replay. */
+    public <T> Result<T> executeOperatorScoped(Owner owner,String method,String resourcePath,String key,Object request,Class<T> responseType,Supplier<T> action) {
+        if(owner==null||owner.studentId()==null||owner.intakeId()!=null)throw new ApiException(422,"VALIDATION_ERROR");
+        return executeScoped(owner,method,resourcePath,key,request,responseType,action,true);
+    }
+    static boolean studentAllowed(String status,boolean operatorScoped){return status!=null&&(Set.of("ACTIVE","PENDING_VERIFICATION").contains(status)||operatorScoped&&"LOCKED".equals(status));}
+    private <T> Result<T> executeScoped(Owner owner,String method,String resourcePath,String key,Object request,Class<T> responseType,Supplier<T> action,boolean operatorScoped) {
         if(key==null||!key.matches("[A-Za-z0-9_-]{16,128}"))throw new ApiException(422,"IDEMPOTENCY_KEY_REQUIRED");
         String scope=Secrets.hash(owner.subject()+"\0"+method+"\0"+resourcePath),keyHash=Secrets.hash(key),fingerprint=secrets.hmac("idempotency",json(request));
         return tx.execute(status->{
@@ -45,7 +55,7 @@ public class IdempotencyService {
                 if(owner.studentId()!=null) {
                     var accounts=jdbc.queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",owner.studentId());
                     if(accounts.isEmpty())throw new ApiException(401,"AUTH_REQUIRED");
-                    if(!Set.of("ACTIVE","PENDING_VERIFICATION").contains(accounts.getFirst().get("status")))throw new ApiException(403,"ACCOUNT_LOCKED");
+                    if(!studentAllowed((String)accounts.getFirst().get("status"),operatorScoped))throw new ApiException(403,"ACCOUNT_LOCKED");
                 }
                 var rows=jdbc.queryForList("SELECT request_hmac,status,safe_response_json,expires_at FROM mp_idempotency_record WHERE scope_hash=? AND key_hash=? FOR UPDATE",scope,keyHash);
                 if(!rows.isEmpty()) {

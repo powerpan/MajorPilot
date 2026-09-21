@@ -30,6 +30,17 @@ const useUserStore = defineStore(
       permissions: []
     }),
     actions: {
+      clearIdentity() {
+        this.token = ''
+        this.roles = []
+        this.permissions = []
+        this.id = ''
+        this.name = ''
+        this.nickName = ''
+        this.avatar = ''
+        removeToken()
+        window.dispatchEvent(new Event('mp:operator-cleared'))
+      },
       // 登录
       login(userInfo: { username: string; password: string; code: string; uuid: string }) {
         const username = userInfo.username.trim()
@@ -89,10 +100,7 @@ const useUserStore = defineStore(
       logOut() {
         return new Promise<void>((resolve, reject) => {
           logout().then(() => {
-            this.token = ''
-            this.roles = []
-            this.permissions = []
-            removeToken()
+            this.clearIdentity()
             resolve()
           }).catch((error: any) => {
             reject(error)

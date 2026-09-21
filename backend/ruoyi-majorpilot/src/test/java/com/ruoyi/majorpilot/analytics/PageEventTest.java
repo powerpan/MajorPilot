@@ -32,4 +32,34 @@ class PageEventTest {
             assertThrows(ApiException.class,()->PageEventService.validate(new PageEventService.Batch(List.of(bad)),now,IntakeFixtures.JSON));
         }
     }
+    private PageEventService.Observation run(String name,com.fasterxml.jackson.databind.JsonNode properties) {
+        return new PageEventService.Observation(UUID.randomUUID().toString(),name,"v1",now,"EXPERIENCE_RUN",PublicIds.next(),1000L,properties);
+    }
+    @Test void runObservationAcceptsOnlyThePreciseStepAndInactivityShape() {
+        var step=IntakeFixtures.JSON.createObjectNode().put("stepKey","a1-context");
+        assertDoesNotThrow(()->PageEventService.validate(new PageEventService.Batch(List.of(run("experience.step.viewed",step))),now,IntakeFixtures.JSON));
+        for(String bucket:List.of("MINUTES_10_60","HOURS_1_24","DAYS_1_PLUS")) {
+            var p=step.deepCopy().put("inactivityBucket",bucket);
+            assertDoesNotThrow(()->PageEventService.validate(new PageEventService.Batch(List.of(run("experience.run.resumed",p))),now,IntakeFixtures.JSON));
+        }
+    }
+    @Test void runObservationRejectsOwnershipFactsExtraPropertiesAndUnrecognizedStepsOrBuckets() {
+        var step=IntakeFixtures.JSON.createObjectNode().put("stepKey","a1-context");
+        for(var p:List.of(step.deepCopy().put("majorCode","AI"),step.deepCopy().put("studentId",1),
+            step.deepCopy().put("taskVersion","spoof"),step.deepCopy().put("stepKey","../private"),
+            step.deepCopy().put("stepKey",1),IntakeFixtures.JSON.createObjectNode())) {
+            assertThrows(ApiException.class,()->PageEventService.validate(new PageEventService.Batch(List.of(run("experience.step.viewed",p))),now,IntakeFixtures.JSON));
+        }
+        for(var p:List.of(step,step.deepCopy().put("inactivityBucket","MINUTES_0_10"),
+            step.deepCopy().put("inactivityBucket",600),step.deepCopy().put("inactivityBucket","DAYS_1_PLUS").put("reason","free text"))) {
+            assertThrows(ApiException.class,()->PageEventService.validate(new PageEventService.Batch(List.of(run("experience.run.resumed",p))),now,IntakeFixtures.JSON));
+        }
+        assertThrows(ApiException.class,()->PageEventService.validate(new PageEventService.Batch(List.of(run("experience.run.started",step))),now,IntakeFixtures.JSON));
+    }
+    @Test void runResumeCooldownUsesReceptionTimeAndAllowsExactTenMinuteBoundary() {
+        assertTrue(PageEventService.resumeCoolingDown(now,now.minusMillis(599999)));
+        assertFalse(PageEventService.resumeCoolingDown(now,now.minusSeconds(600)));
+        assertFalse(PageEventService.resumeCoolingDown(now,null));
+        assertTrue(PageEventService.resumeCoolingDown(now,now.plusSeconds(1)));
+    }
 }

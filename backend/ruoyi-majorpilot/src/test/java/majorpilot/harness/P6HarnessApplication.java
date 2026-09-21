@@ -24,9 +24,23 @@ import org.springframework.core.env.StandardEnvironment;
 @ComponentScan(basePackages = {"com.ruoyi", "majorpilot.harness"}, excludeFilters = {
     @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.ruoyi\\.RuoYiApplication"),
     @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.ruoyi\\.majorpilot\\.report\\.ReportJobs"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.ruoyi\\.majorpilot\\.privacy\\.(PrivacyJobs|PersonalExportWriter)"),
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {P0EnvironmentGuard.class, P0Bootstrap.class})
 })
 public class P6HarnessApplication {
+    @Bean P7HarnessPrivacyCheckpoints privacyCheckpoints(org.springframework.jdbc.core.JdbcTemplate db,
+            com.fasterxml.jackson.databind.ObjectMapper mapper,Environment environment) {
+        return new P7HarnessPrivacyCheckpoints(db,mapper,environment);
+    }
+    @Bean com.ruoyi.majorpilot.privacy.PersonalExportWriter personalExportWriter(org.springframework.jdbc.core.JdbcTemplate db,
+            com.fasterxml.jackson.databind.ObjectMapper mapper,P7HarnessPrivacyCheckpoints checkpoints) {
+        return new P7HarnessPersonalExportWriter(db,mapper,checkpoints);
+    }
+    @Bean com.ruoyi.majorpilot.privacy.PrivacyJobs privacyJobs(com.ruoyi.majorpilot.privacy.PrivacyStore store,
+            com.ruoyi.majorpilot.privacy.PrivateObjectStore files,com.ruoyi.majorpilot.privacy.PersonalExportWriter writer,
+            com.ruoyi.majorpilot.privacy.AccountDeletionStages deletion,P7HarnessPrivacyCheckpoints checkpoints) {
+        return new P7HarnessPrivacyJobs(store,files,writer,deletion,checkpoints);
+    }
     @Bean
     com.ruoyi.majorpilot.report.ReportJobs reportJobs(com.ruoyi.majorpilot.report.ReportStore store,
             com.ruoyi.majorpilot.report.core.ReportCore core,com.ruoyi.majorpilot.report.ReportCoordinator coordinator,
@@ -50,6 +64,7 @@ public class P6HarnessApplication {
         result.put("server.address", "127.0.0.1");
         result.put("server.port", "18081");
         result.put("MP_STUDENT_ORIGIN", "http://127.0.0.1:15176");
+        result.put("MP_PRIVATE_EXPORT_ROOT", "${MP_P6_HARNESS_DIR}/private-exports");
         result.put("spring.datasource.druid.master.url", "${MP_DB_URL}");
         result.put("spring.datasource.druid.master.username", "${MP_DB_USERNAME}");
         result.put("spring.datasource.druid.master.password", "${MP_DB_PASSWORD}");

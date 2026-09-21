@@ -1,7 +1,7 @@
 # MajorPilot MVP 实施路线与需求追溯
 
 > 状态：实施拆分修订稿 v0.2  
-> 更新日期：2026-09-20  
+> 更新日期：2026-09-21
 > 适用范围：交给开发团队的里程碑、依赖、出口和需求追踪  
 > 关联文档：[产品定义](./01-mvp-product-definition.md) · [设计完成标准](./07-design-stage-definition-of-done.md) · [API 契约](./12-api-contract-design.md) · [工程与测试设计](./15-engineering-and-test-design.md)
 
@@ -199,6 +199,8 @@ P4 和 P5 可以并行，但都要复用 P2/P3 已验证的内容合同、运行
 
 ## 9. P6：报告、下一专业与比较
 
+2026-09-21本地工程验收通过，提交 `fb030ac4cd5b9cb542ac5ffa9bec62a1174b0c0c` 已推送并核对远端main完整SHA。真实HTTP、双浏览器、实际PDF、三处JVM重启恢复和合成供应商验证见 [P2–P6交付记录](./23-p2-to-p6-delivery-ledger.md)。正式链路用隔离TEST_FIXTURE验证，不代替真实专业内容审核。
+
 ### 目标
 
 把一个或两个专业体验转化为私有、可解释、证据可追溯的决策材料。
@@ -225,6 +227,8 @@ P4 和 P5 可以并行，但都要复用 P2/P3 已验证的内容合同、运行
 - 历史报告在规则或任务升级后内容不漂移。
 
 ## 10. P7：管理、分析、支持与隐私
+
+2026-09-21本地工程验收通过，真实HTTP、Chrome/Edge及手机设置页、两处JVM崩溃恢复、指标实库对账、V8迁移及最终冻结回归均已取得证据；Git交付状态见 [P7台账](./35-p7-delivery-ledger.md)。[工程合同](./33-p7-engineering-plan.md)固定实现边界，[视觉记录](./34-p7-visual-contract.md)区分概念、mock与真实页面。本轮授权范围止于P7，P8尚未启动；三专业内容仍REVIEW。
 
 ### 目标
 

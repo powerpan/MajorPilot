@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspace } from "../stores/workspace";
 import { useAuth } from "../stores/auth";
@@ -12,6 +12,7 @@ import ClassifierErrors from "../components/workspace/ClassifierErrors.vue";
 import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
 import DsWorkspace from "../components/workspace/DsWorkspace.vue";
 import BaWorkspace from "../components/workspace/BaWorkspace.vue";
+import { leaveRunObservation, observeRunStep } from '../lib/run-observations';
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace(),
@@ -20,6 +21,21 @@ const help = ref<HTMLDialogElement | null>(null),
   copy = ref<HTMLDialogElement | null>(null),
   copied = ref(false);
 const wide = ref(window.innerWidth >= 1024);
+const observationCore = ref<HTMLElement | null>(null);
+let stopObservation: (() => void) | undefined, observedPin = '', observationGeneration = 0;
+async function bindObservation() {
+  const generation = ++observationGeneration;
+  stopObservation?.(); stopObservation = undefined;
+  const run = workspace.run;
+  const pin = run?.taskVersionId && run.startedAt ? `${run.runId}:${run.taskVersionId}` : '';
+  if (auth.me && observedPin && pin !== observedPin) leaveRunObservation(observedPin);
+  observedPin = pin;
+  if (document.visibilityState !== 'visible') { if (pin) leaveRunObservation(pin); return; }
+  await nextTick();
+  if (generation !== observationGeneration || !run?.taskVersionId || !run.startedAt || !auth.me || !workspace.selectionReady || workspace.reflectionMode || !wide.value || !observationCore.value || !accessible(workspace.selectedStep)) return;
+  stopObservation = observeRunStep(observationCore.value, run.runId, run.taskVersionId, workspace.selectedStep);
+}
+watch(() => [workspace.run?.runId, workspace.run?.taskVersionId, workspace.run?.startedAt, workspace.selectedStep, workspace.selectionReady, workspace.reflectionMode, wide.value, auth.me?.studentId], () => void bindObservation(), { flush: 'post' });
 const number = computed(() =>
   workspace.reflectionMode
     ? (workspace.manifest?.steps.length || 5) + 1
@@ -152,8 +168,12 @@ onMounted(() => {
   window.addEventListener("offline", check);
   window.addEventListener("beforeunload", unload);
   poll = setInterval(check, 8000);
+  document.addEventListener('visibilitychange', bindObservation);
 });
 onBeforeUnmount(() => {
+  observationGeneration += 1; stopObservation?.();
+  if (observedPin && auth.me) leaveRunObservation(observedPin);
+  document.removeEventListener('visibilitychange', bindObservation);
   clearInterval(poll);
   window.removeEventListener("resize", resized);
   window.removeEventListener("focus", check);
@@ -377,7 +397,7 @@ onBeforeUnmount(() => {
                 需要提示？
               </button>
             </div>
-            <p class="workspace-instructions">
+            <p ref="observationCore" class="workspace-instructions">
               {{
                 workspace.reflectionMode
                   ? "没有标准答案，只记录你自己的感受。"

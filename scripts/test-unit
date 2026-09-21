@@ -4,8 +4,10 @@ set -eu
 # opted in to a standalone provider probe.
 unset MP_RUN_LIVE_REPORT_TESTS MP_RUN_BAILIAN_TEST MP_RUN_MYSQL_TESTS
 cd "$(dirname "$0")/.."
-data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scripts/ai-spike.test.mjs scripts/report-spike.test.mjs scripts/runtime-artifact.test.mjs scripts/local-profile.test.mjs scripts/verify-secrets.test.mjs scripts/p6-harness.test.mjs executor/test/*.test.mjs contracts/tests/contracts.test.mjs contracts/tests/p1-contracts.test.mjs student-web/test/identity-state.test.mjs
+data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scripts/ai-spike.test.mjs scripts/report-spike.test.mjs scripts/runtime-artifact.test.mjs scripts/local-profile.test.mjs scripts/verify-secrets.test.mjs scripts/p6-harness.test.mjs scripts/local-student-fixture.test.mjs executor/test/*.test.mjs contracts/tests/contracts.test.mjs contracts/tests/p1-contracts.test.mjs student-web/test/identity-state.test.mjs
 data/tools/node/bin/node docs/validation/check-design.mjs
+data/tools/node/bin/node --test scripts/fresh-migrations.test.mjs
+data/tools/node/bin/node --test scripts/test-p7-api.test.mjs
 data/tools/node/bin/node scripts/generate-ai-content.mjs --check
 data/tools/node/bin/node scripts/generate-learning-content.mjs --check
 data/tools/node/bin/node scripts/generate-ba-content.mjs --check
@@ -14,7 +16,8 @@ data/tools/node/bin/node executor/build-ds.mjs
 data/tools/node/bin/node executor/build-ba.mjs
 data/tools/node/bin/node contracts/sync-p5.mjs
 data/tools/node/bin/node contracts/sync-p6.mjs
-data/tools/node/bin/node --test contracts/tests/content.test.mjs contracts/tests/p2-contracts.test.mjs contracts/tests/p3-contracts.test.mjs contracts/tests/p4-contracts.test.mjs contracts/tests/p5-contracts.test.mjs contracts/tests/p6-contracts.test.mjs contracts/tests/report-contracts.test.mjs contracts/tests/classifier.test.mjs contracts/tests/ds*.mjs contracts/tests/ba*.mjs
-data/tools/node/bin/node --test student-web/test/workspace-state.test.mjs student-web/test/ds-display.test.mjs student-web/test/ba*.test.mjs student-web/test/execution-transport.test.mjs student-web/test/report-*.test.mjs student-web/test/feedback-drafts.test.mjs
+data/tools/node/bin/node contracts/sync-p7.mjs
+data/tools/node/bin/node --test contracts/tests/content.test.mjs contracts/tests/p2-contracts.test.mjs contracts/tests/p3-contracts.test.mjs contracts/tests/p4-contracts.test.mjs contracts/tests/p5-contracts.test.mjs contracts/tests/p6-contracts.test.mjs contracts/tests/p7-contracts.test.mjs contracts/tests/report-contracts.test.mjs contracts/tests/classifier.test.mjs contracts/tests/ds*.mjs contracts/tests/ba*.mjs
+data/tools/node/bin/node --test student-web/test/workspace-state.test.mjs student-web/test/ds-display.test.mjs student-web/test/ba*.test.mjs student-web/test/execution-transport.test.mjs student-web/test/report-*.test.mjs student-web/test/feedback-drafts.test.mjs student-web/test/privacy*.test.mjs admin-web/test/operations.test.mjs
 cd backend
 JAVA_HOME="${MP_JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}" MAVEN_USER_HOME="../data/maven-user" ./mvnw -Dmaven.repo.local=../.local/m2 test

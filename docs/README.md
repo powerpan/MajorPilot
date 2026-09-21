@@ -2,7 +2,7 @@
 
 > 更新日期：2026-09-21
 >
-> 当前阶段：P0–P5已推送，P6本地工程验收通过，正在完成Git交付；三专业内容仍REVIEW。用户已将目标延长至P7，仍按阶段顺序推进；真实专业审核/用户试用和计时不因自动化通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
+> 当前阶段：P0–P6已推送，P7本地工程与最终冻结回归通过，正在收尾Git交付；准确状态见[台账35](./35-p7-delivery-ledger.md)。P6远端完整SHA为 `fb030ac4cd5b9cb542ac5ffa9bec62a1174b0c0c`。本轮范围止于P7，不自动进入P8；三专业内容仍REVIEW，真实专业审核/用户试用和计时不因自动化通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
 
 ## 阅读顺序
 
@@ -34,6 +34,8 @@
 当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)、[P3实施接缝](./25-p3-engineering-plan.md)、[P3 AI视觉验收](./26-p3-ai-visual-direction.md)、[P4 DS实施接缝](./27-p4-engineering-plan.md)、[P4 DS视觉合同](./28-p4-ds-visual-direction.md)、[P5 BA实施接缝](./29-p5-engineering-plan.md)、[P5 BA视觉合同](./30-p5-ba-visual-direction.md)、[P6报告工程合同](./31-p6-engineering-plan.md)、[P6报告视觉合同](./32-p6-report-visual-direction.md)。各阶段工程验收和真人门禁分别记录；P6网页、实际打印和重启恢复已通过，Git结果见交付记录。
 
 设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。阅读本轮变化可以先看 `17`，再按其中的问题编号进入专题设计。
+
+P7 当前记录：[工程合同](./33-p7-engineering-plan.md)、[视觉合同](./34-p7-visual-contract.md)、[验收与交付台账](./35-p7-delivery-ledger.md)。
 
 ## 文档状态含义
 

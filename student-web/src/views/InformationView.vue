@@ -50,6 +50,7 @@ const route = useRoute(),
       {{ route.path === "/privacy" ? "隐私政策" : "使用条款" }}
     </h1>
     <p class="muted">版本 v1 · 本地 MVP 阶段 · 2026年9月</p>
+    <aside class="notice"><strong>当前本地实现状态说明 · P7 开发中</strong><p>下方保留原 v1 说明，不追溯改写已接受的文本。账户隐私、导出和删除流程正在本地开发与验收，可用性以实际账户入口和处理状态为准。三个真实专业仍为 REVIEW，未通过自动化测试冒充人工专业审核；正式报告闭环使用隔离 TEST_FIXTURE 验证。本项目尚未公开部署，公开使用前需统一复核政策与功能范围。</p></aside>
     <template v-if="route.path === '/privacy'"
       ><h2>收集哪些信息</h2>
       <p>

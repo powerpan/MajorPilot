@@ -11,6 +11,7 @@ import "./styles/classifier.css";
 import "./styles/ds.css";
 import "./styles/ba.css";
 import "./styles/reports.css";
+import "./styles/privacy.css";
 import { useAuth } from "./stores/auth";
 const HomeView = () => import("./views/HomeView.vue");
 import IntakeView from "./views/IntakeView.vue";
@@ -49,6 +50,8 @@ const router = createRouter({
       path,
       component: MailView,
     })),
+    { path: "/change-email", component: () => import("./views/EmailChangeView.vue") },
+    { path: "/deletion-status/:receiptId", component: () => import("./views/DeletionReceiptView.vue") },
     ...["/how-it-works", "/majors", "/majors/:code", "/privacy", "/terms"].map(
       (path) => ({ path, component: InformationView }),
     ),

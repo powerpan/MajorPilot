@@ -46,7 +46,7 @@ const title = computed(() =>
 );
 async function prepare() {
   error.value = "";
-  success.value = "";
+  success.value = route.query.notice === 'password-changed' ? '密码已修改，所有设备已退出。请使用新密码登录。' : route.query.notice === 'email-changed' ? '邮箱已确认变更，所有设备已退出。请使用新邮箱登录。' : "";
   password.value = "";
   confirm.value = "";
   recovery.value = false;

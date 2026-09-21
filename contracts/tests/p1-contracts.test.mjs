@@ -8,13 +8,17 @@ const valid = (name, value) => { const validator = contracts.schemas[name]; asse
 const invalid = (name, value) => assert.equal(contracts.schemas[name](value), false);
 
 test('all P1 operations and JSON schemas compile without external references', async () => { assert.equal((await checkP1()).result, 'PASS'); });
-test('P1 method and path inventory matches all local domain and identity controllers', () => {
+test('P1 method and path inventory matches its local domain and identity controllers', () => {
   const root = new URL('../../backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/', import.meta.url);
   const sources = ['auth', 'intake', 'recommendation', 'analytics', 'shared'].flatMap(directory => {
     const path = new URL(`${directory}/`, root);
-    return readdirSync(path).filter(file => file.endsWith('Controller.java')).map(file => readFileSync(new URL(file, path), 'utf8'));
-  }).join('\n');
-  const implemented = [...sources.matchAll(/@(Get|Post|Delete|Put|Patch)Mapping\("([^"]+)"\)/gu)].map(match => `${match[1].toLowerCase()} ${match[2]}`).sort();
+    // P7 owns this later controller and checks its complete route/permission inventory.
+    return readdirSync(path).filter(file => file.endsWith('Controller.java') && file !== 'AccountSettingsController.java').map(file => readFileSync(new URL(file, path), 'utf8'));
+  });
+  const implemented = sources.flatMap(source => {
+    const base = source.match(/@RequestMapping\("([^"]*)"\)/u)?.[1] ?? '';
+    return [...source.matchAll(/@(Get|Post|Delete|Put|Patch)Mapping\("([^"]+)"\)/gu)].map(match => `${match[1].toLowerCase()} ${base}${match[2]}`);
+  }).sort();
   assert.deepEqual(contracts.operations.map(item => `${item.method} ${item.path}`).sort(), implemented);
 });
 test('thirteen camelCase answers support tied scenarios and do not restrict majors by background', () => {

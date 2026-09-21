@@ -4,6 +4,8 @@ import { readFileSync, lstatSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { ROOT, TOOL } from '../local-config.mjs';
 import { parseEnv, runtimeEnv } from '../env.mjs';
+import { record, processInspectionAvailable } from '../processes.mjs';
+import { removeFixtureObject } from './local-student-fixture.mjs';
 
 export const p6Base = 'http://127.0.0.1:18081';
 export const p6Origin = 'http://127.0.0.1:15176';
@@ -50,9 +52,9 @@ export class P6Client {
       if (parts.some(v => /^Max-Age=0$/i.test(v))) this.cookies.delete(name);
       else this.cookies.set(name, { value: parts[0].slice(equal + 1), path: parts.find(v => /^Path=/i.test(v))?.slice(5) || '/' });
     }
-    const text = await response.text(); let payload = null;
+    const bytes = Buffer.from(await response.arrayBuffer()), text = bytes.toString('utf8'); let payload = null;
     try { payload = JSON.parse(text); } catch { /* Only explicit assets can be text. */ }
-    return { status: response.status, body: payload, text, headers: response.headers };
+    return { status: response.status, body: payload, text, bytes, headers: response.headers };
   }
   async publicCsrf() { expect(await this.call('/api/public/v1/auth/csrf'), 200, 'public CSRF'); }
   async operator(kind) {
@@ -65,7 +67,15 @@ export class P6Client {
 
 export function createP6FixtureScope() {
   const tag = p6Secrets().MP_P6_RUN_TAG, nonce = randomBytes(6).toString('hex'), prefix = `p6-http-${tag}-${nonce}`;
-  const emails = new Set(), intakes = new Set(), mailIds = new Set(); let count = 0;
+  const emails = new Set(), intakes = new Set(), mailIds = new Set(), receipts = new Map(); let count = 0;
+  const quoted = values => values.size ? [...values].map(v => `'${v}'`).join(',') : "'no-fixture'";
+  function trackReceipt(receiptId) {
+    assert.match(receiptId, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
+    if (receipts.has(receiptId)) return;
+    const requestId = p6Query(`SELECT d.public_id FROM mp_account_deletion_request d JOIN mp_student_account s ON s.id=d.student_id WHERE d.receipt_id='${receiptId}' AND s.email_normalized IN (${quoted(emails)});`);
+    assert.match(requestId, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/, 'Capture receipt ownership before the account is unlinked');
+    receipts.set(receiptId, requestId);
+  }
   async function tokenFor(email) {
     for (let attempt = 0; attempt < 40; attempt++) {
       const messages = await (await fetch(`${mailBase}/api/v1/messages`, { signal: AbortSignal.timeout(5000) })).json();
@@ -98,14 +108,41 @@ export function createP6FixtureScope() {
     if (!emails.size && !intakes.size) return;
     assert.equal(p6Query('SELECT DATABASE();'), 'majorpilot_test');
     for (const email of emails) assert.match(email, new RegExp(`^${prefix}-[01]@example\\.invalid$`)); for (const id of intakes) assert.match(id, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
-    const quoted = values => values.size ? [...values].map(v => `'${v}'`).join(',') : "'no-fixture'";
     const accounts = `SELECT id FROM mp_student_account WHERE email_normalized IN (${quoted(emails)})`, intakeIds = `SELECT id FROM mp_intake_session WHERE public_id IN (${quoted(intakes)})`;
     const profiles = `SELECT id FROM mp_decision_profile WHERE student_id IN (${accounts}) OR intake_session_id IN (${intakeIds})`, recommendations = `SELECT id FROM mp_recommendation WHERE decision_profile_id IN (${profiles})`;
     const runs = `SELECT id FROM mp_experience_run WHERE student_id IN (${accounts})`, steps = `SELECT id FROM mp_step_state WHERE experience_run_id IN (${runs})`;
     const versions = `SELECT v.id FROM mp_report_version v JOIN mp_report r ON r.id=v.report_id WHERE r.student_id IN (${accounts})`;
+    const hasPrivacy = p6Query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='mp_student_data_export';") === '1';
+    let adminIds = '0';
+    if (hasPrivacy) {
+      const queryJson = sql => p6Query(sql).split('\n').filter(Boolean).map(value => JSON.parse(value));
+      const requests = queryJson(`SELECT JSON_OBJECT('receiptId',receipt_id,'requestId',public_id) FROM mp_account_deletion_request WHERE student_id IN (${accounts});`);
+      for (const value of requests) { assert.match(value.receiptId, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/); assert.match(value.requestId, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/); receipts.set(value.receiptId, value.requestId); }
+      const privacyWork = p6Query(`SELECT (SELECT COUNT(*) FROM mp_background_job WHERE owner_student_id IN (${accounts}) AND job_type IN ('STUDENT_EXPORT','ACCOUNT_DELETE'))+(SELECT COUNT(*) FROM mp_student_data_export WHERE student_id IN (${accounts}))+(SELECT COUNT(*) FROM mp_admin_export_student WHERE student_id IN (${accounts}));`);
+      // A failure fallback cannot race a private writer or delete its tracking
+      // rows first. The restart probe explicitly stops only its managed JVM.
+      if (privacyWork !== '0' || requests.length) assert.ok(processInspectionAvailable() && !record('p6-test-backend'), 'Stop the isolated harness before raw P7 fixture fallback cleanup');
+      const ids = p6Query(`SELECT DISTINCT export_id FROM mp_admin_export_student WHERE student_id IN (${accounts});`).split(/\s+/).filter(Boolean);
+      ids.forEach(id => assert.match(id, /^[1-9][0-9]*$/)); adminIds = ids.join(',') || '0';
+      assert.equal(p6Query(`SELECT COUNT(*) FROM mp_admin_export_student WHERE export_id IN (${adminIds}) AND student_id NOT IN (${accounts});`), '0', 'Foreign admin-export membership prevents raw cleanup');
+      const keys = new Map();
+      function add(key, kind) { if (key === null) return; assert.match(key, new RegExp(`^${kind}/[0-7][0-9A-HJKMNP-TV-Z]{25}\\.${kind === 'student' ? 'zip' : 'csv'}$`)); keys.set(key, kind); }
+      for (const row of queryJson(`SELECT JSON_OBJECT('key',object_key) FROM mp_student_data_export WHERE student_id IN (${accounts});`)) add(row.key, 'student');
+      for (const row of queryJson(`SELECT JSON_OBJECT('key',object_key) FROM mp_admin_export WHERE id IN (${adminIds});`)) add(row.key, 'admin');
+      for (const row of queryJson(`SELECT JSON_OBJECT('kind',IF(job_type='STUDENT_EXPORT','student','admin'),'checkpoint',checkpoint_json) FROM mp_background_job WHERE (job_type='STUDENT_EXPORT' AND owner_student_id IN (${accounts})) OR (job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND target_id IN (${adminIds}));`)) {
+        const list = row.checkpoint?.artifactKeys; assert.ok(Array.isArray(list) && list.length <= 3, 'Invalid exact fixture artifact checkpoint'); for (const key of list) add(key, row.kind);
+      }
+      for (const [key, kind] of keys) {
+        assert.equal(p6Query(`SELECT COUNT(*) FROM mp_student_data_export WHERE object_key='${key}' AND ${kind === 'student' ? `student_id NOT IN (${accounts})` : '1=1'};`), '0', 'Foreign file reference prevents cleanup');
+        assert.equal(p6Query(`SELECT COUNT(*) FROM mp_admin_export WHERE object_key='${key}' AND ${kind === 'admin' ? `id NOT IN (${adminIds})` : '1=1'};`), '0', 'Foreign file reference prevents cleanup');
+        assert.equal(p6Query(`SELECT COUNT(*) FROM mp_background_job WHERE JSON_CONTAINS(JSON_EXTRACT(checkpoint_json,'$.artifactKeys'),JSON_QUOTE('${key}'))=1 AND NOT COALESCE(${kind === 'student' ? `(job_type='STUDENT_EXPORT' AND owner_student_id IN (${accounts}))` : `(job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND target_id IN (${adminIds}))`},FALSE);`), '0', 'Foreign job file reference prevents cleanup');
+      }
+      for (const key of keys.keys()) removeFixtureObject(key, `${ROOT}/data/p6-harness/private-exports`);
+    }
     const ownedRuns = p6Query(`SELECT id FROM mp_experience_run WHERE student_id IN (${accounts}) ORDER BY attempt_no DESC,id DESC;`).split(/\s+/).filter(Boolean); ownedRuns.forEach(id => assert.match(id, /^[0-9]+$/));
     p6Query(`START TRANSACTION;
       SELECT id FROM mp_student_account WHERE email_normalized IN (${quoted(emails)}) ORDER BY id FOR UPDATE;
+      ${hasPrivacy ? `DELETE FROM mp_idempotency_record WHERE resource_type='ADMIN_EXPORT' AND resource_id IN (${adminIds}); DELETE FROM mp_sensitive_audit WHERE owner_student_id IN (${accounts}) OR (target_type='ADMIN_EXPORT' AND target_public_id IN (SELECT public_id FROM mp_admin_export WHERE id IN (${adminIds}))); DELETE FROM mp_background_job WHERE job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND target_id IN (${adminIds}); DELETE FROM mp_admin_export_student WHERE export_id IN (${adminIds}); DELETE FROM mp_admin_export WHERE id IN (${adminIds}); DELETE FROM mp_student_data_export WHERE student_id IN (${accounts}); DELETE FROM mp_account_deletion_request WHERE student_id IN (${accounts});` : ''}
       DELETE FROM mp_product_event WHERE student_id IN (${accounts}) OR intake_session_id IN (${intakeIds}) OR recommendation_id IN (${recommendations});
       DELETE FROM mp_ai_call WHERE student_id IN (${accounts});
       DELETE FROM mp_sensitive_audit WHERE (target_type='REPORT' AND target_public_id IN (SELECT public_id FROM mp_report WHERE student_id IN (${accounts}))) OR (target_type='REPORT_VERSION' AND target_public_id IN (SELECT public_id FROM mp_report_version WHERE id IN (${versions}))) OR (target_type='EXPERIENCE_RUN' AND target_public_id IN (SELECT public_id FROM mp_experience_run WHERE student_id IN (${accounts})));
@@ -130,11 +167,15 @@ export function createP6FixtureScope() {
       DELETE FROM mp_idempotency_record WHERE owner_student_id IN (${accounts}) OR owner_intake_session_id IN (${intakeIds}); DELETE FROM mp_consent_record WHERE student_id IN (${accounts}) OR intake_session_id IN (${intakeIds}); DELETE FROM mp_intake_session WHERE public_id IN (${quoted(intakes)});
       DELETE FROM mp_email_token WHERE student_id IN (${accounts}); DELETE FROM mp_student_session WHERE student_id IN (${accounts}); DELETE FROM mp_security_event WHERE student_id IN (${accounts}); DELETE FROM mp_student_account WHERE email_normalized IN (${quoted(emails)}); COMMIT;`);
     assert.equal(p6Query(`SELECT COUNT(*) FROM mp_student_account WHERE email_normalized IN (${quoted(emails)});`), '0');
+    for (const [receiptId, requestId] of receipts) {
+      p6Query(`DELETE FROM mp_account_deletion_request WHERE receipt_id='${receiptId}' AND public_id='${requestId}' AND student_id IS NULL AND status='COMPLETED';`);
+      assert.equal(p6Query(`SELECT COUNT(*) FROM mp_account_deletion_request WHERE receipt_id='${receiptId}' AND public_id='${requestId}';`), '0', 'Exact fixture receipt cleanup incomplete');
+    }
     // A lost registration response can still have produced an email. Discover
     // only this invocation's exact recipients before removing captured messages.
     const messages = await (await fetch(`${mailBase}/api/v1/messages`, { signal: AbortSignal.timeout(5000) })).json();
     for (const message of messages.messages || []) if ((message.To || []).some(to => emails.has(to.Address))) { assert.match(message.ID, /^[A-Za-z0-9_-]+$/); mailIds.add(message.ID); }
     for (const id of mailIds) assert.ok((await fetch(`${mailBase}/api/v1/messages`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ IDs: [id] }), signal: AbortSignal.timeout(5000) })).ok, 'Exact captured mail cleanup');
   }
-  return { student, cleanup };
+  return { student, cleanup, trackReceipt };
 }

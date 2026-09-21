@@ -1,0 +1,60 @@
+package com.ruoyi.majorpilot.operations;
+
+import com.ruoyi.majorpilot.privacy.PrivateObjectStore;
+import com.ruoyi.majorpilot.shared.*;
+import jakarta.annotation.PreDestroy;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import static com.ruoyi.majorpilot.operations.OperationsService.*;
+
+/** Operator exports have a distinct worker; no student/report/deletion job can be claimed here. */
+@Service @Profile("local")
+public class AdminExportJobs {
+    public record Lease(long job,long export,long operator,long generation,String worker){}
+    private final OperationsService ops;private final AdminExportService exports;private final PrivateObjectStore objects;
+    private final String worker="admin-export-"+UUID.randomUUID();private final AtomicBoolean busy=new AtomicBoolean();
+    private final ExecutorService executor=Executors.newSingleThreadExecutor(r->{var t=new Thread(r,"majorpilot-admin-export");t.setDaemon(true);return t;});
+    private final ScheduledExecutorService heartbeat=Executors.newSingleThreadScheduledExecutor(r->{var t=new Thread(r,"majorpilot-admin-export-heartbeat");t.setDaemon(true);return t;});
+    public AdminExportJobs(OperationsService ops,AdminExportService exports,PrivateObjectStore objects){this.ops=ops;this.exports=exports;this.objects=objects;}
+    @PreDestroy public void stop(){executor.shutdownNow();heartbeat.shutdownNow();}
+    @Scheduled(fixedDelay=5000) public void tick(){if(!busy.compareAndSet(false,true))return;executor.execute(()->{try{var lease=claim(worker);if(lease!=null)process(lease);}finally{busy.set(false);}});}
+    public Lease claim(String workerId){
+        var candidates=ops.db.queryForList("SELECT j.id,j.target_id,j.owner_operator_id FROM mp_background_job j WHERE job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND owner_student_id IS NULL AND ((status IN ('PENDING','RETRY_WAIT') AND available_at<=UTC_TIMESTAMP(3)) OR (status='RUNNING' AND lease_until<=UTC_TIMESTAMP(3))) ORDER BY available_at,id LIMIT 20");
+        for(var c:candidates){long export=n(c,"target_id"),operator=n(c,"owner_operator_id");var members=exports.members(export);try{var lease=ops.tx.execute(t->{exports.lockMembers(members);ops.audit.operator(operator,true,true);var rows=ops.db.queryForList("SELECT * FROM mp_admin_export WHERE id=? AND operator_id=? FOR UPDATE",export,operator);if(rows.isEmpty())return null;var e=rows.getFirst();var jobs=ops.db.queryForList("SELECT * FROM mp_background_job WHERE id=? AND job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND target_id=? AND owner_operator_id=? AND owner_student_id IS NULL AND ((status IN ('PENDING','RETRY_WAIT') AND available_at<=UTC_TIMESTAMP(3)) OR (status='RUNNING' AND lease_until<=UTC_TIMESTAMP(3))) FOR UPDATE SKIP LOCKED",n(c,"id"),export,operator);if(jobs.isEmpty())return null;var j=jobs.getFirst();if(!Set.of("REQUESTED","PROCESSING").contains(s(e,"status"))){ops.db.update("UPDATE mp_background_job SET status='CANCELLED',last_error_code='EXPORT_TARGET_STALE',lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=?",n(j,"id"));return null;}if(n(j,"attempt_count")>=3){terminal(export,n(j,"id"),"EXPORT_RETRY_EXHAUSTED");return null;}if(!s(j,"business_key").equals("admin-export:"+s(e,"public_id"))||!ops.json(j.get("checkpoint_json")).path("exportId").asText().equals(s(e,"public_id"))){terminal(export,n(j,"id"),"EXPORT_SOURCE_INVALID");return null;}long generation=n(j,"lease_version")+1;ops.db.update("UPDATE mp_background_job SET status='RUNNING',attempt_count=attempt_count+1,lease_version=?,worker_id=?,lease_until=UTC_TIMESTAMP(3)+INTERVAL 60 SECOND,started_at=COALESCE(started_at,UTC_TIMESTAMP(3)) WHERE id=?",generation,workerId,n(j,"id"));ops.db.update("UPDATE mp_admin_export SET status='PROCESSING',row_version=row_version+1 WHERE id=?",export);return new Lease(n(j,"id"),export,operator,generation,workerId);});if(lease!=null)return lease;}catch(ApiException rejected){if(Set.of("PERMISSION_DENIED","EXPORT_SUBJECT_UNAVAILABLE").contains(rejected.code))rejectUnavailableCandidate(export,n(c,"id"),operator);else throw rejected;}}
+        return null;
+    }
+    /** A rejected candidate may have been claimed meanwhile: never terminate an unexpired new lease. */
+    void rejectUnavailableCandidate(long export,long job,long operator){var members=exports.members(export);ops.tx.executeWithoutResult(t->{
+        boolean unavailable=false;for(long student:members){var rows=ops.db.queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",student);if(rows.isEmpty()||Set.of("DELETION_PENDING","DELETED").contains(s(rows.getFirst(),"status")))unavailable=true;}
+        String code=unavailable?"EXPORT_SUBJECT_UNAVAILABLE":null;try{ops.audit.operator(operator,true,true);}catch(ApiException denied){if(!"PERMISSION_DENIED".equals(denied.code))throw denied;code=denied.code;}
+        var rows=ops.db.queryForList("SELECT id FROM mp_admin_export WHERE id=? AND operator_id=? FOR UPDATE",export,operator);if(rows.isEmpty()||code==null||!members.equals(exports.members(export)))return;
+        var jobs=ops.db.queryForList("SELECT id FROM mp_background_job WHERE id=? AND target_id=? AND owner_operator_id=? AND owner_student_id IS NULL AND job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND ((status IN ('PENDING','RETRY_WAIT') AND available_at<=UTC_TIMESTAMP(3)) OR (status='RUNNING' AND lease_until<=UTC_TIMESTAMP(3))) FOR UPDATE SKIP LOCKED",job,export,operator);
+        if(!jobs.isEmpty())terminal(export,job,code);
+    });}
+    private boolean ownerFence(Lease l,List<Long> members){exports.lockMembers(members);ops.audit.operator(l.operator,true,true);var rows=ops.db.queryForList("SELECT status FROM mp_admin_export WHERE id=? AND operator_id=? FOR UPDATE",l.export,l.operator);return !rows.isEmpty()&&"PROCESSING".equals(s(rows.getFirst(),"status"))&&members.equals(exports.members(l.export));}
+    private boolean lease(Lease l,boolean lock){return !ops.db.queryForList("SELECT id FROM mp_background_job WHERE id=? AND job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND target_id=? AND owner_operator_id=? AND owner_student_id IS NULL AND status='RUNNING' AND worker_id=? AND lease_version=? AND lease_until>UTC_TIMESTAMP(3)"+(lock?" FOR UPDATE":""),l.job,l.export,l.operator,l.worker,l.generation).isEmpty();}
+    private boolean fence(Lease l,List<Long> members){return ownerFence(l,members)&&lease(l,true);}
+    /** Renewal is not publication authority. It must remain independent of a local file-write's Student locks. */
+    public boolean heartbeat(Lease l){return ops.db.update("UPDATE mp_background_job SET lease_until=UTC_TIMESTAMP(3)+INTERVAL 60 SECOND WHERE id=? AND job_type='ADMIN_EXPORT' AND target_type='ADMIN_EXPORT' AND target_id=? AND owner_operator_id=? AND owner_student_id IS NULL AND status='RUNNING' AND worker_id=? AND lease_version=? AND lease_until>UTC_TIMESTAMP(3)",l.job,l.export,l.operator,l.worker,l.generation)==1;}
+    public void process(Lease l){String objectKey="admin/"+PublicIds.next()+".csv";boolean published=false;var alive=new AtomicBoolean(true);var pulse=heartbeat.scheduleAtFixedRate(()->{try{if(!heartbeat(l))alive.set(false);}catch(RuntimeException unavailable){alive.set(false);}},20,20,TimeUnit.SECONDS);
+        try{if(!heartbeat(l)||!reserveArtifact(l,objectKey))return;var row=ops.db.queryForMap("SELECT * FROM mp_admin_export WHERE id=? AND operator_id=?",l.export,l.operator);var material=exports.material(row);if(!alive.get()||!attachMembers(l,material.students()))return;published=writeAndPublish(l,material,objectKey,alive);}
+        catch(ApiException failure){fail(l,failure.code,Set.of("EXPORT_ROW_LIMIT_EXCEEDED","EXPORT_SOURCE_INVALID","EXPORT_SUBJECT_UNAVAILABLE","PERMISSION_DENIED","METRICS_SOURCE_INVALID").contains(failure.code));}catch(RuntimeException failure){fail(l,"EXPORT_BUILD_FAILED",false);}finally{pulse.cancel(false);if(!published)try{objects.delete(objectKey);}catch(RuntimeException cleanup){fail(l,"EXPORT_OBJECT_CLEANUP_FAILED",false);}}
+    }
+    private boolean reserveArtifact(Lease l,String key){var members=exports.members(l.export);return Boolean.TRUE.equals(ops.tx.execute(t->{if(!fence(l,members))return false;var checkpoint=(com.fasterxml.jackson.databind.node.ObjectNode)ops.json(ops.db.queryForObject("SELECT checkpoint_json FROM mp_background_job WHERE id=?",String.class,l.job));var keys=checkpoint.withArray("artifactKeys");if(keys.size()>=3)throw new ApiException(409,"EXPORT_SOURCE_INVALID");keys.add(key);ops.db.update("UPDATE mp_background_job SET checkpoint_json=? WHERE id=?",exports.string(checkpoint),l.job);return true;}));}
+    private boolean attachMembers(Lease l,List<Long> members){var old=exports.members(l.export);var all=new TreeSet<>(old);all.addAll(members);return Boolean.TRUE.equals(ops.tx.execute(t->{exports.lockMembers(List.copyOf(all));if(!fence(l,old))return false;ops.db.update("DELETE FROM mp_admin_export_student WHERE export_id=?",l.export);for(long student:members)ops.db.update("INSERT INTO mp_admin_export_student(export_id,student_id) VALUES(?,?)",l.export,student);return true;}));}
+    boolean writeAndPublish(Lease l,AdminExportService.Material material,String key,AtomicBoolean alive){return Boolean.TRUE.equals(ops.tx.execute(t->{
+        // All file keys were persisted in an earlier transaction. Deletion confirmation and
+        // file cleanup acquire the same member locks and cannot commit before this write ends.
+        if(!alive.get()||!ownerFence(l,material.students())||!lease(l,false))return false;
+        var stored=objects.write(key,material.bytes());
+        if(!alive.get()||!fence(l,material.students()))throw new ApiException(409,"EXPORT_LEASE_LOST");
+        return publish(l,material.students(),stored.key(),stored.sha256(),stored.size(),material.rows());
+    }));}
+    public boolean publish(Lease l,List<Long> members,String key,String sha,long size,long count){return Boolean.TRUE.equals(ops.tx.execute(t->{if(!fence(l,members))return false;ops.db.update("UPDATE mp_admin_export SET status='READY',object_key=?,file_sha256=?,file_size_bytes=?,row_count=?,completed_at=UTC_TIMESTAMP(3),expires_at=UTC_TIMESTAMP(3)+INTERVAL 24 HOUR,failure_code=NULL,row_version=row_version+1 WHERE id=?",key,sha,size,count,l.export);ops.db.update("UPDATE mp_background_job SET status='SUCCEEDED',lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=?",l.job);String id=ops.db.queryForObject("SELECT public_id FROM mp_admin_export WHERE id=?",String.class,l.export);ops.audit.write(l.operator,null,"ADMIN_EXPORT_READY","ADMIN_EXPORT",id,"PRODUCT_ANALYSIS","Controlled export generation completed",Map.of(),Map.of("rowCount",count),"admin-export-job");return true;}));}
+    public void fail(Lease l,String code,boolean permanent){var members=exports.members(l.export);try{ops.tx.executeWithoutResult(t->{if(!fence(l,members))return;long attempt=ops.db.queryForObject("SELECT attempt_count FROM mp_background_job WHERE id=?",Long.class,l.job);if(permanent||attempt>=3)terminal(l.export,l.job,code);else ops.db.update("UPDATE mp_background_job SET status='RETRY_WAIT',last_error_code=?,lease_until=NULL,available_at=UTC_TIMESTAMP(3)+INTERVAL IF(attempt_count=1,5,30) SECOND WHERE id=?",code,l.job);});}catch(ApiException removed){/* Deleted/revoked owners have already lost publication authority. */}}
+    private void terminal(long export,long job,String code){ops.db.update("UPDATE mp_admin_export SET status='FAILED',failure_code=?,completed_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=? AND status IN ('REQUESTED','PROCESSING')",code,export);ops.db.update("UPDATE mp_background_job SET status='FAILED',last_error_code=?,lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=? AND job_type='ADMIN_EXPORT' AND status NOT IN ('SUCCEEDED','CANCELLED')",code,job);}
+}
