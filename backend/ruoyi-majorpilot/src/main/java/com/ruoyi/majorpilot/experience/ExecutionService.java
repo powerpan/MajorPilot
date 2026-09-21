@@ -20,7 +20,7 @@ public class ExecutionService {
         if(operation==null)throw new ApiException(422,"EXECUTION_NOT_ALLOWED");String stepKey=operation.path("stepKey").asText();var definition=runs.stepDefinition(run,stepKey);runs.dependencies(run,definition);var state=runs.stepState(run,stepKey);
         if(n(state,"current_revision")!=input.inputRevision()||input.inputRevision()==0)throw new ApiException(409,"EXECUTION_REVISION_STALE");
         var revision=db.jdbc().queryForMap("SELECT id,response_json,content_sha256 FROM mp_step_response_revision WHERE step_state_id=? AND revision_no=?",n(state,"id"),input.inputRevision());JsonNode response=db.node(revision.get("response_json"));var bound=runs.bound(run,operation,response);var parameters=bound.parameters();
-        boolean v3=version.manifest().path("schemaVersion").asText().equals("task-manifest-v3");
+        boolean v3=ExecutionBindings.savedBindings(version.manifest());
         checkExpectedSources(input.expectedSourceRevisions(),bound.sources(),v3);
         runs.validateParameters(operation,parameters);
         if(input.parameters()!=null&&!input.parameters().isObject())throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
@@ -59,6 +59,6 @@ public class ExecutionService {
         return finished(outcome);
     }
     private void link(Plan plan,long execution){db.jdbc().update("INSERT IGNORE INTO mp_response_execution(response_revision_id,execution_record_id,source_revisions_json,source_binding_sha256) VALUES(?,?,?,?)",plan.responseId,execution,db.json(plan.sources),runs.bindingHash(plan.sources));}
-    private RunDtos.Execution finished(Outcome outcome){if(outcome.errorCode()!=null)throw new ApiException(Set.of("RUN_PAUSED","RUN_STATE_INVALID","EXECUTION_REVISION_STALE").contains(outcome.errorCode())?409:422,outcome.errorCode());return outcome.execution();}
+    private RunDtos.Execution finished(Outcome outcome){if(outcome.errorCode()!=null)throw new ApiException(outcome.errorCode().equals("CONTENT_INTEGRITY_FAILED")?503:Set.of("RUN_PAUSED","RUN_STATE_INVALID","EXECUTION_REVISION_STALE").contains(outcome.errorCode())?409:422,outcome.errorCode());return outcome.execution();}
     static boolean equalNumbers(JsonNode expected,JsonNode observed){if(expected.isNumber()&&observed.isNumber())return expected.decimalValue().compareTo(observed.decimalValue())==0;if(expected.isObject()&&observed.isObject()){if(expected.size()!=observed.size())return false;var names=expected.fieldNames();while(names.hasNext()){String name=names.next();if(!observed.has(name)||!equalNumbers(expected.get(name),observed.get(name)))return false;}return true;}if(expected.isArray()&&observed.isArray()){if(expected.size()!=observed.size())return false;for(int i=0;i<expected.size();i++)if(!equalNumbers(expected.get(i),observed.get(i)))return false;return true;}return expected.equals(observed);}
 }

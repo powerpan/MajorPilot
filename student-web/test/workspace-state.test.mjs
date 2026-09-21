@@ -25,6 +25,19 @@ const deferred = () => {
 };
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 const clone = (value) => structuredClone(value);
+const baDisplay = {};
+vm.runInNewContext(
+  ts.transpileModule(
+    readFileSync(new URL("../src/lib/ba-display.ts", import.meta.url), "utf8"),
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+      },
+    },
+  ).outputText,
+  { exports: baDisplay, Intl, Number, Error },
+);
 class ApiError extends Error {
   constructor(status, code) {
     super(code);
@@ -68,7 +81,8 @@ function harness() {
   const listeners = [],
     calls = [],
     drafts = [],
-    dsCalls = [];
+    dsCalls = [],
+    baCalls = [];
   let handler = async (path, options) =>
     path.endsWith("/task")
       ? { steps: [definition], assets: [], versionCode: "1" }
@@ -161,23 +175,32 @@ function harness() {
                     drafts.length = 0;
                   },
                 }
-              : path === "../execution"
-                ? {
-                    execute: async () => ({
-                      status: "SUCCESS",
-                      result: { count: 4, sum: 52, mean: 13 },
-                    }),
-                    executeDs: async (...args) => {
-                      dsCalls.push(clone(args.slice(0, 4)));
-                      return {
+              : path === "../lib/ba-display"
+                ? baDisplay
+                : path === "../execution"
+                  ? {
+                      execute: async () => ({
                         status: "SUCCESS",
-                        result: { schemaVersion: "ds-result-v1" },
-                      };
-                    },
-                  }
-                : (() => {
-                    throw new Error(`Unexpected import ${path}`);
-                  })();
+                        result: { count: 4, sum: 52, mean: 13 },
+                      }),
+                      executeDs: async (...args) => {
+                        dsCalls.push(clone(args.slice(0, 4)));
+                        return {
+                          status: "SUCCESS",
+                          result: { schemaVersion: "ds-result-v1" },
+                        };
+                      },
+                      executeBa: async (...args) => {
+                        baCalls.push(clone(args.slice(0, 4)));
+                        return {
+                          status: "SUCCESS",
+                          result: { schemaVersion: "ba-result-v1" },
+                        };
+                      },
+                    }
+                  : (() => {
+                      throw new Error(`Unexpected import ${path}`);
+                    })();
   const module = { exports: {} };
   vm.runInContext(`(function(require,module,exports){${source}\n})`, context)(
     require,
@@ -191,6 +214,7 @@ function harness() {
     calls,
     drafts,
     dsCalls,
+    baCalls,
     setApi(next) {
       handler = next;
     },
@@ -895,5 +919,264 @@ test("P4 v3 sends source CAS including empty ancestry and uses saved own fields 
     {},
   );
   assert.notEqual(last.options.key, calls[0].options.key);
+  h.store.clear();
+});
+
+const actionContext = {
+  parameters: { denominator: "enrolled_count" },
+  prioritySegmentKey: "APPLIED",
+  comparison: {
+    stageCounts: {
+      enrolled_count: 10,
+      completed_count: 2,
+      first_lesson_count: 8,
+      week_one_active_count: 7,
+      assignment_started_count: 5,
+      assignment_submitted_count: 4,
+    },
+    supportContactCount: 15,
+    supportContactsPer100Enrolled: 150,
+  },
+  sourceRevisions: { "b2-metric": 2, "b3-funnel": 3, "b4-segment": 4 },
+};
+const actionAnswer = {
+  targetSegmentKey: "APPLIED",
+  successMetric: "FIRST_LESSON_RATE",
+  targetChangePercentagePoints: 2,
+  guardrailMetric: "SUPPORT_CONTACTS_PER_100_ENROLLED",
+  guardrailMaximum: 170,
+  reviewAfterDays: 42,
+  actionDescription: "my unsynchronized action",
+};
+async function actionHarness() {
+  const h = harness();
+  await h.store.load("owned-run");
+  h.store.selectedStep.value = "b6-action";
+  h.store.run.value.steps = [
+    ...Object.entries(actionContext.sourceRevisions).map(
+      ([stepKey, revision]) => ({ stepKey, revision, status: "COMPLETED" }),
+    ),
+    { stepKey: "b5-hypothesis", status: "COMPLETED", revision: 1 },
+    { stepKey: "b6-action", status: "IN_PROGRESS", revision: 1 },
+  ];
+  h.store.step.value = {
+    ...clone(step),
+    stepKey: "b6-action",
+    baActionContext: clone(actionContext),
+    definition: {
+      ...definition,
+      dependencies: ["b5-hypothesis"],
+      inputSchema: {
+        properties: Object.fromEntries(
+          Object.keys(actionAnswer).map((key) => [key, { type: "unknown" }]),
+        ),
+      },
+    },
+  };
+  h.store.answer.value = clone(actionAnswer);
+  return h;
+}
+test("B6 requires visible source confirmation; polling catches same-group upstream revision change even after all dependencies complete", async () => {
+  const h = await actionHarness();
+  assert.equal(h.store.baActionBlocked.value, true);
+  h.store.confirmBaContext();
+  assert.equal(h.store.baActionBlocked.value, false);
+  const current = clone(h.store.run.value);
+  current.steps.find((item) => item.stepKey === "b4-segment").revision = 5;
+  current.revision++;
+  h.setApi(async () => current);
+  await h.store.checkState();
+  assert.equal(h.store.baContextStale.value, true);
+  assert.equal(h.store.baActionBlocked.value, true);
+  assert.equal(
+    h.store.baActionContext.value.sourceRevisions["b4-segment"],
+    4,
+    "poll does not silently replace baseline",
+  );
+  assert.deepEqual(h.store.answer.value, actionAnswer);
+  await h.store.complete();
+  assert.equal(
+    h.calls.filter((item) => item.path.endsWith("/complete")).length,
+    0,
+  );
+  h.store.clear();
+});
+test("B6 context reload retains dirty local plan and requires explicit confirmation of its new source vector", async () => {
+  const h = await actionHarness();
+  h.store.edit({
+    ...actionAnswer,
+    actionDescription: "new local plan not flushed",
+  });
+  h.store.baContextStale.value = true;
+  const context = clone(actionContext);
+  context.sourceRevisions["b4-segment"] = 5;
+  const current = clone(h.store.run.value);
+  current.steps.find((item) => item.stepKey === "b4-segment").revision = 5;
+  h.setApi(async (path) =>
+    path.includes("/steps/")
+      ? { ...clone(h.store.step.value), baActionContext: context }
+      : current,
+  );
+  await h.store.reloadBaContext();
+  assert.equal(
+    h.store.answer.value.actionDescription,
+    "new local plan not flushed",
+  );
+  assert.equal(h.store.dirty.value, true);
+  assert.equal(h.store.baActionContext.value.sourceRevisions["b4-segment"], 5);
+  assert.equal(h.store.baContextStale.value, false);
+  assert.equal(h.store.baContextConfirmed.value, false);
+  assert.equal(h.store.baActionBlocked.value, true);
+  h.store.confirmBaContext();
+  assert.equal(h.store.baActionBlocked.value, false);
+  h.store.clear();
+});
+test("B6 late context cannot attach after navigation or identity change", async () => {
+  for (const boundary of ["navigation", "identity"]) {
+    const h = await actionHarness(),
+      reply = deferred();
+    h.setApi(async (path) =>
+      path.includes("/steps/b6-action")
+        ? reply.promise
+        : path.includes("/steps/")
+          ? clone(step)
+          : clone(h.store.run.value),
+    );
+    const pending = h.store.reloadBaContext();
+    await settle();
+    if (boundary === "navigation") await h.store.select("prepare");
+    else h.identity();
+    reply.resolve({ ...clone(step), baActionContext: clone(actionContext) });
+    await pending;
+    assert.equal(h.store.baActionContext.value, undefined);
+    assert.equal(h.store.baContextConfirmed.value, false);
+    assert.equal(h.store.baContextLoading.value, false);
+    h.store.clear();
+  }
+});
+test("B6 completion fingerprint canonicalizes sources, remains stable on retry and changes only after explicit new-context confirmation", async () => {
+  const h = await actionHarness();
+  h.store.confirmBaContext();
+  h.setApi(async () => {
+    throw new Error("temporary transport failure");
+  });
+  await h.store.complete();
+  await h.store.complete();
+  let commands = h.calls.filter((item) => item.path.endsWith("/complete"));
+  assert.equal(commands.length, 2);
+  assert.equal(commands[0].options.key, commands[1].options.key);
+  assert.deepEqual(JSON.parse(JSON.stringify(commands[0].options.body)), {
+    expectedRevision: 1,
+    expectedSourceRevisions: {
+      "b2-metric": 2,
+      "b3-funnel": 3,
+      "b4-segment": 4,
+    },
+  });
+  h.store.step.value.baActionContext.sourceRevisions = {
+    "b4-segment": 4,
+    "b2-metric": 2,
+    "b3-funnel": 3,
+  };
+  await h.store.complete();
+  commands = h.calls.filter((item) => item.path.endsWith("/complete"));
+  assert.equal(commands[2].options.key, commands[0].options.key);
+  h.store.step.value.baActionContext.sourceRevisions["b4-segment"] = 5;
+  h.store.run.value.steps.find(
+    (item) => item.stepKey === "b4-segment",
+  ).revision = 5;
+  h.store.baContextConfirmed.value = false;
+  await h.store.complete();
+  assert.equal(
+    h.calls.filter((item) => item.path.endsWith("/complete")).length,
+    3,
+  );
+  h.store.confirmBaContext();
+  await h.store.complete();
+  commands = h.calls.filter((item) => item.path.endsWith("/complete"));
+  assert.notEqual(commands[3].options.key, commands[0].options.key);
+  h.store.clear();
+});
+test("B6 409 source conflict does not adopt details or retry, and old steps still omit the source field", async () => {
+  const h = await actionHarness();
+  h.store.confirmBaContext();
+  h.setApi(async () => {
+    const cause = new ApiError(409, "STEP_SOURCE_REVISION_CONFLICT");
+    cause.details = { currentSourceRevisions: { "b4-segment": 99 } };
+    throw cause;
+  });
+  await h.store.complete();
+  assert.equal(h.store.baContextStale.value, true);
+  assert.equal(h.store.baActionContext.value.sourceRevisions["b4-segment"], 4);
+  assert.equal(
+    h.calls.filter((item) => item.path.endsWith("/complete")).length,
+    1,
+  );
+  h.store.clear();
+  const old = harness();
+  await old.store.load("owned-run");
+  old.setApi(async () => {
+    throw new Error("transport");
+  });
+  await old.store.complete();
+  const body = old.calls.find((item) => item.path.endsWith("/complete")).options
+    .body;
+  assert.deepEqual(JSON.parse(JSON.stringify(body)), { expectedRevision: 1 });
+  old.store.clear();
+});
+test("P5 B3 supports an empty own binding list and sends only saved B2 window ancestry", async () => {
+  const h = harness();
+  await h.store.load("owned-run");
+  const digest = createHash("sha256").update("[]").digest("hex");
+  h.store.manifest.value = {
+    ...h.store.manifest.value,
+    schemaVersion: "task-manifest-v4",
+    assets: [
+      {
+        assetKey: "weekly-funnel",
+        mediaType: "application/json",
+        sha256: digest,
+        byteLength: 2,
+      },
+    ],
+    operations: [{ operationKey: "ba-funnel", ownResponseBindings: [] }],
+  };
+  h.store.step.value = {
+    ...h.store.step.value,
+    definition: { ...definition, operationKey: "ba-funnel" },
+    response: {
+      focusTransitionKey: "ENROLLED_TO_FIRST_LESSON",
+      focusReason: "not a parameter",
+    },
+    inputBindings: Object.entries({
+      baselineStartWeek: 1,
+      baselineEndWeek: 6,
+      comparisonStartWeek: 7,
+      comparisonEndWeek: 12,
+    }).map(([parameterKey, value]) => ({
+      parameterKey,
+      value,
+      sourceStepKey: "b2-metric",
+      sourceRevision: 3,
+    })),
+  };
+  h.setApi(async () => ({
+    status: "SUCCEEDED",
+    result: { schemaVersion: "ba-result-v1" },
+  }));
+  await h.store.executePreview();
+  assert.deepEqual(h.baCalls[0][2], {
+    baselineStartWeek: 1,
+    baselineEndWeek: 6,
+    comparisonStartWeek: 7,
+    comparisonEndWeek: 12,
+  });
+  const call = h.calls.find((item) => item.path.endsWith("/executions"));
+  assert.deepEqual(JSON.parse(JSON.stringify(call.options.body)), {
+    operationKey: "ba-funnel",
+    inputRevision: 1,
+    parameters: {},
+    expectedSourceRevisions: { "b2-metric": 3 },
+  });
   h.store.clear();
 });

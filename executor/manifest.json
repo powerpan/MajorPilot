@@ -3,9 +3,10 @@
   "workerSha256": "845ace32cd6a427284f0133eb0607a6179498e29751429c054936afe5ef311a6",
   "classifierWorkerSha256": "d42ca56725918a6eb7804752958c7c4725653e7566121f66e457c0b25f281a2a",
   "dsWorkerSha256": "f86f10f1d318fc0ff7b7bb4e9a5115717b14bfd8935430acdebda213088c454c",
+  "baWorkerSha256": "16cefa7db5ffc64ba97c82284604d3c9a3337dbe7487ccfbd91d54bbe0ccd1e4",
   "inputBytes": 1048576,
   "outputBytes": 102400,
   "timeoutMs": 10000,
   "maximumNumbers": 10000,
-  "scope": "p0-probes-p2-reviewed-demo-p3-public-practice-p4-public-data-only"
+  "scope": "p0-probes-p2-reviewed-demo-p3-public-practice-p4-p5-public-data-only"
 }

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "ba-sql-examples-v1",
+  "executionNotice": "以下是等价聚合逻辑的只读SQL示例，不在浏览器或服务器执行学生SQL。参数来自已保存的固定选项；示例省略输入校验、结果对象与最终六位舍入，实际由固定JS和Java计算器完成。",
+  "snippets": [
+    {
+      "operationKey": "ba-metric",
+      "title": "先合计分子分母，再算率",
+      "code": "SELECT SUM(completed_count) AS numerator_count,\n SUM(CASE WHEN :denominator = 'first_lesson_count' THEN first_lesson_count ELSE enrolled_count END) AS denominator_count,\n SUM(completed_count) * 1.0 / NULLIF(SUM(CASE WHEN :denominator = 'first_lesson_count' THEN first_lesson_count ELSE enrolled_count END), 0) AS rate\nFROM weekly_funnel WHERE week BETWEEN :start_week AND :end_week;\n-- 对两个窗口分别计算；12批次趋势额外 GROUP BY week，不平均周比例。"
+    },
+    {
+      "operationKey": "ba-funnel",
+      "title": "累计与相邻分母不同",
+      "code": "SELECT SUM(enrolled_count) AS enrolled, SUM(first_lesson_count) AS first_lesson,\n SUM(first_lesson_count) * 1.0 / NULLIF(SUM(enrolled_count), 0) AS first_lesson_conversion,\n SUM(week_one_active_count) * 1.0 / NULLIF(SUM(first_lesson_count), 0) AS active_conversion,\n SUM(week_one_active_count) * 1.0 / NULLIF(SUM(enrolled_count), 0) AS active_cumulative\nFROM weekly_funnel WHERE week BETWEEN :start_week AND :end_week;\n-- 其余相邻环节同理；人数损失是上一环节人数减下一环节人数。"
+    },
+    {
+      "operationKey": "ba-segments",
+      "title": "同一窗口内按课程或渠道重算",
+      "code": "SELECT CASE WHEN :segment_by = 'course_track' THEN course_track ELSE signup_source END AS segment_key,\n SUM(enrolled_count) AS enrolled, SUM(completed_count) AS completed,\n SUM(support_contact_count) * 100.0 / NULLIF(SUM(enrolled_count), 0) AS support_per_100_enrolled\nFROM weekly_funnel WHERE week BETWEEN :start_week AND :end_week\nGROUP BY CASE WHEN :segment_by = 'course_track' THEN course_track ELSE signup_source END;\n-- 主指标分母沿B2、相邻环节沿B3；另保留六阶段计数与报名占比，不把支持次数当漏斗人数。"
+    }
+  ]
+}

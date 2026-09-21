@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ruoyi.majorpilot.content.*;
 import com.ruoyi.majorpilot.shared.*;
 import com.ruoyi.majorpilot.datascience.DsSemantics;
+import com.ruoyi.majorpilot.businessanalytics.BaSemantics;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.context.annotation.Profile;
@@ -115,12 +116,12 @@ public class RunService {
     JsonNode operation(Row run,String key) {for(var op:version(run).manifest().path("operations"))if(op.path("operationKey").asText().equals(key))return op;throw new ApiException(422,"EXECUTION_NOT_ALLOWED");}
     ExecutionBindings.Bound bound(Row run,JsonNode operation,JsonNode ownResponse){return new ExecutionBindings(this).resolve(run,operation,ownResponse);}
     List<RunDtos.InputBinding> bindings(Row run,JsonNode operation) {return bound(run,operation,null).ancestors();}
-    void validateParameters(JsonNode operation,JsonNode parameters){ResponseRules.validate(operation.path("parametersSchema"),parameters,true);if(operation.path("engineType").asText().equals("DATA_ANALYSIS"))DsSemantics.validate(operation.path("operationKey").asText(),parameters);}
+    void validateParameters(JsonNode operation,JsonNode parameters){ResponseRules.validate(operation.path("parametersSchema"),parameters,true);if(operation.path("engineType").asText().equals("DATA_ANALYSIS"))DsSemantics.validate(operation.path("operationKey").asText(),parameters);if(operation.path("engineType").asText().equals("BUSINESS_ANALYSIS"))BaSemantics.validate(operation.path("operationKey").asText(),parameters);}
     ExecutionBindings.Bound validatedParameters(Row run,JsonNode operation,JsonNode ownResponse){var bound=bound(run,operation,ownResponse);validateParameters(operation,bound.parameters());return bound;}
     Map<String,Long> sources(List<RunDtos.InputBinding> bindings) {var result=new TreeMap<String,Long>();for(var binding:bindings)result.put(binding.sourceStepKey(),binding.sourceRevision());return result;}
     String bindingHash(Map<String,Long> sources) {return Secrets.hash(db.json(new TreeMap<>(sources)));}
     Map<String,Long> sourceMap(Object json) {var result=new TreeMap<String,Long>();db.node(json).fields().forEachRemaining(e->result.put(e.getKey(),e.getValue().asLong()));return result;}
-    public RunDtos.Step step(StudentPrincipal student,String id,String key) {return tx.execute(status->{db.activeStudent(student);var run=db.owned(student,id);var definition=stepDefinition(run,key);dependencies(run,definition);var state=stepState(run,key);var operationKey=definition.path("operationKey").asText("");var bound=operationKey.isBlank()?List.<RunDtos.InputBinding>of():bindings(run,operation(run,operationKey));return new RunDtos.Step(key,s(state,"status"),n(state,"current_revision"),definition.path("responseSchemaVersion").asText(),response(state),TaskContentViews.publicStep(definition),!run.status().equals("IN_PROGRESS"),time(state,"last_saved_at"),executions(run,key),bound);});}
+    public RunDtos.Step step(StudentPrincipal student,String id,String key) {return tx.execute(status->{db.activeStudent(student);var run=db.owned(student,id);var definition=stepDefinition(run,key);dependencies(run,definition);var state=stepState(run,key);var operationKey=definition.path("operationKey").asText("");var bound=operationKey.isBlank()?List.<RunDtos.InputBinding>of():bindings(run,operation(run,operationKey));return new RunDtos.Step(key,s(state,"status"),n(state,"current_revision"),definition.path("responseSchemaVersion").asText(),response(state),TaskContentViews.publicStep(definition),!run.status().equals("IN_PROGRESS"),time(state,"last_saved_at"),executions(run,key),bound,ba(run)&&key.equals("b6-action")?baContext(run).view():null);});}
     public RunDtos.Saved save(StudentPrincipal student,String id,String key,RunDtos.Save input) {return tx.execute(status->{
         db.activeStudent(student);var run=db.owned(student,id);writable(run,"IN_PROGRESS");var definition=stepDefinition(run,key);dependencies(run,definition);var state=stepState(run,key);expected(input.expectedRevision());
         if(n(state,"current_revision")!=input.expectedRevision())throw new ApiException(409,"STEP_REVISION_CONFLICT",Map.of("currentRevision",n(state,"current_revision")));
@@ -136,11 +137,19 @@ public class RunService {
         db.event(run,"response.saved",Map.of("stepKey",key,"revision",revision,"responseType",input.responseSchemaVersion()));
         return new RunDtos.Saved(key,revision,run.revision()+1,Instant.now(),"VALID",invalidated);
     });}
-    public RunDtos.Run completeStep(StudentPrincipal student,String id,String key,String idemKey,RunDtos.Revision input) {return writeOwned(student,id,"/experience-runs/"+id+"/steps/"+key+"/complete",idemKey,input,RunDtos.Run.class,()->{
+    public RunDtos.Run completeStep(StudentPrincipal student,String id,String key,String idemKey,RunDtos.Revision input) {return completeStep(student,id,key,idemKey,new RunDtos.StepCompletion(input.expectedRevision()));}
+    public RunDtos.Run completeStep(StudentPrincipal student,String id,String key,String idemKey,RunDtos.StepCompletion input) {return writeOwned(student,id,"/experience-runs/"+id+"/steps/"+key+"/complete",idemKey,input,RunDtos.Run.class,()->{
         var run=db.owned(student,id);writable(run,"IN_PROGRESS");var definition=stepDefinition(run,key);dependencies(run,definition);var state=stepState(run,key);expected(input.expectedRevision());
         if(n(state,"current_revision")!=input.expectedRevision())throw new ApiException(409,"STEP_REVISION_CONFLICT",Map.of("currentRevision",n(state,"current_revision")));
+        if(ba(run)&&key.equals("b6-action"))checkActionSources(input.expectedSourceRevisions(),baSources(run));
         if(s(state,"status").equals("COMPLETED"))return db.view(run);
         ResponseRules.validate(definition.path("inputSchema"),response(state),true);
+        if(ba(run)&&key.equals("b4-segment"))baPriority(response(state));
+        if(ba(run)&&key.equals("b6-action")){
+            var context=baContext(run);var action=db.mapper().createObjectNode();var answer=response(state);
+            for(String field:List.of("targetSegmentKey","successMetric","targetChangePercentagePoints","guardrailMetric","guardrailMaximum","reviewAfterDays"))if(answer.has(field))action.set(field,answer.get(field));
+            BaSemantics.validateAction(action,context.parameters(),context.priority(),context.result());
+        }
         String operation=definition.path("operationKey").asText("");
         if(!operation.isBlank()){
             var bound=validatedParameters(run,operation(run,operation),response(state));
@@ -149,6 +158,31 @@ public class RunService {
         db.jdbc().update("INSERT IGNORE INTO mp_step_completion(public_id,step_state_id,response_revision) VALUES(?,?,?)",PublicIds.next(),n(state,"id"),n(state,"current_revision"));
         db.jdbc().update("UPDATE mp_step_state SET status='COMPLETED',completed_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=?",n(state,"id"));db.touch(run,nextStep(run,key));db.event(run,"step.completed",Map.of("stepKey",key));return db.view(db.internal(run.id()));
     });}
+    private boolean ba(Row run){return "BUSINESS_ANALYTICS".equals(run.majorCode())&&version(run).manifest().path("schemaVersion").asText().equals("task-manifest-v4");}
+    private static final Set<String> BA_SOURCES=Set.of("b2-metric","b3-funnel","b4-segment");
+    private Map<String,Long> baSources(Row run){var result=new TreeMap<String,Long>();for(String key:BA_SOURCES)result.put(key,n(stepState(run,key),"current_revision"));return Collections.unmodifiableMap(result);}
+    static void checkActionSources(Map<String,Long> expected,Map<String,Long> actual){
+        if(expected==null||!expected.keySet().equals(BA_SOURCES)||expected.values().stream().anyMatch(value->value==null||value<1))throw new ApiException(422,"STEP_VALIDATION_FAILED");
+        if(!expected.equals(actual))throw new ApiException(409,"STEP_SOURCE_REVISION_CONFLICT",Map.of("currentSourceRevisions",actual));
+    }
+    private String baPriority(JsonNode response){
+        String dimension=response.path("segmentBy").asText(),priority=response.path("prioritySegmentKey").asText();
+        var allowed=BaSemantics.GROUPS.getOrDefault(dimension,List.of());
+        if(!allowed.contains(priority))throw new ApiException(422,"BA_PARAMETERS_INVALID");return priority;
+    }
+    private record BaContext(JsonNode parameters,String priority,JsonNode result,RunDtos.BaActionContext view) {}
+    /** Caller holds the Student lock; load all baseline fields and provenance from this one transaction. */
+    private BaContext baContext(Row run){
+        var state=stepState(run,"b4-segment");if(!s(state,"status").equals("COMPLETED"))throw new ApiException(409,"EXECUTION_REVISION_STALE");
+        var answer=response(state);String priority=baPriority(answer);var parameters=validatedParameters(run,operation(run,"ba-segments"),answer).parameters();
+        var current=currentExecution(run,"b4-segment");if(current==null||!current.status().equals("SUCCEEDED")||!current.trustLevel().equals("SERVER_VERIFIED"))throw new ApiException(409,"EXECUTION_REVISION_STALE");
+        var result=current.result();try{ResponseRules.validate(operation(run,"ba-segments").path("resultSchema"),result,true);}catch(ApiException invalid){throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");}
+        for(String field:List.of("numerator","denominator","segmentBy","focusTransitionKey"))if(!result.path(field).equals(parameters.path(field)))throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");
+        for(String period:List.of("baseline","comparison"))for(String edge:List.of("Start","End"))if(result.path("windows").path(period).path(edge.toLowerCase(Locale.ROOT)+"Week").asInt(-1)!=parameters.path(period+edge+"Week").asInt(-2))throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");
+        JsonNode comparison=null;for(var segment:result.path("segments"))if(segment.path("segmentKey").asText().equals(priority))comparison=segment.path("comparison");
+        if(comparison==null||!comparison.isObject())throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");
+        return new BaContext(parameters,priority,result,new RunDtos.BaActionContext(parameters.deepCopy(),priority,comparison.deepCopy(),baSources(run)));
+    }
     String nextStep(Row run,String current) {for(var definition:version(run).manifest().path("steps")){var state=stepState(run,definition.path("stepKey").asText());if(!s(state,"status").equals("COMPLETED"))return definition.path("stepKey").asText();}return current;}
     static List<String> dependentSteps(JsonNode definitions,String changed) {
         Set<String> affected=new LinkedHashSet<>();affected.add(changed);boolean expanded;
@@ -177,7 +211,7 @@ public class RunService {
     }
     List<RunDtos.Execution> executions(Row run,String step) {
         RunDtos.Execution current=null;
-        try{current=currentExecution(run,step);}catch(ApiException incomplete){if(!Set.of("STEP_VALIDATION_FAILED","DS_PARAMETERS_INVALID","EXECUTION_REVISION_STALE").contains(incomplete.code))throw incomplete;}
+        try{current=currentExecution(run,step);}catch(ApiException incomplete){if(!Set.of("STEP_VALIDATION_FAILED","DS_PARAMETERS_INVALID","BA_PARAMETERS_INVALID","EXECUTION_REVISION_STALE").contains(incomplete.code))throw incomplete;}
         var remaining=new HashMap<String,Integer>();var result=new ArrayList<RunDtos.Execution>();boolean included=false;
         for(var record:db.jdbc().queryForList("SELECT e.* FROM mp_execution_record e WHERE e.experience_run_id=? AND e.step_key=? ORDER BY e.id DESC LIMIT 50",run.id(),step)){
             if(current!=null&&current.executionId().equals(s(record,"public_id"))){result.add(current);included=true;}

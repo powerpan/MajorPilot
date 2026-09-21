@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+data/tools/node/bin/node scripts/test-p5-api.mjs
+data/tools/node/bin/node tests/e2e/p5.mjs

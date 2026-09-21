@@ -9,7 +9,20 @@ import {
   type DraftKey,
   type TaskDraft,
 } from "../lib/task-drafts";
-import { execute, executeClassifier, executeDs } from "../execution";
+import { execute, executeClassifier, executeDs, executeBa } from "../execution";
+import type {
+  BaActionContext,
+  Operation as BaOperation,
+  ParametersByOperation,
+  WeeklyFunnelRow,
+} from "../../../shared/ba/ba-metrics-v1.mjs";
+import {
+  actionIssue,
+  type BaResult,
+  type BaDictionary,
+  type BaBrief,
+  type BaSql,
+} from "../lib/ba-display";
 import type {
   DsResult,
   LearnerRow,
@@ -64,6 +77,9 @@ export const useWorkspace = defineStore("workspace", () => {
     hintBusy = ref(false),
     selectedStep = ref("");
   const iterationNotice = ref("");
+  const baContextStale = ref(false),
+    baContextConfirmed = ref(false),
+    baContextLoading = ref(false);
   const followUpBusy = ref(false),
     followUpError = ref("");
   let followUpAttempt = 0;
@@ -102,6 +118,32 @@ export const useWorkspace = defineStore("workspace", () => {
   );
   const dsPython = computed(
     () => publicAssets.value["python-examples"] as DsPythonExamples | undefined,
+  );
+  const baResult = computed(() =>
+    execution.value?.result?.schemaVersion === "ba-result-v1"
+      ? (execution.value.result as unknown as BaResult)
+      : null,
+  );
+  const baRows = computed(
+    () => publicAssets.value["weekly-funnel"] as WeeklyFunnelRow[] | undefined,
+  );
+  const baDictionary = computed(
+    () => publicAssets.value["data-dictionary"] as BaDictionary | undefined,
+  );
+  const baBrief = computed(
+    () => publicAssets.value["business-brief"] as BaBrief | undefined,
+  );
+  const baSql = computed(
+    () => publicAssets.value["sql-examples"] as BaSql | undefined,
+  );
+  const baActionContext = computed(() => step.value?.baActionContext);
+  const baActionBlocked = computed(
+    () =>
+      selectedStep.value === "b6-action" &&
+      (!baActionContext.value ||
+        baContextStale.value ||
+        !baContextConfirmed.value ||
+        baContextLoading.value),
   );
   const bindingConfiguration = computed(() =>
     Object.fromEntries(
@@ -314,6 +356,9 @@ export const useWorkspace = defineStore("workspace", () => {
     keyers.clear();
     selectedStep.value = "";
     iterationNotice.value = "";
+    baContextStale.value = false;
+    baContextConfirmed.value = false;
+    baContextLoading.value = false;
     followUpBusy.value = false;
     followUpError.value = "";
     followUpAttempt = 0;
@@ -323,6 +368,10 @@ export const useWorkspace = defineStore("workspace", () => {
     if (cause instanceof ApiError && cause.code === "IDENTITY_CHANGED") return;
     error.value = errorText(cause);
     if (cause instanceof ApiError) {
+      if (cause.code === "STEP_SOURCE_REVISION_CONFLICT") {
+        baContextStale.value = true;
+        baContextConfirmed.value = false;
+      }
       if (cause.status === 401) {
         auth.expire();
         return;
@@ -485,6 +534,9 @@ export const useWorkspace = defineStore("workspace", () => {
     selectionReady.value = false;
     clearTimeout(timer);
     selectedStep.value = key;
+    baContextStale.value = false;
+    baContextConfirmed.value = false;
+    baContextLoading.value = false;
     error.value = "";
     conflict.value = false;
     recovered.value = null;
@@ -571,6 +623,73 @@ export const useWorkspace = defineStore("workspace", () => {
         missingPolicy: "KEEP_NULL",
         extremePolicy: "KEEP",
       });
+    if (
+      !recovered.value &&
+      !readOnly.value &&
+      key === "b2-metric" &&
+      Object.keys(answer.value).length === 0
+    )
+      edit({
+        numerator: "completed_count",
+        denominator: "enrolled_count",
+        baselineStartWeek: 1,
+        baselineEndWeek: 6,
+        comparisonStartWeek: 7,
+        comparisonEndWeek: 12,
+      });
+  }
+  function contextMatchesRun(context: BaActionContext, current: Run) {
+    return Object.entries(context.sourceRevisions).every(
+      ([key, value]) =>
+        current.steps.find((item) => item.stepKey === key)?.revision === value,
+    );
+  }
+  async function reloadBaContext() {
+    if (
+      !run.value ||
+      selectedStep.value !== "b6-action" ||
+      baContextLoading.value
+    )
+      return;
+    const issuedAt = generation,
+      selectedAt = selectionGeneration;
+    baContextLoading.value = true;
+    baContextConfirmed.value = false;
+    try {
+      // Do not call select/reloadServer: an incomplete or offline local plan must
+      // survive a context refresh. Only replace the explicitly requested context.
+      const next = await request<Step>(
+        `${base}/${run.value.runId}/steps/b6-action`,
+      );
+      const current = await request<Run>(`${base}/${run.value.runId}`);
+      if (issuedAt !== generation || selectedAt !== selectionGeneration) return;
+      if (
+        !next.baActionContext ||
+        !contextMatchesRun(next.baActionContext, current)
+      )
+        throw new ApiError(409, "STEP_SOURCE_REVISION_CONFLICT");
+      step.value!.baActionContext = clone(next.baActionContext);
+      step.value!.readOnly = next.readOnly;
+      run.value = current;
+      baContextStale.value = false;
+      error.value = "";
+    } catch (cause) {
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        await handle(cause);
+    } finally {
+      if (issuedAt === generation && selectedAt === selectionGeneration)
+        baContextLoading.value = false;
+    }
+  }
+  function confirmBaContext() {
+    if (
+      baActionContext.value &&
+      run.value &&
+      contextMatchesRun(baActionContext.value, run.value) &&
+      !baContextStale.value &&
+      !baContextLoading.value
+    )
+      baContextConfirmed.value = true;
   }
   function edit(next: Answer) {
     if (readOnly.value) return;
@@ -706,6 +825,13 @@ export const useWorkspace = defineStore("workspace", () => {
     const previous = run.value;
     run.value = next;
     if (
+      baActionContext.value &&
+      !contextMatchesRun(baActionContext.value, next)
+    ) {
+      baContextStale.value = true;
+      baContextConfirmed.value = false;
+    }
+    if (
       step.value &&
       !step.value.definition.dependencies.every(
         (key) =>
@@ -743,6 +869,9 @@ export const useWorkspace = defineStore("workspace", () => {
         "ds-profile",
         "ds-relationship",
         "ds-stratify",
+        "ba-metric",
+        "ba-funnel",
+        "ba-segments",
       ].includes(step.value.definition.operationKey)
     ) {
       error.value = "此版本的执行适配器尚未开放，不会运行未审核操作。";
@@ -757,7 +886,9 @@ export const useWorkspace = defineStore("workspace", () => {
       selectedAt = selectionGeneration;
     try {
       if (
-        step.value!.definition.operationKey === "ai-evaluate" &&
+        ["ai-evaluate", "ba-funnel"].includes(
+          step.value!.definition.operationKey || "",
+        ) &&
         step.value!.revision === 0 &&
         !dirty.value
       )
@@ -769,8 +900,11 @@ export const useWorkspace = defineStore("workspace", () => {
         selectedAt !== selectionGeneration
       )
         return;
-      if (step.value!.definition.operationKey?.startsWith("ds-")) {
-        const operationKey = step.value!.definition.operationKey as DsOperation;
+      if (/^(ds-|ba-)/.test(step.value!.definition.operationKey || "")) {
+        const isBa = step.value!.definition.operationKey!.startsWith("ba-");
+        const operationKey = step.value!.definition.operationKey as
+          | DsOperation
+          | BaOperation;
         const operation = manifest.value!.operations.find(
           (value) => value.operationKey === operationKey,
         );
@@ -783,7 +917,8 @@ export const useWorkspace = defineStore("workspace", () => {
           const value = step.value!.response[binding.sourceField];
           if (value !== undefined) parameters[binding.parameterKey] = value;
         }
-        await loadAssets(["learner-activity"]);
+        const datasetKey = isBa ? "weekly-funnel" : "learner-activity";
+        await loadAssets([datasetKey]);
         if (
           controller.signal.aborted ||
           issuedAt !== generation ||
@@ -791,17 +926,25 @@ export const useWorkspace = defineStore("workspace", () => {
         )
           return;
         const dataset = manifest.value!.assets.find(
-          (value) => value.assetKey === "learner-activity",
+          (value) => value.assetKey === datasetKey,
         );
-        if (!dataset || !dsRows.value)
+        if (!dataset || !(isBa ? baRows.value : dsRows.value))
           throw new Error("公开数据未就绪，请重新读取本步骤。");
-        const local = await executeDs(
-          operationKey,
-          dsRows.value,
-          parameters as unknown as DsParameters,
-          dataset.sha256,
-          controller.signal,
-        );
+        const local = isBa
+          ? await executeBa(
+              operationKey as BaOperation,
+              baRows.value!,
+              parameters as unknown as ParametersByOperation[BaOperation],
+              dataset.sha256,
+              controller.signal,
+            )
+          : await executeDs(
+              operationKey as DsOperation,
+              dsRows.value!,
+              parameters as unknown as DsParameters,
+              dataset.sha256,
+              controller.signal,
+            );
         if (
           controller.signal.aborted ||
           issuedAt !== generation ||
@@ -811,9 +954,13 @@ export const useWorkspace = defineStore("workspace", () => {
         if (local.status !== "SUCCESS" || !local.result) {
           if (local.code === "DS_INPUT_INVALID")
             throw new ApiError(422, "DS_PARAMETERS_INVALID");
+          if (local.code === "BA_PARAMETERS_INVALID")
+            throw new ApiError(422, "BA_PARAMETERS_INVALID");
+          if (local.code === "BA_DATA_INVALID")
+            throw new ApiError(503, "CONTENT_INTEGRITY_FAILED");
           throw new Error(local.code || "WORKER_FAILURE");
         }
-        localEngine.value = "ds-stats-v1 · 隔离 Worker 预览 · 服务端复算";
+        localEngine.value = `${isBa ? "ba-metrics-v1" : "ds-stats-v1"} · 隔离 Worker 预览 · 服务端复算`;
         const body = {
           operationKey,
           inputRevision,
@@ -949,11 +1096,34 @@ export const useWorkspace = defineStore("workspace", () => {
   }
   async function complete() {
     if (busy.value || !run.value || !selectionReady.value) return;
+    if (baActionBlocked.value) {
+      error.value = "请重新读取当前依据并确认，方案仍保留。";
+      return;
+    }
+    const confirmedSources =
+      selectedStep.value === "b6-action"
+        ? clone(orderedSources(baActionContext.value!.sourceRevisions))
+        : undefined;
     busy.value = true;
     const issuedAt = generation;
     error.value = "";
     try {
       if (!(await flush()) || issuedAt !== generation) return;
+      if (confirmedSources) {
+        if (
+          baActionBlocked.value ||
+          JSON.stringify(confirmedSources) !==
+            JSON.stringify(
+              orderedSources(baActionContext.value!.sourceRevisions),
+            )
+        )
+          return;
+        const issue = actionIssue(answer.value, baActionContext.value);
+        if (issue) {
+          error.value = issue;
+          return;
+        }
+      }
       if (reflectionMode.value) {
         const body = {
           expectedRevision: reflection.value!.revision,
@@ -966,7 +1136,12 @@ export const useWorkspace = defineStore("workspace", () => {
         );
         if (reflection.value) reflection.value.readOnly = true;
       } else {
-        const body = { expectedRevision: step.value!.revision };
+        const body = {
+          expectedRevision: step.value!.revision,
+          ...(confirmedSources
+            ? { expectedSourceRevisions: confirmedSources }
+            : {}),
+        };
         run.value = await request<Run>(
           `${base}/${run.value.runId}/steps/${step.value!.stepKey}/complete`,
           {
@@ -1089,6 +1264,18 @@ export const useWorkspace = defineStore("workspace", () => {
     dsRows,
     dsDictionary,
     dsPython,
+    baResult,
+    baRows,
+    baDictionary,
+    baBrief,
+    baSql,
+    baActionContext,
+    baContextStale,
+    baContextConfirmed,
+    baContextLoading,
+    baActionBlocked,
+    reloadBaContext,
+    confirmBaContext,
     bindingConfiguration,
     practiceResult,
     practiceStale,

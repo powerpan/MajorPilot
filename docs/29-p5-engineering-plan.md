@@ -1,6 +1,6 @@
 # P5 Business Analytics 实施接缝
 
-> 2026-09-21：P4 验收期间的设计准备，不代表 P5 已实现。依据用户离线自主决策授权、[任务设计](./09-three-major-task-designs.md)与[实施路线](./16-implementation-roadmap-and-traceability.md)确定。P4 工程提交后实施，仍不越过人工审核或公开部署门禁。
+> 2026-09-21：P4工程提交8b9d616推送核对后开始实施，P5本地工程验收现已通过，具体测试及Git交付见[交付记录](./23-p2-to-p6-delivery-ledger.md#8-p5-实施与工程验收)。依据用户离线自主决策授权、[任务设计](./09-three-major-task-designs.md)与[实施路线](./16-implementation-roadmap-and-traceability.md)确定，仍不越过人工审核或公开部署门禁。
 
 ## 1. 核心体验与复用边界
 

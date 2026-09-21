@@ -12,7 +12,7 @@ final class ExecutionBindings {
     private final RunService runs;
     ExecutionBindings(RunService runs){this.runs=runs;}
     Bound resolve(Row run,JsonNode operation,JsonNode ownResponse){
-        var db=runs.store();var manifest=runs.version(run).manifest();boolean v3=manifest.path("schemaVersion").asText().equals("task-manifest-v3");
+        var db=runs.store();var manifest=runs.version(run).manifest();boolean v3=savedBindings(manifest);
         var parameters=db.mapper().createObjectNode();var ancestors=new ArrayList<RunDtos.InputBinding>();var sources=new TreeMap<String,Long>();
         for(var binding:operation.path("inputBindings")){
             String source=binding.path("sourceStepKey").asText(),field=binding.path("sourceField").asText(),parameter=binding.path("parameterKey").asText();
@@ -35,6 +35,7 @@ final class ExecutionBindings {
         }
         return new Bound(parameters,List.copyOf(ancestors),Collections.unmodifiableMap(sources));
     }
+    static boolean savedBindings(JsonNode manifest){return Set.of("task-manifest-v3","task-manifest-v4").contains(manifest.path("schemaVersion").asText());}
     static boolean optional(JsonNode schema,String field){if(!schema.path("properties").has(field))return false;for(var required:schema.path("required"))if(required.asText().equals(field))return false;return true;}
     static boolean isAncestor(JsonNode steps,String step,String candidate){
         if(step.equals(candidate))return false;var byKey=new HashMap<String,JsonNode>();for(var definition:steps)byKey.put(definition.path("stepKey").asText(),definition);

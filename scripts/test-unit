@@ -5,9 +5,12 @@ data/tools/node/bin/node --test scripts/env.test.mjs scripts/infra.test.mjs scri
 data/tools/node/bin/node docs/validation/check-design.mjs
 data/tools/node/bin/node scripts/generate-ai-content.mjs --check
 data/tools/node/bin/node scripts/generate-learning-content.mjs --check
+data/tools/node/bin/node scripts/generate-ba-content.mjs --check
 data/tools/node/bin/node executor/build-classifier.mjs
 data/tools/node/bin/node executor/build-ds.mjs
-data/tools/node/bin/node --test contracts/tests/content.test.mjs contracts/tests/p2-contracts.test.mjs contracts/tests/p3-contracts.test.mjs contracts/tests/p4-contracts.test.mjs contracts/tests/classifier.test.mjs contracts/tests/ds*.mjs
-data/tools/node/bin/node --test student-web/test/workspace-state.test.mjs student-web/test/ds-display.test.mjs student-web/test/execution-transport.test.mjs
+data/tools/node/bin/node executor/build-ba.mjs
+data/tools/node/bin/node contracts/sync-p5.mjs
+data/tools/node/bin/node --test contracts/tests/content.test.mjs contracts/tests/p2-contracts.test.mjs contracts/tests/p3-contracts.test.mjs contracts/tests/p4-contracts.test.mjs contracts/tests/p5-contracts.test.mjs contracts/tests/classifier.test.mjs contracts/tests/ds*.mjs contracts/tests/ba*.mjs
+data/tools/node/bin/node --test student-web/test/workspace-state.test.mjs student-web/test/ds-display.test.mjs student-web/test/ba*.test.mjs student-web/test/execution-transport.test.mjs
 cd backend
 JAVA_HOME="${MP_JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}" MAVEN_USER_HOME="../data/maven-user" ./mvnw -Dmaven.repo.local=../.local/m2 test

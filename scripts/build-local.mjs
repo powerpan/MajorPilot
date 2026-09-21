@@ -11,5 +11,6 @@ for (const name of ['admin-web', 'student-web', 'contracts', 'executor']) {
 }
 execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-classifier.mjs`, '--write'], { cwd: ROOT, env, stdio: 'inherit' });
 execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-ds.mjs`, '--write'], { cwd: ROOT, env, stdio: 'inherit' });
+execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-ba.mjs`, '--write'], { cwd: ROOT, env, stdio: 'inherit' });
 execFileSync(`${TOOL}/node/bin/node`, [`${TOOL}/npm/bin/npm-cli.js`, 'ci', '--cache', `${ROOT}/data/npm-cache`, '--no-audit', '--no-fund'], { cwd: `${ROOT}/tests/e2e`, env, stdio: 'inherit' });
 execFileSync(`${ROOT}/backend/mvnw`, [`-Dmaven.repo.local=${ROOT}/.local/m2`, '-DskipTests', 'package'], { cwd: `${ROOT}/backend`, env: { ...env, MAVEN_USER_HOME: `${ROOT}/data/maven-user` }, stdio: 'inherit' });

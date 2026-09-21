@@ -1,0 +1,1582 @@
+{
+  "schemaVersion": "ba-golden-v1",
+  "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+  "cases": [
+    {
+      "name": "metric-overall",
+      "operationKey": "ba-metric",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "enrolled_count"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-metric",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "baseline": {
+          "numeratorCount": 100,
+          "denominatorCount": 180,
+          "rate": 0.555556
+        },
+        "comparison": {
+          "numeratorCount": 58,
+          "denominatorCount": 179,
+          "rate": 0.324022
+        },
+        "deltaPercentagePoints": -23.153321,
+        "relativeChange": -0.41676,
+        "trend": [
+          {
+            "week": 1,
+            "numeratorCount": 21,
+            "denominatorCount": 30,
+            "rate": 0.7
+          },
+          {
+            "week": 2,
+            "numeratorCount": 17,
+            "denominatorCount": 30,
+            "rate": 0.566667
+          },
+          {
+            "week": 3,
+            "numeratorCount": 16,
+            "denominatorCount": 30,
+            "rate": 0.533333
+          },
+          {
+            "week": 4,
+            "numeratorCount": 13,
+            "denominatorCount": 30,
+            "rate": 0.433333
+          },
+          {
+            "week": 5,
+            "numeratorCount": 14,
+            "denominatorCount": 30,
+            "rate": 0.466667
+          },
+          {
+            "week": 6,
+            "numeratorCount": 19,
+            "denominatorCount": 30,
+            "rate": 0.633333
+          },
+          {
+            "week": 7,
+            "numeratorCount": 8,
+            "denominatorCount": 30,
+            "rate": 0.266667
+          },
+          {
+            "week": 8,
+            "numeratorCount": 11,
+            "denominatorCount": 30,
+            "rate": 0.366667
+          },
+          {
+            "week": 9,
+            "numeratorCount": 13,
+            "denominatorCount": 30,
+            "rate": 0.433333
+          },
+          {
+            "week": 10,
+            "numeratorCount": 11,
+            "denominatorCount": 30,
+            "rate": 0.366667
+          },
+          {
+            "week": 11,
+            "numeratorCount": 8,
+            "denominatorCount": 30,
+            "rate": 0.266667
+          },
+          {
+            "week": 12,
+            "numeratorCount": 7,
+            "denominatorCount": 29,
+            "rate": 0.241379
+          }
+        ]
+      }
+    },
+    {
+      "name": "metric-starter",
+      "operationKey": "ba-metric",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "first_lesson_count"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-metric",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "first_lesson_count",
+        "baseline": {
+          "numeratorCount": 100,
+          "denominatorCount": 166,
+          "rate": 0.60241
+        },
+        "comparison": {
+          "numeratorCount": 58,
+          "denominatorCount": 142,
+          "rate": 0.408451
+        },
+        "deltaPercentagePoints": -19.395893,
+        "relativeChange": -0.321972,
+        "trend": [
+          {
+            "week": 1,
+            "numeratorCount": 21,
+            "denominatorCount": 29,
+            "rate": 0.724138
+          },
+          {
+            "week": 2,
+            "numeratorCount": 17,
+            "denominatorCount": 28,
+            "rate": 0.607143
+          },
+          {
+            "week": 3,
+            "numeratorCount": 16,
+            "denominatorCount": 27,
+            "rate": 0.592593
+          },
+          {
+            "week": 4,
+            "numeratorCount": 13,
+            "denominatorCount": 26,
+            "rate": 0.5
+          },
+          {
+            "week": 5,
+            "numeratorCount": 14,
+            "denominatorCount": 27,
+            "rate": 0.518519
+          },
+          {
+            "week": 6,
+            "numeratorCount": 19,
+            "denominatorCount": 29,
+            "rate": 0.655172
+          },
+          {
+            "week": 7,
+            "numeratorCount": 8,
+            "denominatorCount": 25,
+            "rate": 0.32
+          },
+          {
+            "week": 8,
+            "numeratorCount": 11,
+            "denominatorCount": 22,
+            "rate": 0.5
+          },
+          {
+            "week": 9,
+            "numeratorCount": 13,
+            "denominatorCount": 25,
+            "rate": 0.52
+          },
+          {
+            "week": 10,
+            "numeratorCount": 11,
+            "denominatorCount": 22,
+            "rate": 0.5
+          },
+          {
+            "week": 11,
+            "numeratorCount": 8,
+            "denominatorCount": 23,
+            "rate": 0.347826
+          },
+          {
+            "week": 12,
+            "numeratorCount": 7,
+            "denominatorCount": 25,
+            "rate": 0.28
+          }
+        ]
+      }
+    },
+    {
+      "name": "metric-narrow",
+      "operationKey": "ba-metric",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 1,
+        "comparisonStartWeek": 12,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "enrolled_count"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-metric",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 1
+          },
+          "comparison": {
+            "startWeek": 12,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "baseline": {
+          "numeratorCount": 21,
+          "denominatorCount": 30,
+          "rate": 0.7
+        },
+        "comparison": {
+          "numeratorCount": 7,
+          "denominatorCount": 29,
+          "rate": 0.241379
+        },
+        "deltaPercentagePoints": -45.862069,
+        "relativeChange": -0.655172,
+        "trend": [
+          {
+            "week": 1,
+            "numeratorCount": 21,
+            "denominatorCount": 30,
+            "rate": 0.7
+          },
+          {
+            "week": 2,
+            "numeratorCount": 17,
+            "denominatorCount": 30,
+            "rate": 0.566667
+          },
+          {
+            "week": 3,
+            "numeratorCount": 16,
+            "denominatorCount": 30,
+            "rate": 0.533333
+          },
+          {
+            "week": 4,
+            "numeratorCount": 13,
+            "denominatorCount": 30,
+            "rate": 0.433333
+          },
+          {
+            "week": 5,
+            "numeratorCount": 14,
+            "denominatorCount": 30,
+            "rate": 0.466667
+          },
+          {
+            "week": 6,
+            "numeratorCount": 19,
+            "denominatorCount": 30,
+            "rate": 0.633333
+          },
+          {
+            "week": 7,
+            "numeratorCount": 8,
+            "denominatorCount": 30,
+            "rate": 0.266667
+          },
+          {
+            "week": 8,
+            "numeratorCount": 11,
+            "denominatorCount": 30,
+            "rate": 0.366667
+          },
+          {
+            "week": 9,
+            "numeratorCount": 13,
+            "denominatorCount": 30,
+            "rate": 0.433333
+          },
+          {
+            "week": 10,
+            "numeratorCount": 11,
+            "denominatorCount": 30,
+            "rate": 0.366667
+          },
+          {
+            "week": 11,
+            "numeratorCount": 8,
+            "denominatorCount": 30,
+            "rate": 0.266667
+          },
+          {
+            "week": 12,
+            "numeratorCount": 7,
+            "denominatorCount": 29,
+            "rate": 0.241379
+          }
+        ]
+      }
+    },
+    {
+      "name": "funnel-default",
+      "operationKey": "ba-funnel",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-funnel",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "stages": [
+          {
+            "stageKey": "enrolled_count",
+            "baseline": {
+              "count": 180,
+              "cumulativeRate": 1
+            },
+            "comparison": {
+              "count": 179,
+              "cumulativeRate": 1
+            }
+          },
+          {
+            "stageKey": "first_lesson_count",
+            "baseline": {
+              "count": 166,
+              "cumulativeRate": 0.922222
+            },
+            "comparison": {
+              "count": 142,
+              "cumulativeRate": 0.793296
+            }
+          },
+          {
+            "stageKey": "week_one_active_count",
+            "baseline": {
+              "count": 146,
+              "cumulativeRate": 0.811111
+            },
+            "comparison": {
+              "count": 104,
+              "cumulativeRate": 0.581006
+            }
+          },
+          {
+            "stageKey": "assignment_started_count",
+            "baseline": {
+              "count": 137,
+              "cumulativeRate": 0.761111
+            },
+            "comparison": {
+              "count": 94,
+              "cumulativeRate": 0.52514
+            }
+          },
+          {
+            "stageKey": "assignment_submitted_count",
+            "baseline": {
+              "count": 126,
+              "cumulativeRate": 0.7
+            },
+            "comparison": {
+              "count": 85,
+              "cumulativeRate": 0.47486
+            }
+          },
+          {
+            "stageKey": "completed_count",
+            "baseline": {
+              "count": 100,
+              "cumulativeRate": 0.555556
+            },
+            "comparison": {
+              "count": 58,
+              "cumulativeRate": 0.324022
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "transitionKey": "ENROLLED_TO_FIRST_LESSON",
+            "fromStageKey": "enrolled_count",
+            "toStageKey": "first_lesson_count",
+            "baseline": {
+              "numeratorCount": 166,
+              "denominatorCount": 180,
+              "conversionRate": 0.922222,
+              "lossCount": 14
+            },
+            "comparison": {
+              "numeratorCount": 142,
+              "denominatorCount": 179,
+              "conversionRate": 0.793296,
+              "lossCount": 37
+            },
+            "deltaPercentagePoints": -12.892613
+          },
+          {
+            "transitionKey": "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+            "fromStageKey": "first_lesson_count",
+            "toStageKey": "week_one_active_count",
+            "baseline": {
+              "numeratorCount": 146,
+              "denominatorCount": 166,
+              "conversionRate": 0.879518,
+              "lossCount": 20
+            },
+            "comparison": {
+              "numeratorCount": 104,
+              "denominatorCount": 142,
+              "conversionRate": 0.732394,
+              "lossCount": 38
+            },
+            "deltaPercentagePoints": -14.712371
+          },
+          {
+            "transitionKey": "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+            "fromStageKey": "week_one_active_count",
+            "toStageKey": "assignment_started_count",
+            "baseline": {
+              "numeratorCount": 137,
+              "denominatorCount": 146,
+              "conversionRate": 0.938356,
+              "lossCount": 9
+            },
+            "comparison": {
+              "numeratorCount": 94,
+              "denominatorCount": 104,
+              "conversionRate": 0.903846,
+              "lossCount": 10
+            },
+            "deltaPercentagePoints": -3.451001
+          },
+          {
+            "transitionKey": "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+            "fromStageKey": "assignment_started_count",
+            "toStageKey": "assignment_submitted_count",
+            "baseline": {
+              "numeratorCount": 126,
+              "denominatorCount": 137,
+              "conversionRate": 0.919708,
+              "lossCount": 11
+            },
+            "comparison": {
+              "numeratorCount": 85,
+              "denominatorCount": 94,
+              "conversionRate": 0.904255,
+              "lossCount": 9
+            },
+            "deltaPercentagePoints": -1.545271
+          },
+          {
+            "transitionKey": "ASSIGNMENT_SUBMITTED_TO_COMPLETED",
+            "fromStageKey": "assignment_submitted_count",
+            "toStageKey": "completed_count",
+            "baseline": {
+              "numeratorCount": 100,
+              "denominatorCount": 126,
+              "conversionRate": 0.793651,
+              "lossCount": 26
+            },
+            "comparison": {
+              "numeratorCount": 58,
+              "denominatorCount": 85,
+              "conversionRate": 0.682353,
+              "lossCount": 27
+            },
+            "deltaPercentagePoints": -11.129785
+          }
+        ]
+      }
+    },
+    {
+      "name": "funnel-narrow",
+      "operationKey": "ba-funnel",
+      "parameters": {
+        "baselineStartWeek": 2,
+        "baselineEndWeek": 3,
+        "comparisonStartWeek": 9,
+        "comparisonEndWeek": 10
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-funnel",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 2,
+            "endWeek": 3
+          },
+          "comparison": {
+            "startWeek": 9,
+            "endWeek": 10
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "stages": [
+          {
+            "stageKey": "enrolled_count",
+            "baseline": {
+              "count": 60,
+              "cumulativeRate": 1
+            },
+            "comparison": {
+              "count": 60,
+              "cumulativeRate": 1
+            }
+          },
+          {
+            "stageKey": "first_lesson_count",
+            "baseline": {
+              "count": 55,
+              "cumulativeRate": 0.916667
+            },
+            "comparison": {
+              "count": 47,
+              "cumulativeRate": 0.783333
+            }
+          },
+          {
+            "stageKey": "week_one_active_count",
+            "baseline": {
+              "count": 46,
+              "cumulativeRate": 0.766667
+            },
+            "comparison": {
+              "count": 33,
+              "cumulativeRate": 0.55
+            }
+          },
+          {
+            "stageKey": "assignment_started_count",
+            "baseline": {
+              "count": 43,
+              "cumulativeRate": 0.716667
+            },
+            "comparison": {
+              "count": 32,
+              "cumulativeRate": 0.533333
+            }
+          },
+          {
+            "stageKey": "assignment_submitted_count",
+            "baseline": {
+              "count": 41,
+              "cumulativeRate": 0.683333
+            },
+            "comparison": {
+              "count": 31,
+              "cumulativeRate": 0.516667
+            }
+          },
+          {
+            "stageKey": "completed_count",
+            "baseline": {
+              "count": 33,
+              "cumulativeRate": 0.55
+            },
+            "comparison": {
+              "count": 24,
+              "cumulativeRate": 0.4
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "transitionKey": "ENROLLED_TO_FIRST_LESSON",
+            "fromStageKey": "enrolled_count",
+            "toStageKey": "first_lesson_count",
+            "baseline": {
+              "numeratorCount": 55,
+              "denominatorCount": 60,
+              "conversionRate": 0.916667,
+              "lossCount": 5
+            },
+            "comparison": {
+              "numeratorCount": 47,
+              "denominatorCount": 60,
+              "conversionRate": 0.783333,
+              "lossCount": 13
+            },
+            "deltaPercentagePoints": -13.333333
+          },
+          {
+            "transitionKey": "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+            "fromStageKey": "first_lesson_count",
+            "toStageKey": "week_one_active_count",
+            "baseline": {
+              "numeratorCount": 46,
+              "denominatorCount": 55,
+              "conversionRate": 0.836364,
+              "lossCount": 9
+            },
+            "comparison": {
+              "numeratorCount": 33,
+              "denominatorCount": 47,
+              "conversionRate": 0.702128,
+              "lossCount": 14
+            },
+            "deltaPercentagePoints": -13.423598
+          },
+          {
+            "transitionKey": "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+            "fromStageKey": "week_one_active_count",
+            "toStageKey": "assignment_started_count",
+            "baseline": {
+              "numeratorCount": 43,
+              "denominatorCount": 46,
+              "conversionRate": 0.934783,
+              "lossCount": 3
+            },
+            "comparison": {
+              "numeratorCount": 32,
+              "denominatorCount": 33,
+              "conversionRate": 0.969697,
+              "lossCount": 1
+            },
+            "deltaPercentagePoints": 3.491436
+          },
+          {
+            "transitionKey": "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+            "fromStageKey": "assignment_started_count",
+            "toStageKey": "assignment_submitted_count",
+            "baseline": {
+              "numeratorCount": 41,
+              "denominatorCount": 43,
+              "conversionRate": 0.953488,
+              "lossCount": 2
+            },
+            "comparison": {
+              "numeratorCount": 31,
+              "denominatorCount": 32,
+              "conversionRate": 0.96875,
+              "lossCount": 1
+            },
+            "deltaPercentagePoints": 1.526163
+          },
+          {
+            "transitionKey": "ASSIGNMENT_SUBMITTED_TO_COMPLETED",
+            "fromStageKey": "assignment_submitted_count",
+            "toStageKey": "completed_count",
+            "baseline": {
+              "numeratorCount": 33,
+              "denominatorCount": 41,
+              "conversionRate": 0.804878,
+              "lossCount": 8
+            },
+            "comparison": {
+              "numeratorCount": 24,
+              "denominatorCount": 31,
+              "conversionRate": 0.774194,
+              "lossCount": 7
+            },
+            "deltaPercentagePoints": -3.06845
+          }
+        ]
+      }
+    },
+    {
+      "name": "segments-1",
+      "operationKey": "ba-segments",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "course_track",
+        "focusTransitionKey": "ENROLLED_TO_FIRST_LESSON"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-segments",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "course_track",
+        "focusTransitionKey": "ENROLLED_TO_FIRST_LESSON",
+        "segments": [
+          {
+            "segmentKey": "FOUNDATIONS",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 127,
+                "first_lesson_count": 114,
+                "week_one_active_count": 100,
+                "assignment_started_count": 95,
+                "assignment_submitted_count": 87,
+                "completed_count": 73
+              },
+              "enrolledShare": 0.705556,
+              "metric": {
+                "numeratorCount": 73,
+                "denominatorCount": 127,
+                "rate": 0.574803
+              },
+              "focusTransition": {
+                "numeratorCount": 114,
+                "denominatorCount": 127,
+                "conversionRate": 0.897638,
+                "lossCount": 13
+              },
+              "supportContactCount": 197,
+              "supportContactsPer100Enrolled": 155.11811
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 65,
+                "first_lesson_count": 49,
+                "week_one_active_count": 35,
+                "assignment_started_count": 33,
+                "assignment_submitted_count": 31,
+                "completed_count": 25
+              },
+              "enrolledShare": 0.363128,
+              "metric": {
+                "numeratorCount": 25,
+                "denominatorCount": 65,
+                "rate": 0.384615
+              },
+              "focusTransition": {
+                "numeratorCount": 49,
+                "denominatorCount": 65,
+                "conversionRate": 0.753846,
+                "lossCount": 16
+              },
+              "supportContactCount": 99,
+              "supportContactsPer100Enrolled": 152.307692
+            },
+            "metricDeltaPercentagePoints": -19.018776,
+            "transitionDeltaPercentagePoints": -14.379164
+          },
+          {
+            "segmentKey": "APPLIED",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 53,
+                "first_lesson_count": 52,
+                "week_one_active_count": 46,
+                "assignment_started_count": 42,
+                "assignment_submitted_count": 39,
+                "completed_count": 27
+              },
+              "enrolledShare": 0.294444,
+              "metric": {
+                "numeratorCount": 27,
+                "denominatorCount": 53,
+                "rate": 0.509434
+              },
+              "focusTransition": {
+                "numeratorCount": 52,
+                "denominatorCount": 53,
+                "conversionRate": 0.981132,
+                "lossCount": 1
+              },
+              "supportContactCount": 86,
+              "supportContactsPer100Enrolled": 162.264151
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 114,
+                "first_lesson_count": 93,
+                "week_one_active_count": 69,
+                "assignment_started_count": 61,
+                "assignment_submitted_count": 54,
+                "completed_count": 33
+              },
+              "enrolledShare": 0.636872,
+              "metric": {
+                "numeratorCount": 33,
+                "denominatorCount": 114,
+                "rate": 0.289474
+              },
+              "focusTransition": {
+                "numeratorCount": 93,
+                "denominatorCount": 114,
+                "conversionRate": 0.815789,
+                "lossCount": 21
+              },
+              "supportContactCount": 170,
+              "supportContactsPer100Enrolled": 149.122807
+            },
+            "metricDeltaPercentagePoints": -21.996028,
+            "transitionDeltaPercentagePoints": -16.53426
+          }
+        ]
+      }
+    },
+    {
+      "name": "segments-2",
+      "operationKey": "ba-segments",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "signup_source",
+        "focusTransitionKey": "FIRST_LESSON_TO_WEEK_ONE_ACTIVE"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-segments",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "signup_source",
+        "focusTransitionKey": "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+        "segments": [
+          {
+            "segmentKey": "ORGANIC",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 88,
+                "first_lesson_count": 82,
+                "week_one_active_count": 71,
+                "assignment_started_count": 65,
+                "assignment_submitted_count": 58,
+                "completed_count": 47
+              },
+              "enrolledShare": 0.488889,
+              "metric": {
+                "numeratorCount": 47,
+                "denominatorCount": 88,
+                "rate": 0.534091
+              },
+              "focusTransition": {
+                "numeratorCount": 71,
+                "denominatorCount": 82,
+                "conversionRate": 0.865854,
+                "lossCount": 11
+              },
+              "supportContactCount": 133,
+              "supportContactsPer100Enrolled": 151.136364
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 50,
+                "first_lesson_count": 39,
+                "week_one_active_count": 29,
+                "assignment_started_count": 26,
+                "assignment_submitted_count": 24,
+                "completed_count": 17
+              },
+              "enrolledShare": 0.27933,
+              "metric": {
+                "numeratorCount": 17,
+                "denominatorCount": 50,
+                "rate": 0.34
+              },
+              "focusTransition": {
+                "numeratorCount": 29,
+                "denominatorCount": 39,
+                "conversionRate": 0.74359,
+                "lossCount": 10
+              },
+              "supportContactCount": 85,
+              "supportContactsPer100Enrolled": 170
+            },
+            "metricDeltaPercentagePoints": -19.409091,
+            "transitionDeltaPercentagePoints": -12.226391
+          },
+          {
+            "segmentKey": "PARTNER",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 47,
+                "first_lesson_count": 44,
+                "week_one_active_count": 38,
+                "assignment_started_count": 36,
+                "assignment_submitted_count": 34,
+                "completed_count": 27
+              },
+              "enrolledShare": 0.261111,
+              "metric": {
+                "numeratorCount": 27,
+                "denominatorCount": 47,
+                "rate": 0.574468
+              },
+              "focusTransition": {
+                "numeratorCount": 38,
+                "denominatorCount": 44,
+                "conversionRate": 0.863636,
+                "lossCount": 6
+              },
+              "supportContactCount": 74,
+              "supportContactsPer100Enrolled": 157.446809
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 34,
+                "first_lesson_count": 29,
+                "week_one_active_count": 24,
+                "assignment_started_count": 22,
+                "assignment_submitted_count": 20,
+                "completed_count": 13
+              },
+              "enrolledShare": 0.189944,
+              "metric": {
+                "numeratorCount": 13,
+                "denominatorCount": 34,
+                "rate": 0.382353
+              },
+              "focusTransition": {
+                "numeratorCount": 24,
+                "denominatorCount": 29,
+                "conversionRate": 0.827586,
+                "lossCount": 5
+              },
+              "supportContactCount": 54,
+              "supportContactsPer100Enrolled": 158.823529
+            },
+            "metricDeltaPercentagePoints": -19.211514,
+            "transitionDeltaPercentagePoints": -3.605016
+          },
+          {
+            "segmentKey": "CAMPAIGN",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 45,
+                "first_lesson_count": 40,
+                "week_one_active_count": 37,
+                "assignment_started_count": 36,
+                "assignment_submitted_count": 34,
+                "completed_count": 26
+              },
+              "enrolledShare": 0.25,
+              "metric": {
+                "numeratorCount": 26,
+                "denominatorCount": 45,
+                "rate": 0.577778
+              },
+              "focusTransition": {
+                "numeratorCount": 37,
+                "denominatorCount": 40,
+                "conversionRate": 0.925,
+                "lossCount": 3
+              },
+              "supportContactCount": 76,
+              "supportContactsPer100Enrolled": 168.888889
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 95,
+                "first_lesson_count": 74,
+                "week_one_active_count": 51,
+                "assignment_started_count": 46,
+                "assignment_submitted_count": 41,
+                "completed_count": 28
+              },
+              "enrolledShare": 0.530726,
+              "metric": {
+                "numeratorCount": 28,
+                "denominatorCount": 95,
+                "rate": 0.294737
+              },
+              "focusTransition": {
+                "numeratorCount": 51,
+                "denominatorCount": 74,
+                "conversionRate": 0.689189,
+                "lossCount": 23
+              },
+              "supportContactCount": 130,
+              "supportContactsPer100Enrolled": 136.842105
+            },
+            "metricDeltaPercentagePoints": -28.304094,
+            "transitionDeltaPercentagePoints": -23.581081
+          }
+        ]
+      }
+    },
+    {
+      "name": "segments-3",
+      "operationKey": "ba-segments",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "course_track",
+        "focusTransitionKey": "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-segments",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "course_track",
+        "focusTransitionKey": "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+        "segments": [
+          {
+            "segmentKey": "FOUNDATIONS",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 127,
+                "first_lesson_count": 114,
+                "week_one_active_count": 100,
+                "assignment_started_count": 95,
+                "assignment_submitted_count": 87,
+                "completed_count": 73
+              },
+              "enrolledShare": 0.705556,
+              "metric": {
+                "numeratorCount": 73,
+                "denominatorCount": 127,
+                "rate": 0.574803
+              },
+              "focusTransition": {
+                "numeratorCount": 95,
+                "denominatorCount": 100,
+                "conversionRate": 0.95,
+                "lossCount": 5
+              },
+              "supportContactCount": 197,
+              "supportContactsPer100Enrolled": 155.11811
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 65,
+                "first_lesson_count": 49,
+                "week_one_active_count": 35,
+                "assignment_started_count": 33,
+                "assignment_submitted_count": 31,
+                "completed_count": 25
+              },
+              "enrolledShare": 0.363128,
+              "metric": {
+                "numeratorCount": 25,
+                "denominatorCount": 65,
+                "rate": 0.384615
+              },
+              "focusTransition": {
+                "numeratorCount": 33,
+                "denominatorCount": 35,
+                "conversionRate": 0.942857,
+                "lossCount": 2
+              },
+              "supportContactCount": 99,
+              "supportContactsPer100Enrolled": 152.307692
+            },
+            "metricDeltaPercentagePoints": -19.018776,
+            "transitionDeltaPercentagePoints": -0.714286
+          },
+          {
+            "segmentKey": "APPLIED",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 53,
+                "first_lesson_count": 52,
+                "week_one_active_count": 46,
+                "assignment_started_count": 42,
+                "assignment_submitted_count": 39,
+                "completed_count": 27
+              },
+              "enrolledShare": 0.294444,
+              "metric": {
+                "numeratorCount": 27,
+                "denominatorCount": 53,
+                "rate": 0.509434
+              },
+              "focusTransition": {
+                "numeratorCount": 42,
+                "denominatorCount": 46,
+                "conversionRate": 0.913043,
+                "lossCount": 4
+              },
+              "supportContactCount": 86,
+              "supportContactsPer100Enrolled": 162.264151
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 114,
+                "first_lesson_count": 93,
+                "week_one_active_count": 69,
+                "assignment_started_count": 61,
+                "assignment_submitted_count": 54,
+                "completed_count": 33
+              },
+              "enrolledShare": 0.636872,
+              "metric": {
+                "numeratorCount": 33,
+                "denominatorCount": 114,
+                "rate": 0.289474
+              },
+              "focusTransition": {
+                "numeratorCount": 61,
+                "denominatorCount": 69,
+                "conversionRate": 0.884058,
+                "lossCount": 8
+              },
+              "supportContactCount": 170,
+              "supportContactsPer100Enrolled": 149.122807
+            },
+            "metricDeltaPercentagePoints": -21.996028,
+            "transitionDeltaPercentagePoints": -2.898551
+          }
+        ]
+      }
+    },
+    {
+      "name": "segments-4",
+      "operationKey": "ba-segments",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "signup_source",
+        "focusTransitionKey": "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-segments",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "enrolled_count",
+        "segmentBy": "signup_source",
+        "focusTransitionKey": "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+        "segments": [
+          {
+            "segmentKey": "ORGANIC",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 88,
+                "first_lesson_count": 82,
+                "week_one_active_count": 71,
+                "assignment_started_count": 65,
+                "assignment_submitted_count": 58,
+                "completed_count": 47
+              },
+              "enrolledShare": 0.488889,
+              "metric": {
+                "numeratorCount": 47,
+                "denominatorCount": 88,
+                "rate": 0.534091
+              },
+              "focusTransition": {
+                "numeratorCount": 58,
+                "denominatorCount": 65,
+                "conversionRate": 0.892308,
+                "lossCount": 7
+              },
+              "supportContactCount": 133,
+              "supportContactsPer100Enrolled": 151.136364
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 50,
+                "first_lesson_count": 39,
+                "week_one_active_count": 29,
+                "assignment_started_count": 26,
+                "assignment_submitted_count": 24,
+                "completed_count": 17
+              },
+              "enrolledShare": 0.27933,
+              "metric": {
+                "numeratorCount": 17,
+                "denominatorCount": 50,
+                "rate": 0.34
+              },
+              "focusTransition": {
+                "numeratorCount": 24,
+                "denominatorCount": 26,
+                "conversionRate": 0.923077,
+                "lossCount": 2
+              },
+              "supportContactCount": 85,
+              "supportContactsPer100Enrolled": 170
+            },
+            "metricDeltaPercentagePoints": -19.409091,
+            "transitionDeltaPercentagePoints": 3.076923
+          },
+          {
+            "segmentKey": "PARTNER",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 47,
+                "first_lesson_count": 44,
+                "week_one_active_count": 38,
+                "assignment_started_count": 36,
+                "assignment_submitted_count": 34,
+                "completed_count": 27
+              },
+              "enrolledShare": 0.261111,
+              "metric": {
+                "numeratorCount": 27,
+                "denominatorCount": 47,
+                "rate": 0.574468
+              },
+              "focusTransition": {
+                "numeratorCount": 34,
+                "denominatorCount": 36,
+                "conversionRate": 0.944444,
+                "lossCount": 2
+              },
+              "supportContactCount": 74,
+              "supportContactsPer100Enrolled": 157.446809
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 34,
+                "first_lesson_count": 29,
+                "week_one_active_count": 24,
+                "assignment_started_count": 22,
+                "assignment_submitted_count": 20,
+                "completed_count": 13
+              },
+              "enrolledShare": 0.189944,
+              "metric": {
+                "numeratorCount": 13,
+                "denominatorCount": 34,
+                "rate": 0.382353
+              },
+              "focusTransition": {
+                "numeratorCount": 20,
+                "denominatorCount": 22,
+                "conversionRate": 0.909091,
+                "lossCount": 2
+              },
+              "supportContactCount": 54,
+              "supportContactsPer100Enrolled": 158.823529
+            },
+            "metricDeltaPercentagePoints": -19.211514,
+            "transitionDeltaPercentagePoints": -3.535354
+          },
+          {
+            "segmentKey": "CAMPAIGN",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 45,
+                "first_lesson_count": 40,
+                "week_one_active_count": 37,
+                "assignment_started_count": 36,
+                "assignment_submitted_count": 34,
+                "completed_count": 26
+              },
+              "enrolledShare": 0.25,
+              "metric": {
+                "numeratorCount": 26,
+                "denominatorCount": 45,
+                "rate": 0.577778
+              },
+              "focusTransition": {
+                "numeratorCount": 34,
+                "denominatorCount": 36,
+                "conversionRate": 0.944444,
+                "lossCount": 2
+              },
+              "supportContactCount": 76,
+              "supportContactsPer100Enrolled": 168.888889
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 95,
+                "first_lesson_count": 74,
+                "week_one_active_count": 51,
+                "assignment_started_count": 46,
+                "assignment_submitted_count": 41,
+                "completed_count": 28
+              },
+              "enrolledShare": 0.530726,
+              "metric": {
+                "numeratorCount": 28,
+                "denominatorCount": 95,
+                "rate": 0.294737
+              },
+              "focusTransition": {
+                "numeratorCount": 41,
+                "denominatorCount": 46,
+                "conversionRate": 0.891304,
+                "lossCount": 5
+              },
+              "supportContactCount": 130,
+              "supportContactsPer100Enrolled": 136.842105
+            },
+            "metricDeltaPercentagePoints": -28.304094,
+            "transitionDeltaPercentagePoints": -5.31401
+          }
+        ]
+      }
+    },
+    {
+      "name": "segments-5",
+      "operationKey": "ba-segments",
+      "parameters": {
+        "baselineStartWeek": 1,
+        "baselineEndWeek": 6,
+        "comparisonStartWeek": 7,
+        "comparisonEndWeek": 12,
+        "numerator": "completed_count",
+        "denominator": "first_lesson_count",
+        "segmentBy": "course_track",
+        "focusTransitionKey": "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+      },
+      "result": {
+        "schemaVersion": "ba-result-v1",
+        "operationKey": "ba-segments",
+        "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+        "windows": {
+          "baseline": {
+            "startWeek": 1,
+            "endWeek": 6
+          },
+          "comparison": {
+            "startWeek": 7,
+            "endWeek": 12
+          }
+        },
+        "observation": {
+          "windowDays": 28,
+          "cohortBasis": "ENROLLMENT_WEEK",
+          "weekOneActiveBasis": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+        },
+        "numerator": "completed_count",
+        "denominator": "first_lesson_count",
+        "segmentBy": "course_track",
+        "focusTransitionKey": "ASSIGNMENT_SUBMITTED_TO_COMPLETED",
+        "segments": [
+          {
+            "segmentKey": "FOUNDATIONS",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 127,
+                "first_lesson_count": 114,
+                "week_one_active_count": 100,
+                "assignment_started_count": 95,
+                "assignment_submitted_count": 87,
+                "completed_count": 73
+              },
+              "enrolledShare": 0.705556,
+              "metric": {
+                "numeratorCount": 73,
+                "denominatorCount": 114,
+                "rate": 0.640351
+              },
+              "focusTransition": {
+                "numeratorCount": 73,
+                "denominatorCount": 87,
+                "conversionRate": 0.83908,
+                "lossCount": 14
+              },
+              "supportContactCount": 197,
+              "supportContactsPer100Enrolled": 155.11811
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 65,
+                "first_lesson_count": 49,
+                "week_one_active_count": 35,
+                "assignment_started_count": 33,
+                "assignment_submitted_count": 31,
+                "completed_count": 25
+              },
+              "enrolledShare": 0.363128,
+              "metric": {
+                "numeratorCount": 25,
+                "denominatorCount": 49,
+                "rate": 0.510204
+              },
+              "focusTransition": {
+                "numeratorCount": 25,
+                "denominatorCount": 31,
+                "conversionRate": 0.806452,
+                "lossCount": 6
+              },
+              "supportContactCount": 99,
+              "supportContactsPer100Enrolled": 152.307692
+            },
+            "metricDeltaPercentagePoints": -13.01468,
+            "transitionDeltaPercentagePoints": -3.262885
+          },
+          {
+            "segmentKey": "APPLIED",
+            "baseline": {
+              "stageCounts": {
+                "enrolled_count": 53,
+                "first_lesson_count": 52,
+                "week_one_active_count": 46,
+                "assignment_started_count": 42,
+                "assignment_submitted_count": 39,
+                "completed_count": 27
+              },
+              "enrolledShare": 0.294444,
+              "metric": {
+                "numeratorCount": 27,
+                "denominatorCount": 52,
+                "rate": 0.519231
+              },
+              "focusTransition": {
+                "numeratorCount": 27,
+                "denominatorCount": 39,
+                "conversionRate": 0.692308,
+                "lossCount": 12
+              },
+              "supportContactCount": 86,
+              "supportContactsPer100Enrolled": 162.264151
+            },
+            "comparison": {
+              "stageCounts": {
+                "enrolled_count": 114,
+                "first_lesson_count": 93,
+                "week_one_active_count": 69,
+                "assignment_started_count": 61,
+                "assignment_submitted_count": 54,
+                "completed_count": 33
+              },
+              "enrolledShare": 0.636872,
+              "metric": {
+                "numeratorCount": 33,
+                "denominatorCount": 93,
+                "rate": 0.354839
+              },
+              "focusTransition": {
+                "numeratorCount": 33,
+                "denominatorCount": 54,
+                "conversionRate": 0.611111,
+                "lossCount": 21
+              },
+              "supportContactCount": 170,
+              "supportContactsPer100Enrolled": 149.122807
+            },
+            "metricDeltaPercentagePoints": -16.439206,
+            "transitionDeltaPercentagePoints": -8.119658
+          }
+        ]
+      }
+    }
+  ]
+}

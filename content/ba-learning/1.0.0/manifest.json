@@ -1,0 +1,1953 @@
+{
+  "schemaVersion": "task-manifest-v4",
+  "taskVersionId": "01JB1000000000000000000001",
+  "contentKind": "MAJOR",
+  "majorCode": "BUSINESS_ANALYTICS",
+  "demoKey": null,
+  "versionCode": "1.0.0",
+  "title": "商业分析：从指标变化到可检验行动",
+  "scenario": "LumenLearn希望理解成熟课程批次的完成率变化。你将定义指标、比较漏斗和群体，提出有目标、护栏与复盘方法的小范围行动。合成观察不证明因果，不预测真实收益；专业审核和目标用户计时尚待完成。",
+  "goals": [
+    "统一分子、分母和成熟观察窗口",
+    "比较漏斗与群体而不把排序当原因",
+    "区分观察、假设和未知",
+    "提出可验证、有护栏的行动方案"
+  ],
+  "estimatedMinutes": {
+    "minimum": 45,
+    "maximum": 60
+  },
+  "assets": [
+    {
+      "assetKey": "weekly-funnel",
+      "path": "ba-learning/1.0.0/weekly-funnel.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+      "byteLength": 21969
+    },
+    {
+      "assetKey": "weekly-funnel-csv",
+      "path": "ba-learning/1.0.0/weekly-funnel-csv.csv",
+      "visibility": "PUBLIC",
+      "mediaType": "text/csv",
+      "sha256": "07e580766ab15ed02071c5e4d04c14de10d0896f8425898dd943870f86ca41b7",
+      "byteLength": 2704
+    },
+    {
+      "assetKey": "source-provenance-private",
+      "path": "ba-learning/1.0.0/source-provenance-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "2941b49f3290dd06c851a5eb1763cc126777c184d3ae9c12e3cb49370d6d9f02",
+      "byteLength": 518
+    },
+    {
+      "assetKey": "data-dictionary",
+      "path": "ba-learning/1.0.0/data-dictionary.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "2a9f9404c8f44ac27ef21d80773d20b254e89a74501dd36fc9cc8195fece8379",
+      "byteLength": 4457
+    },
+    {
+      "assetKey": "business-brief",
+      "path": "ba-learning/1.0.0/business-brief.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "28c4f256d5476d340d7baf87ce128529bfe5175e3be55e6ea786b8b7fdba248e",
+      "byteLength": 1335
+    },
+    {
+      "assetKey": "sql-examples",
+      "path": "ba-learning/1.0.0/sql-examples.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "f44f4ab0306daa1e2e4a205e7256d3d4edf684303abbe32faf72c6f698ace215",
+      "byteLength": 2220
+    },
+    {
+      "assetKey": "review-private",
+      "path": "ba-learning/1.0.0/review-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "335c5dc5485f631c0bf9e827f930f32acda0f5bcf294d7777eb51b1f5526694c",
+      "byteLength": 224
+    },
+    {
+      "assetKey": "golden-private",
+      "path": "ba-learning/1.0.0/golden-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "78b00f8f7def6f01547bc63db5f1ea327f6d0114b9321972a0c5e6c4b5643a30",
+      "byteLength": 49603
+    }
+  ],
+  "steps": [
+    {
+      "stepKey": "b1-context",
+      "title": "界定业务问题与可决定的范围",
+      "instructions": "你是LumenLearn的初级业务分析师。先阅读业务背景和字段口径，用自己的话写出本次要回答的问题与可决定的范围，并勾选当前数据不能回答的事项。一次合成观察不能给出商业效果预测或最终专业判断。",
+      "dependencies": [],
+      "required": true,
+      "responseSchemaVersion": "ba-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "acknowledged": {
+            "type": "boolean",
+            "const": true
+          },
+          "businessQuestion": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "decisionScope": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "outOfScope": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "REVENUE",
+                "SATISFACTION",
+                "WITHDRAWAL_REASONS"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "acknowledged",
+          "businessQuestion",
+          "decisionScope",
+          "outOfScope"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "business-brief",
+        "data-dictionary",
+        "weekly-funnel"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先区分业务想改变什么，与这份数据能说明什么。"
+        },
+        {
+          "level": 2,
+          "text": "每行是批次、课程与来源的组合；计数的观察窗口相同，但没有收入或满意度字段。"
+        },
+        {
+          "level": 3,
+          "text": "把问题写成可观察的指标变化与可验证的支持改进，不把“某群体更低”直接写成原因。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "acknowledged",
+        "businessQuestion",
+        "decisionScope",
+        "outOfScope"
+      ]
+    },
+    {
+      "stepKey": "b2-metric",
+      "title": "定义指标并比较成熟批次",
+      "instructions": "选择完成率分母与两个等长、不重叠的成熟批次窗口。全部报名者与已开始首课者回答不同问题。先保存选择，再运行固定计算；写明为什么这个口径适合你的问题。趋势按批次展示，不是事件自然周。",
+      "dependencies": [
+        "b1-context"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ba-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "baselineStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "baselineEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "numerator": {
+            "type": "string",
+            "enum": [
+              "completed_count"
+            ]
+          },
+          "denominator": {
+            "type": "string",
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          },
+          "metricReason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 600
+          }
+        },
+        "required": [
+          "baselineStartWeek",
+          "baselineEndWeek",
+          "comparisonStartWeek",
+          "comparisonEndWeek",
+          "numerator",
+          "denominator",
+          "metricReason"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "operationKey": "ba-metric",
+      "hints": [
+        {
+          "level": 1,
+          "text": "先把分子、分母和观察窗口写成一句完整定义。"
+        },
+        {
+          "level": 2,
+          "text": "以首课人数为分母时，指标是已开始学习者完成率，不代表全部报名者的完成表现。"
+        },
+        {
+          "level": 3,
+          "text": "核对两个窗口的人数，再用合计完成数除以合计分母；百分点变化不等于相对百分比变化。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "baselineStartWeek",
+        "baselineEndWeek",
+        "comparisonStartWeek",
+        "comparisonEndWeek",
+        "numerator",
+        "denominator",
+        "metricReason"
+      ]
+    },
+    {
+      "stepKey": "b3-funnel",
+      "title": "比较漏斗并选择重点环节",
+      "instructions": "比较六阶段累计到达率和五个相邻转化。可以按对比窗口人数损失或转化率百分点变化排序，再自行选择一个重点并解释。排序第一不自动意味着最重要原因。B2分母选择不会改变这里固定的漏斗分母。",
+      "dependencies": [
+        "b2-metric"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ba-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "focusTransitionKey": {
+            "type": "string",
+            "enum": [
+              "ENROLLED_TO_FIRST_LESSON",
+              "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+              "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+              "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+              "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+            ]
+          },
+          "focusReason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          }
+        },
+        "required": [
+          "focusTransitionKey",
+          "focusReason"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "operationKey": "ba-funnel",
+      "hints": [
+        {
+          "level": 1,
+          "text": "累计到达率和相邻转化率的分母不同，先看图表标签。"
+        },
+        {
+          "level": 2,
+          "text": "人数损失大可能只是上一环节人数多；把损失人数和相邻转化一起看。"
+        },
+        {
+          "level": 3,
+          "text": "选择一个值得进一步检查的环节并说明依据，但不要把观察差异写成已经证明的因果机制。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "focusTransitionKey",
+        "focusReason"
+      ]
+    },
+    {
+      "stepKey": "b4-segment",
+      "title": "选择值得优先验证的群体",
+      "instructions": "按课程或来源比较同一主指标与B3所选相邻环节。检查人数、报名占比和支持联系，再选择一个优先群体并说明理由。切换维度后重新选择群体；不能只依据单个百分比或把渠道标签当原因。",
+      "dependencies": [
+        "b3-funnel"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ba-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "segmentBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "signup_source"
+            ]
+          },
+          "prioritySegmentKey": {
+            "type": "string",
+            "enum": [
+              "FOUNDATIONS",
+              "APPLIED",
+              "ORGANIC",
+              "PARTNER",
+              "CAMPAIGN"
+            ]
+          },
+          "priorityReason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          }
+        },
+        "required": [
+          "segmentBy",
+          "prioritySegmentKey",
+          "priorityReason"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "operationKey": "ba-segments",
+      "hints": [
+        {
+          "level": 1,
+          "text": "先问每组有多少人、占整体多少，再读率。"
+        },
+        {
+          "level": 2,
+          "text": "整体变化也可能来自群体构成变化；组内率与报名占比应一起看。"
+        },
+        {
+          "level": 3,
+          "text": "核对当前指标与重点环节都来自同一窗口，选择可验证的优先级并保留其他解释，不宣称该群体必然是根因。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "segmentBy",
+        "prioritySegmentKey",
+        "priorityReason"
+      ]
+    },
+    {
+      "stepKey": "b5-hypothesis",
+      "title": "分开观察、原因假设与未知信息",
+      "instructions": "引用B2、B3或B4的当前结果，把观察到的情况、可能原因和仍需信息分开写。自由文本是你的分析，系统不会仅因保存成功就把它验证为事实。注意选择偏差、构成和缺少的个体信息。",
+      "dependencies": [
+        "b4-segment"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ba-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "observation": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          },
+          "evidenceStepKey": {
+            "type": "string",
+            "enum": [
+              "b2-metric",
+              "b3-funnel",
+              "b4-segment"
+            ]
+          },
+          "hypothesis": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          },
+          "unknownInformation": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          }
+        },
+        "required": [
+          "observation",
+          "evidenceStepKey",
+          "hypothesis",
+          "unknownInformation"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "观察写数据可直接读到什么，假设写可能为什么，未知写还缺什么。"
+        },
+        {
+          "level": 2,
+          "text": "引用结果时带上窗口、群体和分母；假设使用“可能”，并提出能区分解释的信息。"
+        },
+        {
+          "level": 3,
+          "text": "即使某群体转化下降，也不能仅凭聚合表断言提醒不足；可以说明还需了解什么行为或开展怎样的对照。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "observation",
+        "evidenceStepKey",
+        "hypothesis",
+        "unknownInformation"
+      ]
+    },
+    {
+      "stepKey": "b6-action",
+      "title": "形成有目标和护栏的小范围试验",
+      "instructions": "围绕当前B4群体提出一项行动、理由与验证方法。选择成功指标和期望提升百分点，并设置支持联系护栏。基线来自该群体对比窗口；它不是预测。最后一名试验参与者入组28或42天后复盘，仍只比较各人前28天结果。依据过期时先重新读取并确认。",
+      "dependencies": [
+        "b5-hypothesis"
+      ],
+      "required": true,
+      "responseSchemaVersion": "ba-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "actionKey": {
+            "type": "string",
+            "enum": [
+              "FIRST_LESSON_REMINDER",
+              "ASSIGNMENT_CHECKLIST",
+              "GROUP_OFFICE_HOURS",
+              "CUSTOM"
+            ]
+          },
+          "actionDescription": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          },
+          "actionReason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 700
+          },
+          "targetSegmentKey": {
+            "type": "string",
+            "enum": [
+              "FOUNDATIONS",
+              "APPLIED",
+              "ORGANIC",
+              "PARTNER",
+              "CAMPAIGN"
+            ]
+          },
+          "successMetric": {
+            "type": "string",
+            "enum": [
+              "COMPLETION_RATE",
+              "FIRST_LESSON_RATE",
+              "WEEK_ONE_ACTIVE_RATE",
+              "ASSIGNMENT_SUBMISSION_RATE",
+              "STARTER_COMPLETION_RATE"
+            ]
+          },
+          "targetChangePercentagePoints": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "guardrailMetric": {
+            "type": "string",
+            "enum": [
+              "SUPPORT_CONTACTS_PER_100_ENROLLED"
+            ]
+          },
+          "guardrailMaximum": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reviewAfterDays": {
+            "type": "integer",
+            "enum": [
+              28,
+              42
+            ]
+          },
+          "testPlan": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 900
+          }
+        },
+        "required": [
+          "actionKey",
+          "actionDescription",
+          "actionReason",
+          "targetSegmentKey",
+          "successMetric",
+          "targetChangePercentagePoints",
+          "guardrailMetric",
+          "guardrailMaximum",
+          "reviewAfterDays",
+          "testPlan"
+        ],
+        "additionalProperties": false
+      },
+      "assetKeys": [
+        "business-brief",
+        "data-dictionary"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "行动需要对象、成功指标、副作用护栏与复盘时间，目标不是预测。"
+        },
+        {
+          "level": 2,
+          "text": "核对目标群体仍等于B4选择；基线使用该群体对比窗口，不是整体或基准窗口。"
+        },
+        {
+          "level": 3,
+          "text": "写明小范围试行和可比群体；护栏为支持联系次数/100名报名者。42天复盘不意味着把42天累计结果和28天基线比较。"
+        }
+      ],
+      "hintContextFields": [],
+      "evidenceFields": [
+        "actionKey",
+        "actionDescription",
+        "actionReason",
+        "targetSegmentKey",
+        "successMetric",
+        "targetChangePercentagePoints",
+        "guardrailMetric",
+        "guardrailMaximum",
+        "reviewAfterDays",
+        "testPlan"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "operationKey": "ba-metric",
+      "stepKey": "b2-metric",
+      "engineType": "BUSINESS_ANALYSIS",
+      "engineVersion": "ba-metrics-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "baselineStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "baselineEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "numerator": {
+            "type": "string",
+            "enum": [
+              "completed_count"
+            ]
+          },
+          "denominator": {
+            "type": "string",
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          }
+        },
+        "required": [
+          "baselineStartWeek",
+          "baselineEndWeek",
+          "comparisonStartWeek",
+          "comparisonEndWeek",
+          "numerator",
+          "denominator"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ba-result-v1"
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "windows": {
+            "type": "object",
+            "properties": {
+              "baseline": {
+                "type": "object",
+                "properties": {
+                  "startWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "endWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                },
+                "required": [
+                  "startWeek",
+                  "endWeek"
+                ],
+                "additionalProperties": false
+              },
+              "comparison": {
+                "type": "object",
+                "properties": {
+                  "startWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "endWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                },
+                "required": [
+                  "startWeek",
+                  "endWeek"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "baseline",
+              "comparison"
+            ],
+            "additionalProperties": false
+          },
+          "observation": {
+            "type": "object",
+            "properties": {
+              "windowDays": {
+                "type": "integer",
+                "const": 28
+              },
+              "cohortBasis": {
+                "type": "string",
+                "const": "ENROLLMENT_WEEK"
+              },
+              "weekOneActiveBasis": {
+                "type": "string",
+                "const": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+              }
+            },
+            "required": [
+              "windowDays",
+              "cohortBasis",
+              "weekOneActiveBasis"
+            ],
+            "additionalProperties": false
+          },
+          "operationKey": {
+            "type": "string",
+            "const": "ba-metric"
+          },
+          "numerator": {
+            "type": "string",
+            "enum": [
+              "completed_count"
+            ]
+          },
+          "denominator": {
+            "type": "string",
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          },
+          "baseline": {
+            "type": "object",
+            "properties": {
+              "numeratorCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "denominatorCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "rate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "numeratorCount",
+              "denominatorCount",
+              "rate"
+            ],
+            "additionalProperties": false
+          },
+          "comparison": {
+            "type": "object",
+            "properties": {
+              "numeratorCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "denominatorCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "rate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "numeratorCount",
+              "denominatorCount",
+              "rate"
+            ],
+            "additionalProperties": false
+          },
+          "deltaPercentagePoints": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -100,
+            "maximum": 100
+          },
+          "relativeChange": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -1,
+            "maximum": 1000000
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "week": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "numeratorCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                "denominatorCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                "rate": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "week",
+                "numeratorCount",
+                "denominatorCount",
+                "rate"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 12,
+            "maxItems": 12
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "datasetSha256",
+          "windows",
+          "observation",
+          "operationKey",
+          "numerator",
+          "denominator",
+          "baseline",
+          "comparison",
+          "deltaPercentagePoints",
+          "relativeChange",
+          "trend"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "weekly-funnel",
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "weekly-funnel",
+      "ownResponseBindings": [
+        {
+          "parameterKey": "baselineStartWeek",
+          "sourceField": "baselineStartWeek"
+        },
+        {
+          "parameterKey": "baselineEndWeek",
+          "sourceField": "baselineEndWeek"
+        },
+        {
+          "parameterKey": "comparisonStartWeek",
+          "sourceField": "comparisonStartWeek"
+        },
+        {
+          "parameterKey": "comparisonEndWeek",
+          "sourceField": "comparisonEndWeek"
+        },
+        {
+          "parameterKey": "numerator",
+          "sourceField": "numerator"
+        },
+        {
+          "parameterKey": "denominator",
+          "sourceField": "denominator"
+        }
+      ],
+      "inputBindings": []
+    },
+    {
+      "operationKey": "ba-funnel",
+      "stepKey": "b3-funnel",
+      "engineType": "BUSINESS_ANALYSIS",
+      "engineVersion": "ba-metrics-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "baselineStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "baselineEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          }
+        },
+        "required": [
+          "baselineStartWeek",
+          "baselineEndWeek",
+          "comparisonStartWeek",
+          "comparisonEndWeek"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ba-result-v1"
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "windows": {
+            "type": "object",
+            "properties": {
+              "baseline": {
+                "type": "object",
+                "properties": {
+                  "startWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "endWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                },
+                "required": [
+                  "startWeek",
+                  "endWeek"
+                ],
+                "additionalProperties": false
+              },
+              "comparison": {
+                "type": "object",
+                "properties": {
+                  "startWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "endWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                },
+                "required": [
+                  "startWeek",
+                  "endWeek"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "baseline",
+              "comparison"
+            ],
+            "additionalProperties": false
+          },
+          "observation": {
+            "type": "object",
+            "properties": {
+              "windowDays": {
+                "type": "integer",
+                "const": 28
+              },
+              "cohortBasis": {
+                "type": "string",
+                "const": "ENROLLMENT_WEEK"
+              },
+              "weekOneActiveBasis": {
+                "type": "string",
+                "const": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+              }
+            },
+            "required": [
+              "windowDays",
+              "cohortBasis",
+              "weekOneActiveBasis"
+            ],
+            "additionalProperties": false
+          },
+          "operationKey": {
+            "type": "string",
+            "const": "ba-funnel"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stageKey": {
+                  "type": "string",
+                  "enum": [
+                    "enrolled_count",
+                    "first_lesson_count",
+                    "week_one_active_count",
+                    "assignment_started_count",
+                    "assignment_submitted_count",
+                    "completed_count"
+                  ]
+                },
+                "baseline": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "cumulativeRate": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "count",
+                    "cumulativeRate"
+                  ],
+                  "additionalProperties": false
+                },
+                "comparison": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "cumulativeRate": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "count",
+                    "cumulativeRate"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "stageKey",
+                "baseline",
+                "comparison"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 6,
+            "maxItems": 6
+          },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transitionKey": {
+                  "type": "string",
+                  "enum": [
+                    "ENROLLED_TO_FIRST_LESSON",
+                    "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+                    "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+                    "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+                    "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+                  ]
+                },
+                "fromStageKey": {
+                  "type": "string",
+                  "enum": [
+                    "enrolled_count",
+                    "first_lesson_count",
+                    "week_one_active_count",
+                    "assignment_started_count",
+                    "assignment_submitted_count",
+                    "completed_count"
+                  ]
+                },
+                "toStageKey": {
+                  "type": "string",
+                  "enum": [
+                    "enrolled_count",
+                    "first_lesson_count",
+                    "week_one_active_count",
+                    "assignment_started_count",
+                    "assignment_submitted_count",
+                    "completed_count"
+                  ]
+                },
+                "baseline": {
+                  "type": "object",
+                  "properties": {
+                    "numeratorCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "denominatorCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "conversionRate": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "lossCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "numeratorCount",
+                    "denominatorCount",
+                    "conversionRate",
+                    "lossCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "comparison": {
+                  "type": "object",
+                  "properties": {
+                    "numeratorCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "denominatorCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "conversionRate": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "lossCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "numeratorCount",
+                    "denominatorCount",
+                    "conversionRate",
+                    "lossCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "deltaPercentagePoints": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": -100,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "transitionKey",
+                "fromStageKey",
+                "toStageKey",
+                "baseline",
+                "comparison",
+                "deltaPercentagePoints"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 5,
+            "maxItems": 5
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "datasetSha256",
+          "windows",
+          "observation",
+          "operationKey",
+          "stages",
+          "transitions"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "weekly-funnel",
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "weekly-funnel",
+      "ownResponseBindings": [],
+      "inputBindings": [
+        {
+          "parameterKey": "baselineStartWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "baselineStartWeek"
+        },
+        {
+          "parameterKey": "baselineEndWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "baselineEndWeek"
+        },
+        {
+          "parameterKey": "comparisonStartWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "comparisonStartWeek"
+        },
+        {
+          "parameterKey": "comparisonEndWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "comparisonEndWeek"
+        }
+      ]
+    },
+    {
+      "operationKey": "ba-segments",
+      "stepKey": "b4-segment",
+      "engineType": "BUSINESS_ANALYSIS",
+      "engineVersion": "ba-metrics-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "baselineStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "baselineEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "numerator": {
+            "type": "string",
+            "enum": [
+              "completed_count"
+            ]
+          },
+          "denominator": {
+            "type": "string",
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          },
+          "focusTransitionKey": {
+            "type": "string",
+            "enum": [
+              "ENROLLED_TO_FIRST_LESSON",
+              "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+              "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+              "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+              "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+            ]
+          },
+          "segmentBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "signup_source"
+            ]
+          }
+        },
+        "required": [
+          "baselineStartWeek",
+          "baselineEndWeek",
+          "comparisonStartWeek",
+          "comparisonEndWeek",
+          "numerator",
+          "denominator",
+          "focusTransitionKey",
+          "segmentBy"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "ba-result-v1"
+          },
+          "datasetSha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "windows": {
+            "type": "object",
+            "properties": {
+              "baseline": {
+                "type": "object",
+                "properties": {
+                  "startWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "endWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                },
+                "required": [
+                  "startWeek",
+                  "endWeek"
+                ],
+                "additionalProperties": false
+              },
+              "comparison": {
+                "type": "object",
+                "properties": {
+                  "startWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "endWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  }
+                },
+                "required": [
+                  "startWeek",
+                  "endWeek"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "baseline",
+              "comparison"
+            ],
+            "additionalProperties": false
+          },
+          "observation": {
+            "type": "object",
+            "properties": {
+              "windowDays": {
+                "type": "integer",
+                "const": 28
+              },
+              "cohortBasis": {
+                "type": "string",
+                "const": "ENROLLMENT_WEEK"
+              },
+              "weekOneActiveBasis": {
+                "type": "string",
+                "const": "FIRST_LESSON_7_DAYS_WITHIN_28_DAY_WINDOW"
+              }
+            },
+            "required": [
+              "windowDays",
+              "cohortBasis",
+              "weekOneActiveBasis"
+            ],
+            "additionalProperties": false
+          },
+          "operationKey": {
+            "type": "string",
+            "const": "ba-segments"
+          },
+          "numerator": {
+            "type": "string",
+            "enum": [
+              "completed_count"
+            ]
+          },
+          "denominator": {
+            "type": "string",
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          },
+          "segmentBy": {
+            "type": "string",
+            "enum": [
+              "course_track",
+              "signup_source"
+            ]
+          },
+          "focusTransitionKey": {
+            "type": "string",
+            "enum": [
+              "ENROLLED_TO_FIRST_LESSON",
+              "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+              "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+              "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+              "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+            ]
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "segmentKey": {
+                  "type": "string",
+                  "enum": [
+                    "FOUNDATIONS",
+                    "APPLIED",
+                    "ORGANIC",
+                    "PARTNER",
+                    "CAMPAIGN"
+                  ]
+                },
+                "baseline": {
+                  "type": "object",
+                  "properties": {
+                    "stageCounts": {
+                      "type": "object",
+                      "properties": {
+                        "enrolled_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "first_lesson_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "week_one_active_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "assignment_started_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "assignment_submitted_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "completed_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        }
+                      },
+                      "required": [
+                        "enrolled_count",
+                        "first_lesson_count",
+                        "week_one_active_count",
+                        "assignment_started_count",
+                        "assignment_submitted_count",
+                        "completed_count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enrolledShare": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "metric": {
+                      "type": "object",
+                      "properties": {
+                        "numeratorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "denominatorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "rate": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "numeratorCount",
+                        "denominatorCount",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "focusTransition": {
+                      "type": "object",
+                      "properties": {
+                        "numeratorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "denominatorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "conversionRate": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "lossCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        }
+                      },
+                      "required": [
+                        "numeratorCount",
+                        "denominatorCount",
+                        "conversionRate",
+                        "lossCount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "supportContactCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "supportContactsPer100Enrolled": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1000000
+                    }
+                  },
+                  "required": [
+                    "stageCounts",
+                    "enrolledShare",
+                    "metric",
+                    "focusTransition",
+                    "supportContactCount",
+                    "supportContactsPer100Enrolled"
+                  ],
+                  "additionalProperties": false
+                },
+                "comparison": {
+                  "type": "object",
+                  "properties": {
+                    "stageCounts": {
+                      "type": "object",
+                      "properties": {
+                        "enrolled_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "first_lesson_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "week_one_active_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "assignment_started_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "assignment_submitted_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "completed_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        }
+                      },
+                      "required": [
+                        "enrolled_count",
+                        "first_lesson_count",
+                        "week_one_active_count",
+                        "assignment_started_count",
+                        "assignment_submitted_count",
+                        "completed_count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enrolledShare": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "metric": {
+                      "type": "object",
+                      "properties": {
+                        "numeratorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "denominatorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "rate": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "numeratorCount",
+                        "denominatorCount",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "focusTransition": {
+                      "type": "object",
+                      "properties": {
+                        "numeratorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "denominatorCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        },
+                        "conversionRate": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "lossCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000
+                        }
+                      },
+                      "required": [
+                        "numeratorCount",
+                        "denominatorCount",
+                        "conversionRate",
+                        "lossCount"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "supportContactCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "supportContactsPer100Enrolled": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1000000
+                    }
+                  },
+                  "required": [
+                    "stageCounts",
+                    "enrolledShare",
+                    "metric",
+                    "focusTransition",
+                    "supportContactCount",
+                    "supportContactsPer100Enrolled"
+                  ],
+                  "additionalProperties": false
+                },
+                "metricDeltaPercentagePoints": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": -100,
+                  "maximum": 100
+                },
+                "transitionDeltaPercentagePoints": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": -100,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "segmentKey",
+                "baseline",
+                "comparison",
+                "metricDeltaPercentagePoints",
+                "transitionDeltaPercentagePoints"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 2,
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "datasetSha256",
+          "windows",
+          "observation",
+          "operationKey",
+          "numerator",
+          "denominator",
+          "segmentBy",
+          "focusTransitionKey",
+          "segments"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 30,
+      "publicAssetKeys": [
+        "weekly-funnel",
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "privateAssetKeys": [],
+      "datasetAssetKey": "weekly-funnel",
+      "ownResponseBindings": [
+        {
+          "parameterKey": "segmentBy",
+          "sourceField": "segmentBy"
+        }
+      ],
+      "inputBindings": [
+        {
+          "parameterKey": "baselineStartWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "baselineStartWeek"
+        },
+        {
+          "parameterKey": "baselineEndWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "baselineEndWeek"
+        },
+        {
+          "parameterKey": "comparisonStartWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "comparisonStartWeek"
+        },
+        {
+          "parameterKey": "comparisonEndWeek",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "comparisonEndWeek"
+        },
+        {
+          "parameterKey": "numerator",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "numerator"
+        },
+        {
+          "parameterKey": "denominator",
+          "sourceStepKey": "b2-metric",
+          "sourceField": "denominator"
+        },
+        {
+          "parameterKey": "focusTransitionKey",
+          "sourceStepKey": "b3-funnel",
+          "sourceField": "focusTransitionKey"
+        }
+      ]
+    }
+  ],
+  "reflection": {
+    "questionSetVersion": "ba-reflection-v1",
+    "instructions": "回顾本次定义指标、选择优先级与提出行动的兴趣和困难，不评价长期能力。可选追问失败可跳过。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "interestingStepKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "b1-context",
+              "b2-metric",
+              "b3-funnel",
+              "b4-segment",
+              "b5-hypothesis",
+              "b6-action",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "difficultySources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "KNOWLEDGE",
+              "TOOLS",
+              "TIME",
+              "WORK_STYLE",
+              "OTHER",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "continueSimilarWork": {
+          "type": "string",
+          "enum": [
+            "YES",
+            "UNSURE",
+            "NO"
+          ]
+        },
+        "reflectionNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "nextWorkStyle": {
+          "type": "string",
+          "enum": [
+            "MODEL_ITERATION",
+            "DATA_REASONING",
+            "BUSINESS_ACTION",
+            "UNSURE",
+            "SKIPPED"
+          ]
+        },
+        "aiFollowUp": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "interestingStepKeys",
+        "difficultySources",
+        "continueSimilarWork"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "review": {
+    "kind": "PROFESSIONAL",
+    "checkKeys": [
+      "PROFESSIONAL_CORE",
+      "BEGINNER_ACCESS",
+      "DATA_CORRECTNESS",
+      "EVIDENCE_SOURCES",
+      "HINT_NO_FINAL_ANSWER",
+      "FAIRNESS",
+      "CHROME_EDGE",
+      "TIMING_45_60",
+      "RECOVERY",
+      "VERSION_CONSISTENCY"
+    ],
+    "professionalReviewRequired": true
+  }
+}

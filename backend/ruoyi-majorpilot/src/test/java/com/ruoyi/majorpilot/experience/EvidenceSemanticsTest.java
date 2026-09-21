@@ -9,6 +9,12 @@ import static org.mockito.Mockito.*;
 
 class EvidenceSemanticsTest {
     final ObjectMapper mapper=new ObjectMapper();
+    @Test void baActionTargetsAndClaimedCommercialEffectsRemainUnverified()throws Exception{
+        var input=mapper.readTree("{\"targetSegmentKey\":\"APPLIED\",\"targetChangePercentagePoints\":20,\"actionReason\":\"这一方案已经保证完成率提高20个百分点\",\"guardrailMaximum\":180,\"reviewAfterDays\":28}");
+        var items=worker().stepItems("BUSINESS_ANALYTICS","b6-action",9,input,Instant.EPOCH);assertEquals(2,items.size());assertEquals(5,items.getFirst().value().path("submittedAnalysisFieldCount").asInt());assertFalse(items.getFirst().value().has("targetChangePercentagePoints"));
+        var analysis=items.getLast();assertEquals("STUDENT_ANALYSIS",analysis.type());assertTrue(analysis.claims().isEmpty());assertEquals(input,analysis.value().path("answers"));assertEquals("UNVERIFIED",analysis.value().path("verificationStatus").asText());
+        var raw=mapper.readTree("{\"schemaVersion\":\"ba-result-v1\",\"operationKey\":\"ba-metric\",\"comparison\":{\"rate\":0.5},\"claimedRevenue\":999}");var projected=worker().selectedExecution("BUSINESS_ANALYTICS",raw);assertFalse(projected.has("claimedRevenue"));assertEquals(raw.path("comparison"),projected.path("comparison"));assertTrue(raw.has("claimedRevenue"));
+    }
     EvidenceJobs worker(){var runs=mock(RunService.class);when(runs.store()).thenReturn(new RunStore(null,mapper,true,true));return new EvidenceJobs(runs,null);}
     @Test void studentPredictionsAndCausalAssertionsCannotBecomeFactOrReflectionClaims()throws Exception{
         var input=mapper.readTree("{\"confidenceThreshold\":0.55,\"modificationReason\":\"提升是由模型造成的\",\"expectedEffect\":\"准确率一定提高\",\"unrelatedSecret\":\"excluded\"}");

@@ -1,3 +1,4 @@
+import type { BaActionContext } from "../../../shared/ba/ba-metrics-v1.mjs";
 export type Answer = Record<string, unknown>;
 export interface InputProperty {
   type: string | string[];
@@ -7,6 +8,9 @@ export interface InputProperty {
   maxLength?: number;
   maxItems?: number;
   minItems?: number;
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
   properties?: Record<string, InputProperty>;
   required?: string[];
   items?: InputProperty;
@@ -127,6 +131,7 @@ export interface InputBinding {
   value: unknown;
 }
 export interface Step {
+  baActionContext?: BaActionContext;
   stepKey: string;
   status: string;
   revision: number;

@@ -1872,7 +1872,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Revision"
+                "$ref": "#/components/schemas/StepCompletion"
               }
             }
           }
@@ -4281,6 +4281,9 @@
                   "replacementRunId": {
                     "type": "string",
                     "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "currentSourceRevisions": {
+                    "$ref": "#/components/schemas/SourceRevisions"
                   }
                 },
                 "required": []
@@ -5005,6 +5008,9 @@
             "items": {
               "$ref": "#/components/schemas/InputBinding"
             }
+          },
+          "baActionContext": {
+            "$ref": "#/components/schemas/BaActionContext"
           }
         },
         "required": [
@@ -5243,7 +5249,8 @@
             "enum": [
               "task-manifest-v1",
               "task-manifest-v2",
-              "task-manifest-v3"
+              "task-manifest-v3",
+              "task-manifest-v4"
             ]
           },
           "taskVersionId": {
@@ -5809,6 +5816,299 @@
           "expectedSourceRevisions"
         ],
         "description": "Strict v3 DS request; the shared endpoint still accepts legacy v1/v2 Execute. Server validates the task-specific source contract."
+      },
+      "BaParameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "numerator": {
+            "const": "completed_count"
+          },
+          "denominator": {
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          },
+          "baselineStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "baselineEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "focusTransitionKey": {
+            "enum": [
+              "ENROLLED_TO_FIRST_LESSON",
+              "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+              "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+              "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+              "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+            ]
+          },
+          "segmentBy": {
+            "enum": [
+              "course_track",
+              "signup_source"
+            ]
+          }
+        },
+        "required": [
+          "numerator",
+          "denominator",
+          "baselineStartWeek",
+          "baselineEndWeek",
+          "comparisonStartWeek",
+          "comparisonEndWeek",
+          "focusTransitionKey",
+          "segmentBy"
+        ]
+      },
+      "BaRatio": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "numeratorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "denominatorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "numeratorCount",
+          "denominatorCount",
+          "rate"
+        ]
+      },
+      "BaTransition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "numeratorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "denominatorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lossCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "numeratorCount",
+          "denominatorCount",
+          "conversionRate",
+          "lossCount"
+        ]
+      },
+      "BaSegmentPeriod": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stageCounts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enrolled_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "first_lesson_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "week_one_active_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "assignment_started_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "assignment_submitted_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "completed_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "enrolled_count",
+              "first_lesson_count",
+              "week_one_active_count",
+              "assignment_started_count",
+              "assignment_submitted_count",
+              "completed_count"
+            ]
+          },
+          "enrolledShare": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metric": {
+            "$ref": "#/components/schemas/BaRatio"
+          },
+          "focusTransition": {
+            "$ref": "#/components/schemas/BaTransition"
+          },
+          "supportContactCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "supportContactsPer100Enrolled": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "stageCounts",
+          "enrolledShare",
+          "metric",
+          "focusTransition",
+          "supportContactCount",
+          "supportContactsPer100Enrolled"
+        ]
+      },
+      "BaActionSourceRevisions": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "b2-metric": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "b3-funnel": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "b4-segment": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "b2-metric",
+          "b3-funnel",
+          "b4-segment"
+        ]
+      },
+      "BaActionContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "parameters": {
+            "$ref": "#/components/schemas/BaParameters"
+          },
+          "prioritySegmentKey": {
+            "enum": [
+              "FOUNDATIONS",
+              "APPLIED",
+              "ORGANIC",
+              "PARTNER",
+              "CAMPAIGN"
+            ]
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/BaSegmentPeriod"
+          },
+          "sourceRevisions": {
+            "$ref": "#/components/schemas/BaActionSourceRevisions"
+          }
+        },
+        "required": [
+          "parameters",
+          "prioritySegmentKey",
+          "comparison",
+          "sourceRevisions"
+        ]
+      },
+      "StepCompletion": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions"
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ]
       }
     },
     "parameters": {

@@ -134,7 +134,13 @@ onMounted(load);
     <section v-if="selected" class="demo-introduction">
       <div>
         <h2>你会做些什么</h2>
-        <ol v-if="selected.majorCode === 'DATA_SCIENCE'">
+        <ol v-if="selected.majorCode === 'BUSINESS_ANALYTICS'">
+          <li>先定义指标和成熟批次窗口，比较真实分子与分母</li>
+          <li>查看累计到达率和相邻转化，选择重点环节与群体</li>
+          <li>区分观测和原因假设，提出有目标、护栏与复盘时间的小范围方案</li>
+          <li>独立反思，不把学生目标当作预测效果或专业适配分数</li>
+        </ol>
+        <ol v-else-if="selected.majorCode === 'DATA_SCIENCE'">
           <li>检查合成学习记录的缺失、重复、不适用与合理极端值</li>
           <li>选择处理方案，比较分布、分组完成率或散点关系</li>
           <li>分层检查解释，写出有证据且保留限制的发现</li>
@@ -152,7 +158,10 @@ onMounted(load);
         <p>
           支持暂停、切换与继续；同一时刻只运行一项。未同步草稿仅保留于本机，最多7天。
         </p>
-        <p v-if="selected.majorCode === 'DATA_SCIENCE'" class="muted">
+        <p v-if="selected.majorCode === 'BUSINESS_ANALYTICS'" class="muted">
+          固定业务计算器；等价SQL说明只读、不执行。每种操作最多30种成功配置，默认配置计次，相同配置复用不扣次数。
+        </p>
+        <p v-else-if="selected.majorCode === 'DATA_SCIENCE'" class="muted">
           固定统计计算器；等价Python说明只读、不执行。每种操作最多30种成功配置，相同配置复用不扣次数。
         </p>
         <p v-else class="muted">

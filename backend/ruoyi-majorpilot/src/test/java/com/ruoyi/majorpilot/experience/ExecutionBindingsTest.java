@@ -8,6 +8,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ExecutionBindingsTest {
     private final ObjectMapper mapper=new ObjectMapper();
+    @Test void v4ActionSourceCheckRejectsMissingExtraInvalidAndStaleVectors(){
+        assertTrue(ExecutionBindings.savedBindings(mapper.createObjectNode().put("schemaVersion","task-manifest-v4")));assertFalse(ExecutionBindings.savedBindings(mapper.createObjectNode().put("schemaVersion","task-manifest-v99")));
+        var actual=Map.of("b2-metric",1L,"b3-funnel",2L,"b4-segment",3L);assertDoesNotThrow(()->RunService.checkActionSources(actual,actual));
+        error("STEP_VALIDATION_FAILED",()->RunService.checkActionSources(null,actual));error("STEP_VALIDATION_FAILED",()->RunService.checkActionSources(Map.of(),actual));error("STEP_VALIDATION_FAILED",()->RunService.checkActionSources(Map.of("b2-metric",0L,"b3-funnel",2L,"b4-segment",3L),actual));
+        error("STEP_SOURCE_REVISION_CONFLICT",()->RunService.checkActionSources(Map.of("b2-metric",1L,"b3-funnel",2L,"b4-segment",2L),actual));
+    }
     @Test void ancestorReachabilityIsTransitiveNotOnlyTheImmediateDependency()throws Exception{
         var steps=mapper.readTree("[{\"stepKey\":\"quality\",\"dependencies\":[]},{\"stepKey\":\"profile\",\"dependencies\":[\"quality\"]},{\"stepKey\":\"relationship\",\"dependencies\":[\"profile\"]},{\"stepKey\":\"other\",\"dependencies\":[]}]");
         assertTrue(ExecutionBindings.isAncestor(steps,"relationship","quality"));assertTrue(ExecutionBindings.isAncestor(steps,"relationship","profile"));assertFalse(ExecutionBindings.isAncestor(steps,"relationship","relationship"));assertFalse(ExecutionBindings.isAncestor(steps,"relationship","other"));

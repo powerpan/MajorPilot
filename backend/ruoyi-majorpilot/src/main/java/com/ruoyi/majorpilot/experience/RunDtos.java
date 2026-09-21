@@ -14,6 +14,10 @@ public final class RunDtos {
     public record InputBinding(String parameterKey,String sourceStepKey,String sourceField,long sourceRevision,JsonNode value) {}
     public record Transition(Long expectedRevision,String pauseActiveRunId,Long expectedActiveRunRevision) {}
     public record Revision(Long expectedRevision) {}
+    public record StepCompletion(Long expectedRevision,
+                                 @JsonInclude(JsonInclude.Include.NON_NULL) Map<String,Long> expectedSourceRevisions) {
+        public StepCompletion(Long expectedRevision){this(expectedRevision,null);}
+    }
     public record Save(Long expectedRevision,String responseSchemaVersion,JsonNode response) {}
     public record Execute(String operationKey,Long inputRevision,JsonNode parameters,String inputSha256,JsonNode observedResult,
                           @JsonInclude(JsonInclude.Include.NON_NULL) Map<String,Long> expectedSourceRevisions) {
@@ -30,8 +34,13 @@ public final class RunDtos {
         /** Pre-V6 idempotency receipts are exclusively STANDARD; migration does not rewrite safe receipts. */
         public Run {if(runMode==null)runMode="STANDARD";}
     }
+    public record BaActionContext(JsonNode parameters,String prioritySegmentKey,JsonNode comparison,Map<String,Long> sourceRevisions) {}
     public record Step(String stepKey,String status,long revision,String responseSchemaVersion,JsonNode response,JsonNode definition,
-                       boolean readOnly,Instant savedAt,List<Execution> executions,List<InputBinding> inputBindings) {}
+                       boolean readOnly,Instant savedAt,List<Execution> executions,List<InputBinding> inputBindings,
+                       @JsonInclude(JsonInclude.Include.NON_NULL) BaActionContext baActionContext) {
+        public Step(String stepKey,String status,long revision,String responseSchemaVersion,JsonNode response,JsonNode definition,
+                    boolean readOnly,Instant savedAt,List<Execution> executions,List<InputBinding> inputBindings){this(stepKey,status,revision,responseSchemaVersion,response,definition,readOnly,savedAt,executions,inputBindings,null);}
+    }
     public record Saved(String stepKey,long revision,long runRevision,Instant savedAt,String validationStatus,List<String> invalidatedStepKeys) {}
     public record Execution(String executionId,String operationKey,String stepKey,long inputRevision,Long appliedToRevision,String status,String trustLevel,
                             JsonNode result,String errorCode,long durationMs,boolean reused,int remainingEvaluations,

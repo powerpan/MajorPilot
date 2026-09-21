@@ -17,11 +17,14 @@ if (manifest.classifierWorkerSha256 !== classifierHash) throw new Error('Classif
 const dsWorker = readFileSync(new URL('./dist/ds-worker.js',import.meta.url),'utf8')
 const dsHash = createHash('sha256').update(dsWorker).digest('hex')
 if (manifest.dsWorkerSha256 !== dsHash) throw new Error('DS manifest/worker hash mismatch')
+const baWorker = readFileSync(new URL('./dist/ba-worker.js',import.meta.url),'utf8')
+const baHash = createHash('sha256').update(baWorker).digest('hex')
+if (manifest.baWorkerSha256 !== baHash) throw new Error('BA manifest/worker hash mismatch')
 // Assets are embedded by the trusted Node launcher; compute needs no network load.
 const bootstrap = `
 const nonce = location.hash.slice(1);
 const parentOrigin = ${JSON.stringify(parentOrigin)};
-const sources = ${JSON.stringify({calculator:{source:worker,hash:workerHash,engine:'fixed-calculator-v1'},classifier:{source:classifierWorker,hash:classifierHash,engine:'classifier-v1'},ds:{source:dsWorker,hash:dsHash,engine:'ds-stats-v1'}})};
+const sources = ${JSON.stringify({calculator:{source:worker,hash:workerHash,engine:'fixed-calculator-v1'},classifier:{source:classifierWorker,hash:classifierHash,engine:'classifier-v1'},ds:{source:dsWorker,hash:dsHash,engine:'ds-stats-v1'},ba:{source:baWorker,hash:baHash,engine:'ba-metrics-v1'}})};
 const digestUtf8 = ${digestUtf8.toString()};
 const createDsDigestHandler = ${createDsDigestHandler.toString()};
 let consumed = false;
@@ -31,7 +34,8 @@ addEventListener('message', async event => {
   consumed = true;
   const classifier = event.data.template === 'classifier-practice-v1';
   const ds = event.data.template === 'ds-analysis-v1';
-  const {source:workerSource,hash:expectedHash,engine} = sources[ds ? 'ds' : classifier ? 'classifier' : 'calculator'];
+  const ba = event.data.template === 'ba-analysis-v1';
+  const {source:workerSource,hash:expectedHash,engine} = sources[ba ? 'ba' : ds ? 'ds' : classifier ? 'classifier' : 'calculator'];
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(workerSource));
   const actualHash = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2,'0')).join('');
   if(actualHash !== expectedHash) return emit({status:'ERROR',code:'ASSET_HASH_MISMATCH',engine:'fixed-calculator-v1'});
@@ -48,9 +52,9 @@ addEventListener('message', async event => {
     finish(event.data);
   };
   worker.onerror = event => {event.preventDefault(); finish({status:'ERROR',code:'WORKER_FAILURE',engine:'fixed-calculator-v1'});};
-  const allowed = ds ? ['type','nonce','template','operationKey','parameters','rows','datasetSha256'] : classifier ? ['type','nonce','template','model','config','samples'] : ['type','nonce','template','values','parameters'];
+  const allowed = ds || ba ? ['type','nonce','template','operationKey','parameters','rows','datasetSha256'] : classifier ? ['type','nonce','template','model','config','samples'] : ['type','nonce','template','values','parameters'];
   if(Object.keys(payload).some(key => !allowed.includes(key))) return finish({status:'ERROR',code:'INVALID_MESSAGE',engine});
-  worker.postMessage(ds ? {template:payload.template,operationKey:payload.operationKey,parameters:payload.parameters,rows:payload.rows,datasetSha256:payload.datasetSha256} : classifier ? {template:payload.template,model:payload.model,config:payload.config,samples:payload.samples} : {template:payload.template, values:payload.values, ...(payload.parameters === undefined ? {} : {parameters:payload.parameters})});
+  worker.postMessage(ds || ba ? {template:payload.template,operationKey:payload.operationKey,parameters:payload.parameters,rows:payload.rows,datasetSha256:payload.datasetSha256} : classifier ? {template:payload.template,model:payload.model,config:payload.config,samples:payload.samples} : {template:payload.template, values:payload.values, ...(payload.parameters === undefined ? {} : {parameters:payload.parameters})});
 });
 parent.postMessage({type:'MP_EXECUTOR_READY',nonce},parentOrigin);`
 const scriptHash = createHash('sha256').update(bootstrap).digest('base64')

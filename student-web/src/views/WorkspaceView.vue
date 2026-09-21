@@ -11,6 +11,7 @@ import ClassifierConfig from "../components/workspace/ClassifierConfig.vue";
 import ClassifierErrors from "../components/workspace/ClassifierErrors.vue";
 import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
 import DsWorkspace from "../components/workspace/DsWorkspace.vue";
+import BaWorkspace from "../components/workspace/BaWorkspace.vue";
 const route = useRoute(),
   router = useRouter(),
   workspace = useWorkspace(),
@@ -31,6 +32,7 @@ const number = computed(() =>
 );
 const isMajor = computed(() => workspace.run?.contentKind === "MAJOR");
 const isDs = computed(() => workspace.run?.majorCode === "DATA_SCIENCE");
+const isBa = computed(() => workspace.run?.majorCode === "BUSINESS_ANALYTICS");
 const preview = computed(() => workspace.run?.runMode === "REVIEW_PREVIEW");
 const returnPath = computed(() =>
   isMajor.value
@@ -171,9 +173,11 @@ onBeforeUnmount(() => {
         ><span>MajorPilot</span></RouterLink
       ><strong>{{
         isMajor
-          ? isDs
-            ? "DS · 学习行为分析"
-            : "AI · 支持请求分类"
+          ? isBa
+            ? "BA · 完成率诊断"
+            : isDs
+              ? "DS · 学习行为分析"
+              : "AI · 支持请求分类"
           : workspace.manifest?.title || "工作区上手"
       }}</strong>
       <div class="workspace-header-actions">
@@ -306,7 +310,8 @@ onBeforeUnmount(() => {
         ><small
           >{{
             isMajor
-              ? (isDs ? "DS" : "AI") + (preview ? " · 工程预览" : " · 专业体验")
+              ? (isBa ? "BA" : isDs ? "DS" : "AI") +
+                (preview ? " · 工程预览" : " · 专业体验")
               : "技术演示"
           }}
           · v{{ workspace.manifest.versionCode }}</small
@@ -637,6 +642,7 @@ onBeforeUnmount(() => {
                 @update:model-value="workspace.edit"
               />
             </template>
+            <BaWorkspace v-else-if="isBa && workspace.step" />
             <DsWorkspace v-else-if="isDs && workspace.step" />
             <StepFields
               v-else-if="workspace.step"
@@ -908,6 +914,7 @@ mean = total / count</code></pre>
                 workspace.executing ||
                 !workspace.selectionReady ||
                 !!workspace.recovered ||
+                workspace.baActionBlocked ||
                 workspace.conflict
               "
               @click="workspace.complete"

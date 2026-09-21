@@ -4,6 +4,13 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 class RunReceiptCompatibilityTest {
+    @Test void absentStepSourceExpectationKeepsLegacyCompletionFingerprintAndStepShape()throws Exception{
+        var mapper=new ObjectMapper();var old=new RunDtos.Revision(2L);var input=mapper.readValue("{\"expectedRevision\":2}",RunDtos.StepCompletion.class);
+        assertNull(input.expectedSourceRevisions());assertEquals(mapper.writeValueAsString(old),mapper.writeValueAsString(input));
+        assertEquals(mapper.writeValueAsString(old),mapper.writeValueAsString(new RunDtos.StepCompletion(2L)));
+        assertFalse(mapper.valueToTree(new RunDtos.Step("old","IN_PROGRESS",0,"v1",mapper.createObjectNode(),mapper.createObjectNode(),false,null,java.util.List.of(),java.util.List.of())).has("baActionContext"));
+        assertTrue(mapper.valueToTree(new RunDtos.StepCompletion(2L,Map.of("b2-metric",1L,"b3-funnel",1L,"b4-segment",1L))).has("expectedSourceRevisions"));
+    }
     @Test void absentSourceExpectationKeepsLegacyExecutionFingerprintShape()throws Exception{
         var mapper=new ObjectMapper();var old=mapper.readTree("{\"operationKey\":\"demo-summary-v1\",\"inputRevision\":1,\"parameters\":{},\"inputSha256\":null,\"observedResult\":null}");
         var input=mapper.treeToValue(old,RunDtos.Execute.class);assertNull(input.expectedSourceRevisions());assertEquals(old.toString(),mapper.writeValueAsString(input));

@@ -1,0 +1,14 @@
+{
+  "purpose": "Synthetic engineering acceptance fixture; never prefill these analyses into product responses or treat as human review",
+  "taskVersionId": "01JB1000000000000000000001",
+  "responseSchemaVersion": "ba-response-v1",
+  "responses": {
+    "b1-context": { "acknowledged": true, "businessQuestion": "怎样理解两期完成率变化，并选择一个可检验的小范围支持改进？", "decisionScope": "本次只提出支持流程试验与复盘方法，不替学生作最终专业选择。", "outOfScope": ["REVENUE", "SATISFACTION"] },
+    "b2-metric": { "numerator": "completed_count", "denominator": "enrolled_count", "baselineStartWeek": 1, "baselineEndWeek": 6, "comparisonStartWeek": 7, "comparisonEndWeek": 12, "metricReason": "先以全部报名者作为分母，观察相同成熟窗口内的总体完成率。" },
+    "b3-funnel": { "focusTransitionKey": "ENROLLED_TO_FIRST_LESSON", "focusReason": "我先检查报名到首课的环节，同时保留其他环节作为对照，不把人数损失直接当原因。" },
+    "b4-segment": { "segmentBy": "course_track", "prioritySegmentKey": "APPLIED", "priorityReason": "先为应用课程提出一个可验证的支持方案，注意课程构成和群体人数差异。" },
+    "b5-hypothesis": { "observation": "两期人数、完成率与相邻转化需要用各自分母共同阅读。", "evidenceStepKey": "b4-segment", "hypothesis": "部分学生可能需要更清楚的学习启动说明，但当前数据还不能证明这一原因。", "unknownInformation": "还需要了解未开课者的具体障碍，以及可比群体的支持使用情况。" },
+    "b6-action": { "actionKey": "FIRST_LESSON_REMINDER", "actionDescription": "小范围试行首课启动提醒，并保留可比较的未试行群体。", "actionReason": "该行动针对目前选定的首课环节，但应先验证实际障碍而非假定提醒必然有效。", "targetSegmentKey": "APPLIED", "successMetric": "FIRST_LESSON_RATE", "targetChangePercentagePoints": 2, "guardrailMetric": "SUPPORT_CONTACTS_PER_100_ENROLLED", "guardrailMaximum": 180, "reviewAfterDays": 28, "testPlan": "最后一名参与者入组28天后，按各人入组后前28天观察结果，比较成功指标、支持联系次数与群体构成。" }
+  },
+  "reflection": { "questionSetVersion": "ba-reflection-v1", "answers": { "interestingStepKeys": ["b3-funnel", "b6-action"], "difficultySources": ["KNOWLEDGE"], "continueSimilarWork": "YES", "nextWorkStyle": "BUSINESS_ACTION", "aiFollowUp": "SKIPPED" } }
+}

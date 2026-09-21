@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "ba-dictionary-v1",
+  "observationUnit": "COHORT_COURSE_SOURCE",
+  "synthetic": true,
+  "introduction": "每行是一个入学批次周、课程方向与来源渠道的聚合，不是一个学员，也不是事件发生的自然周。72个组合全部保留；零人数是已观测的0，不代表未采集。",
+  "fields": [
+    {
+      "fieldKey": "week",
+      "label": "入学批次周",
+      "description": "1至12；各批次均观察每名学员加入后的完整28天。",
+      "unit": "week"
+    },
+    {
+      "fieldKey": "course_track",
+      "label": "课程方向",
+      "description": "FOUNDATIONS基础课程／APPLIED应用课程；不是专业能力标签。",
+      "unit": "category"
+    },
+    {
+      "fieldKey": "signup_source",
+      "label": "报名来源",
+      "description": "ORGANIC自然／PARTNER合作／CAMPAIGN活动；构成变化不等于渠道因果效果。",
+      "unit": "category"
+    },
+    {
+      "fieldKey": "enrolled_count",
+      "label": "报名人数",
+      "description": "本批次、本课程和渠道的唯一报名学员；各组互斥可加总。",
+      "unit": "person"
+    },
+    {
+      "fieldKey": "first_lesson_count",
+      "label": "开始首课人数",
+      "description": "报名后28天内开始首课；条件完成率以此作为分母。",
+      "unit": "person"
+    },
+    {
+      "fieldKey": "week_one_active_count",
+      "label": "开课首周活跃人数",
+      "description": "首次开课后7天内达到活跃条件，且仍在报名后28天内；不是报名首7天。",
+      "unit": "person"
+    },
+    {
+      "fieldKey": "assignment_started_count",
+      "label": "开始作业人数",
+      "description": "同一28天窗口内开始作业，是活跃者的子集。",
+      "unit": "person"
+    },
+    {
+      "fieldKey": "assignment_submitted_count",
+      "label": "提交作业人数",
+      "description": "同一28天窗口内至少提交一次作业，是开始作业者的子集。",
+      "unit": "person"
+    },
+    {
+      "fieldKey": "completed_count",
+      "label": "完成课程人数",
+      "description": "同一28天窗口内完成8个核心单元与4项作业，是提交作业者的子集。",
+      "unit": "person"
+    },
+    {
+      "fieldKey": "support_contact_count",
+      "label": "支持联系次数",
+      "description": "同一28天窗口内的联系事件次数，可大于报名人数；不是联系人次去重人数。",
+      "unit": "contact"
+    }
+  ],
+  "groupOrder": {
+    "course_track": [
+      "FOUNDATIONS",
+      "APPLIED"
+    ],
+    "signup_source": [
+      "ORGANIC",
+      "PARTNER",
+      "CAMPAIGN"
+    ]
+  },
+  "stageOrder": [
+    "enrolled_count",
+    "first_lesson_count",
+    "week_one_active_count",
+    "assignment_started_count",
+    "assignment_submitted_count",
+    "completed_count"
+  ],
+  "transitions": [
+    {
+      "transitionKey": "ENROLLED_TO_FIRST_LESSON",
+      "fromStageKey": "enrolled_count",
+      "toStageKey": "first_lesson_count",
+      "label": "报名 → 首课开始"
+    },
+    {
+      "transitionKey": "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+      "fromStageKey": "first_lesson_count",
+      "toStageKey": "week_one_active_count",
+      "label": "首课开始 → 开课首周活跃"
+    },
+    {
+      "transitionKey": "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+      "fromStageKey": "week_one_active_count",
+      "toStageKey": "assignment_started_count",
+      "label": "开课首周活跃 → 开始作业"
+    },
+    {
+      "transitionKey": "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+      "fromStageKey": "assignment_started_count",
+      "toStageKey": "assignment_submitted_count",
+      "label": "开始作业 → 提交作业"
+    },
+    {
+      "transitionKey": "ASSIGNMENT_SUBMITTED_TO_COMPLETED",
+      "fromStageKey": "assignment_submitted_count",
+      "toStageKey": "completed_count",
+      "label": "提交作业 → 完成课程"
+    }
+  ],
+  "notes": [
+    "汇总时先加总人数，再计算比例；不要平均每周或每组百分比。",
+    "漏斗累计到达率以报名为分母，相邻转化率以上一环节为分母。",
+    "支持联系护栏的单位为次/100名报名者，可能大于100，不是百分比。",
+    "所有批次成熟；没有真实事件时间戳，不声称审核过真实日志。",
+    "群体构成、样本量与未观测因素可能影响差异；不能据此直接认定原因或预测收益。"
+  ]
+}

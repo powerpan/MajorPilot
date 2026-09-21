@@ -11,6 +11,7 @@ await startInfra();
 if (process.argv.includes('--infra-only')) process.exit(0);
 execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-classifier.mjs`], { cwd: ROOT, env: runtimeEnv(), stdio: 'inherit' });
 execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-ds.mjs`], { cwd: ROOT, env: runtimeEnv(), stdio: 'inherit' });
+execFileSync(`${TOOL}/node/bin/node`, [`${ROOT}/executor/build-ba.mjs`], { cwd: ROOT, env: runtimeEnv(), stdio: 'inherit' });
 const running = record('backend');
 requireMatchingProfile(running, profile);
 const jar = `${ROOT}/backend/ruoyi-admin/target/ruoyi-admin.jar`;

@@ -15,10 +15,19 @@ import type {
   Operation,
   Parameters,
 } from "../../shared/ds/ds-stats-v1.mjs";
+import type {
+  Operation as BaOperation,
+  ParametersByOperation,
+  WeeklyFunnelRow,
+} from "../../shared/ba/ba-metrics-v1.mjs";
 export interface ExecutionResult {
   status: "SUCCESS" | "ERROR";
   code?: string;
-  engine: "fixed-calculator-v1" | "classifier-v1" | "ds-stats-v1";
+  engine:
+    | "fixed-calculator-v1"
+    | "classifier-v1"
+    | "ds-stats-v1"
+    | "ba-metrics-v1";
   result?: Record<string, unknown>;
   elapsedMs: number;
 }
@@ -62,6 +71,24 @@ export function executeDs(
   return sendExecution(
     {
       template: "ds-analysis-v1",
+      operationKey,
+      rows,
+      parameters,
+      datasetSha256,
+    },
+    signal,
+  );
+}
+export function executeBa<O extends BaOperation>(
+  operationKey: O,
+  rows: WeeklyFunnelRow[],
+  parameters: ParametersByOperation[O],
+  datasetSha256: string,
+  signal?: AbortSignal,
+) {
+  return sendExecution(
+    {
+      template: "ba-analysis-v1",
       operationKey,
       rows,
       parameters,

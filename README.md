@@ -2,7 +2,7 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
-**P4 DS专业工程闭环已完成本地实施和验收**：在P1账户推荐、P2任务引擎与P3 AI体验上，新增DS质量处理、分箱频数、分组/散点关系、分层检查、D1–D6与反思及冻结证据。隔离JS计算和Java复核、来源版本、30种配置配额、Chrome/Edge完整流程及AI/演示回归均通过。AI/DS内容仍为REVIEW工程预览，尚待真人专业审核及目标用户计时，不计正式完成或生成正式报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [DS视觉验收](docs/28-p4-ds-visual-direction.md)。BA、报告及完整MVP继续按P5–P8推进；不声称公网生产已就绪。
+**P5 BA专业工程闭环已完成本地实施和验收**：在账户推荐、任务引擎及AI/DS体验上，新增BA指标定义、两期漏斗、群体比较、原因假设、行动验证及冻结证据。隔离JS计算与Java复核、来源版本、30种配置配额、Chrome/Edge完整流程与旧阶段回归均通过。三专业内容仍为REVIEW工程预览，尚待真人专业审核及目标用户计时，不计正式完成或生成正式报告。见 [P2–P6交付记录](docs/23-p2-to-p6-delivery-ledger.md) 和 [BA视觉验收](docs/30-p5-ba-visual-direction.md)。报告及完整MVP继续按P6–P8推进；不声称公网生产已就绪。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
 
@@ -49,6 +49,7 @@ sh scripts/test-p1-e2e
 sh scripts/test-p2-e2e
 sh scripts/test-p3-e2e
 sh scripts/test-p4-e2e
+sh scripts/test-p5-e2e
 sh scripts/verify-secrets
 sh scripts/stop-local
 ```
@@ -63,7 +64,9 @@ P3的AI专业内容目前为REVIEW，尚待真人专业审核与目标用户计�
 
 P4新增DS工程预览，仍受同一 `MP_CONTENT_PREVIEW_ENABLED` 本地开关控制。D1–D6覆盖质量策略、分箱频数、分组/散点关系、分层和结论；固定JS Worker预览加Java服务端复算，只读Python说明不执行代码。每个操作最多30种成功配置，相同配置复用免费，HTTP速率限制独立。`test-p4-e2e`先跑真实HTTP再跑Chrome/Edge，共4个合成账户；`node scripts/test-p4-api.mjs --check`只做静态预检。本地实现与最终验收状态见交付记录。
 
-`build-local`还会从受审共享源码生成忽略的 `executor/dist/classifier-worker.js` 与 `executor/dist/ds-worker.js`；启动与单测校验其源码一致性，执行器再核对提交的manifest哈希。DS在opaque Worker中计算，配置摘要由固定可信launcher生成后返回原Worker，未放宽CSP或Cookie边界。不要提交生成产物，也不要手改bundle来绕过哈希检查。
+P5新增BA工程预览，沿用同一本地开关。B1–B6覆盖指标、漏斗、群体比较、观测与假设、行动目标及护栏；72行合成聚合表统一观察每名学员入组后28天。行动依据取当前已复核的B4群体，上游修改后需要重新读取并确认，不把学生目标写成实测效果。`test-p5-e2e`先跑真实HTTP再跑Chrome/Edge，共4个合成账户；`node scripts/test-p5-api.mjs --check`仅静态预检。三专业仍须分别完成人工审核和真实用户试用。
+
+`build-local`还会从受审共享源码生成忽略的 `executor/dist/classifier-worker.js`、`executor/dist/ds-worker.js` 与 `executor/dist/ba-worker.js`；启动与单测校验其源码一致性，执行器再核对提交的manifest哈希。DS在opaque Worker中计算，配置摘要由固定可信launcher生成后返回原Worker；BA纯统计不依赖WebCrypto。未放宽CSP或Cookie边界。不要提交生成产物，也不要手改bundle来绕过哈希检查。
 
 `data/tools/node/bin/node scripts/test-p2-recovery.mjs`仅在其他本项目测试结束后单独执行：要求标准项目托管后端、显式关闭任务AI及空闲Redis DB15，实际重启后端并在finally恢复原配置，不清空正常DB0。它不是操作系统断电或完整数据库备份恢复验证。
 

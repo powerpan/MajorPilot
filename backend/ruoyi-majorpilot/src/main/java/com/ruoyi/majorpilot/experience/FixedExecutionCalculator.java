@@ -8,19 +8,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.ruoyi.majorpilot.classifier.ClassifierEngine;
 import com.ruoyi.majorpilot.datascience.DsStatsEngine;
+import com.ruoyi.majorpilot.businessanalytics.BaMetricsEngine;
 @Component @Profile("local")
 public class FixedExecutionCalculator implements ExecutionCalculator {
-    private final TaskContentProvider content;private final ObjectMapper mapper;private final ClassifierEngine classifier;private final DsStatsEngine dataScience;
-    @Autowired public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper,ClassifierEngine classifier,DsStatsEngine dataScience){this.content=content;this.mapper=mapper;this.classifier=classifier;this.dataScience=dataScience;}
+    private final TaskContentProvider content;private final ObjectMapper mapper;private final ClassifierEngine classifier;private final DsStatsEngine dataScience;private final BaMetricsEngine businessAnalytics;
+    @Autowired public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper,ClassifierEngine classifier,DsStatsEngine dataScience,BaMetricsEngine businessAnalytics){this.content=content;this.mapper=mapper;this.classifier=classifier;this.dataScience=dataScience;this.businessAnalytics=businessAnalytics;}
+    public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper,ClassifierEngine classifier,DsStatsEngine dataScience){this(content,mapper,classifier,dataScience,null);}
     public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper,ClassifierEngine classifier){this(content,mapper,classifier,null);}
     public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper){this(content,mapper,null);}
     private boolean classifier(JsonNode operation){return operation.path("engineType").asText().equals("FROZEN_CLASSIFIER");}
     private boolean dataScience(JsonNode operation){return operation.path("engineType").asText().equals("DATA_ANALYSIS");}
-    @Override public JsonNode normalize(TaskContent.Version version,JsonNode operation,JsonNode parameters){return classifier(operation)?classifier.normalize(version,operation,parameters):dataScience(operation)?dataScience.normalize(version,operation,parameters):parameters;}
+    private boolean businessAnalytics(JsonNode operation){return operation.path("engineType").asText().equals("BUSINESS_ANALYSIS");}
+    @Override public JsonNode normalize(TaskContent.Version version,JsonNode operation,JsonNode parameters){return classifier(operation)?classifier.normalize(version,operation,parameters):dataScience(operation)?dataScience.normalize(version,operation,parameters):businessAnalytics(operation)?businessAnalytics.normalize(version,operation,parameters):parameters;}
     @Override public boolean isBaseline(TaskContent.Version version,JsonNode operation,JsonNode parameters){return classifier(operation)&&classifier.isBaseline(version,operation,parameters);}
     @Override public JsonNode calculate(TaskContent.Version version,JsonNode operation,JsonNode parameters) {
         if(classifier(operation))return classifier.calculate(version,operation,parameters);
         if(dataScience(operation))return dataScience.calculate(version,operation,parameters);
+        if(businessAnalytics(operation))return businessAnalytics.calculate(version,operation,parameters);
         if(!operation.path("engineType").asText().equals("DEMO_SUMMARY")||!operation.path("engineVersion").asText().equals("demo-summary-v1")||!version.contentKind().equals("DEMO"))throw new ApiException(422,"EXECUTION_NOT_ALLOWED");
         ResponseRules.validate(operation.path("parametersSchema"),parameters,true);
         JsonNode dataset;try{byte[] bytes=content.publicAsset(version,operation.path("datasetAssetKey").asText()).bytes();if(bytes.length>1048576)throw new IllegalArgumentException();dataset=mapper.readTree(bytes);}catch(Exception invalid){throw new ApiException(503,"CONTENT_INTEGRITY_FAILED");}

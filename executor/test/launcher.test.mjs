@@ -147,6 +147,30 @@ test("actual launcher preserves P2 and AI execution while routing DS's private d
   assert.equal(ds.status, "SUCCESS");
   assert.equal(ds.engine, "ds-stats-v1");
   assert.equal(ds.result.retainedRows, 359);
+  const baBytes = readFileSync(
+    new URL(
+      "../../content/ba-learning/1.0.0/weekly-funnel.json",
+      import.meta.url,
+    ),
+  );
+  const ba = await launch({
+    template: "ba-analysis-v1",
+    operationKey: "ba-metric",
+    rows: JSON.parse(baBytes),
+    datasetSha256: createHash("sha256").update(baBytes).digest("hex"),
+    parameters: {
+      numerator: "completed_count",
+      denominator: "enrolled_count",
+      baselineStartWeek: 1,
+      baselineEndWeek: 6,
+      comparisonStartWeek: 7,
+      comparisonEndWeek: 12,
+    },
+  });
+  assert.equal(ba.status, "SUCCESS");
+  assert.equal(ba.engine, "ba-metrics-v1");
+  assert.equal(ba.result.baseline.numeratorCount, 100);
+  assert.equal(ba.result.comparison.denominatorCount, 179);
 });
 
 test("actual launcher does not accept an externally supplied cleaning digest", async () => {

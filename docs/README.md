@@ -2,7 +2,7 @@
 
 > 更新日期：2026-09-21
 >
-> 当前阶段：P0–P3已交付；P4 DS本地工程验收通过，Git交付见阶段记录与任务回执，内容仍REVIEW。用户授权继续按顺序推进至P6；真实专业审核/用户试用和计时不因自动化通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
+> 当前阶段：P0–P4工程里程碑已交付；P5 BA本地工程验收通过，Git交付另在台账记录，三专业内容仍REVIEW。用户授权继续按顺序推进至P6；真实专业审核/用户试用和计时不因自动化通过而算完成。首次推荐AI润色仍按用户确认单列增强。Git交付、公网部署和完整MVP验收分别记录。
 
 ## 阅读顺序
 
@@ -31,7 +31,7 @@
 
 当前实施：[P1 实施与交付记录](./21-p1-implementation-and-delivery.md)、[P1 视觉方向与截图比对](./22-p1-visual-direction.md)。
 
-当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)、[P3实施接缝](./25-p3-engineering-plan.md)、[P3 AI视觉验收](./26-p3-ai-visual-direction.md)、[P4 DS实施接缝](./27-p4-engineering-plan.md)、[P4 DS视觉合同](./28-p4-ds-visual-direction.md)。后续设计准备：[P5 BA实施接缝](./29-p5-engineering-plan.md)、[P5 BA视觉合同](./30-p5-ba-visual-direction.md)、[P6报告工程合同](./31-p6-engineering-plan.md)、[P6报告视觉合同](./32-p6-report-visual-direction.md)。各阶段工程验收和真人门禁分别记录；P5/P6目前只有设计准备，不代表代码实现。
+当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)、[P3实施接缝](./25-p3-engineering-plan.md)、[P3 AI视觉验收](./26-p3-ai-visual-direction.md)、[P4 DS实施接缝](./27-p4-engineering-plan.md)、[P4 DS视觉合同](./28-p4-ds-visual-direction.md)、[P5 BA实施接缝](./29-p5-engineering-plan.md)、[P5 BA视觉合同](./30-p5-ba-visual-direction.md)。后续设计准备：[P6报告工程合同](./31-p6-engineering-plan.md)、[P6报告视觉合同](./32-p6-report-visual-direction.md)。各阶段工程验收和真人门禁分别记录；P5工程验收已通过，P6目前只有设计准备，不代表已交付。
 
 设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。阅读本轮变化可以先看 `17`，再按其中的问题编号进入专题设计。
 

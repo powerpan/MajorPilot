@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "ba-provenance-v1",
+  "generatorVersion": "ba-cohort-aggregate-v1",
+  "sourceCanonicalSha256": "9f09364c467d56256b66c9a2da25bf051f0c784bad22795418fd541a7f199cf6",
+  "sourceGeneratorVersion": "learning-synthetic-v1",
+  "uniqueLearners": 359,
+  "aggregateRows": 72,
+  "datasetSha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+  "note": "直接从冻结的完整合成事件按批次、课程与来源聚合；不读取DS清洗结果，不拷贝学员级私有记录。"
+}

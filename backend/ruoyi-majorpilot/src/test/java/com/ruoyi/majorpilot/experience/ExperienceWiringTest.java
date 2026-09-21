@@ -45,6 +45,7 @@ class ExperienceWiringTest {
         context.registerBean(RateLimits.class,()->mock(RateLimits.class));
         context.registerBean(com.ruoyi.majorpilot.classifier.ClassifierEngine.class,()->mock(com.ruoyi.majorpilot.classifier.ClassifierEngine.class));
         context.registerBean(com.ruoyi.majorpilot.datascience.DsStatsEngine.class,()->mock(com.ruoyi.majorpilot.datascience.DsStatsEngine.class));
+        context.registerBean(com.ruoyi.majorpilot.businessanalytics.BaMetricsEngine.class,()->mock(com.ruoyi.majorpilot.businessanalytics.BaMetricsEngine.class));
         context.register(RunStore.class,RunService.class,HintService.class,FixedExecutionCalculator.class,ExecutionService.class,ReflectionService.class,FollowUpService.class,ClosurePipeline.class,EvidenceJobs.class,RunController.class);
         context.refresh();assertTrue(AopUtils.isCglibProxy(context.getBean(RunStore.class)),"The production repository proxy boundary must be exercised");
         return context;

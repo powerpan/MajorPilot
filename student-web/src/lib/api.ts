@@ -2,7 +2,10 @@ interface ApiErrorBody {
   code?: string;
   message?: string;
   fieldErrors?: { field?: string; message?: string }[];
-  details?: { currentRevision?: number };
+  details?: {
+    currentRevision?: number;
+    currentSourceRevisions?: Record<string, number>;
+  };
 }
 const messages: Record<string, string> = {
   AUTH_REQUIRED:
@@ -50,6 +53,14 @@ const messages: Record<string, string> = {
   DS_PARAMETERS_INVALID:
     "请补全当前分析分支的参数；两轴不能相同，分层依据不能与分组相同。",
   DS_INPUT_INVALID: "计算参数不完整或与当前分支不符，请检查后重试。",
+  BA_PARAMETERS_INVALID:
+    "请检查指标与批次范围：两期必须等长、不重叠，基准期早于对比期，批次周为1至12的整数。",
+  BA_ACTION_INVALID:
+    "请检查目标群体、成功指标、提升百分点、支持联系护栏和复盘时间；方案文字仍保留。",
+  STEP_SOURCE_REVISION_CONFLICT:
+    "行动依据已在另一页面改变。请重新读取当前依据并确认；不会自动按新基线提交。",
+  CONTENT_INTEGRITY_FAILED:
+    "固定内容校验暂未通过，请稍后重试；这不是你的回答错误。",
   EXECUTION_NOT_ALLOWED: "请先保存允许的参数并完成运行，再完成此步骤。",
   EXECUTION_RESULT_MISMATCH:
     "本机与服务端计算未能一致，结果未被采纳。请重新运行。",
