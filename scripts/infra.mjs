@@ -27,7 +27,11 @@ export async function startInfra({ bootstrap = false } = {}) {
     mkdirSync(datadir, { recursive: true, mode: 0o700 });
     execFileSync(mysqld, ['--no-defaults', `--basedir=${TOOL}/mysql`, `--datadir=${datadir}`, '--initialize-insecure', '--log-error-verbosity=1'], { env, stdio: ['ignore', 'ignore', 'ignore'] });
   }
-  const args = ['--no-defaults', `--basedir=${TOOL}/mysql`, `--datadir=${datadir}`, `--socket=${socket}`, '--bind-address=127.0.0.1', `--port=${PORTS.mysql}`, '--mysqlx=OFF', '--default-time-zone=+00:00', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_0900_ai_ci', '--log-error-verbosity=2'];
+  // This project runs one local standalone MySQL instance and has no replica or
+  // point-in-time recovery workflow. MySQL 8.4 enables binary logging by
+  // default, so disable it explicitly to avoid retaining multi-gigabyte test
+  // traffic in the ignored local data directory.
+  const args = ['--no-defaults', `--basedir=${TOOL}/mysql`, `--datadir=${datadir}`, `--socket=${socket}`, '--bind-address=127.0.0.1', `--port=${PORTS.mysql}`, '--mysqlx=OFF', '--skip-log-bin', '--default-time-zone=+00:00', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_0900_ai_ci', '--log-error-verbosity=2'];
   if (!existsSync(config)) {
     await start('mysql', mysqld, [...args, '--skip-networking'], env);
     await waitFor(() => { try { return mysqlCommand('SELECT 1;', { bootstrap: true }).trim() === '1'; } catch { return false; } });
