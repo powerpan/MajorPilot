@@ -1,0 +1,72 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.*;
+import com.ruoyi.majorpilot.shared.CanonicalJson;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportAnalysisFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+
+/** Review is not a trust upgrade: source validation still applies before and after model rewriting. */
+class ReportReviewInputTest {
+    private final ReportCore core=new ReportCore(JSON);
+    private Catalog catalog(){return core.compile(v2(experience("BUSINESS_ANALYTICS",false),SOUND));}
+    private Proposal changed(Proposal p,java.util.function.Consumer<ObjectNode> edit){var body=(ObjectNode)p.analysis();edit.accept(body);return new Proposal(p.schemaVersion(),p.reportType(),p.sections(),body);}
+
+    @Test void reviewKeepsCompleteOriginalInputAndOnlyTheThreeWireProposalFields(){
+        var catalog=catalog();var draft=proposal(catalog,"SUPPORTED");var original=core.modelInput(catalog);var review=core.reviewInput(catalog,draft);
+        assertEquals("report-model-review-input-v1",review.schemaVersion());assertEquals(catalog.catalogSha256(),review.catalogSha256());
+        assertEquals(Set.of("originalInput","untrustedDraft"),keys(review.content()));
+        assertEquals(original.content(),review.content().path("originalInput"));
+        assertEquals(raw(draft),review.content().path("untrustedDraft"));assertEquals(Set.of("schemaVersion","reportType","analysis"),keys(review.content().path("untrustedDraft")));
+        assertFalse(review.content().path("untrustedDraft").has("sections"));assertFalse(review.content().toString().contains(id(1)));assertFalse(review.content().toString().contains(id(102)));
+        assertEquals(core.providerProposalSchema(original),core.providerProposalSchema(review));
+    }
+    @Test void nullFallbackLegacyAndForeignDraftsNeverReachReview(){
+        var catalog=catalog();assertThrows(ProposalException.class,()->core.reviewInput(catalog,null));
+        assertThrows(ProposalException.class,()->core.reviewInput(catalog,core.defaultProposal(catalog,false)));
+        var legacy=core.compile(experience("AI",false));assertThrows(ReportInputException.class,()->core.reviewInput(legacy,core.defaultProposal(legacy,true)));
+        var foreign=core.compile(v2(experience("AI",false),SOUND));assertThrows(ProposalException.class,()->core.reviewInput(catalog,proposal(foreign,"SUPPORTED")));
+        var changedAnswer=core.compile(v2(experience("BUSINESS_ANALYTICS",false),WRONG));assertThrows(ProposalException.class,()->core.reviewInput(changedAnswer,proposal(catalog,"SUPPORTED")));
+    }
+    @Test void draftCannotBypassOriginalQuoteCoverageOrAllowedReferences(){
+        var catalog=catalog();var draft=proposal(catalog,"SUPPORTED");
+        var quote=changed(draft,p->((ObjectNode)p.at("/findings/0")).put("answerQuote","A rewritten answer not present in the source"));
+        assertThrows(ProposalException.class,()->core.reviewInput(catalog,quote));assertThrows(ProposalException.class,()->core.proposalSha256(catalog,quote));
+        var reference=changed(draft,p->((ArrayNode)p.at("/findings/0/evidenceRefs")).set(0,JSON.getNodeFactory().textNode(id(999999))));assertThrows(ProposalException.class,()->core.reviewInput(catalog,reference));
+        var missing=changed(draft,p->((ArrayNode)p.path("findings")).remove(0));assertThrows(ProposalException.class,()->core.reviewInput(catalog,missing));
+    }
+    @Test void canonicalDraftAndFinalHashesUseTheWireShapeAndChangeWhenTextChanges(){
+        var catalog=catalog();var draft=proposal(catalog,"SUPPORTED");String draftHash=core.proposalSha256(catalog,draft);
+        assertEquals(CanonicalJson.hash(JSON,raw(draft)),draftHash);
+        assertNotEquals(CanonicalJson.hash(JSON,JSON.valueToTree(draft)),draftHash,"Internal sections[] must not enter the binding hash");
+        var wire=raw(draft);var reordered=JSON.createObjectNode();reordered.set("analysis",wire.path("analysis"));reordered.set("reportType",wire.path("reportType"));reordered.set("schemaVersion",wire.path("schemaVersion"));
+        assertEquals(draftHash,core.proposalSha256(catalog,core.parseProposal(reordered.toString().getBytes(StandardCharsets.UTF_8),ReportType.EXPERIENCE)));
+        var revised=changed(draft,p->p.put("summary",p.path("summary").asText()+"此处修改仅用于测试草稿与审校结果的精确绑定。"));
+        assertNotEquals(draftHash,core.proposalSha256(catalog,revised));
+        assertNotEquals(core.hash(core.reviewInput(catalog,draft).content()),core.hash(core.reviewInput(catalog,revised).content()));
+        assertEquals(draftHash,core.proposalSha256(catalog,draft));
+    }
+    @Test void reviewOutputMustStillPassTheSameSourceAndQuoteValidation(){
+        var catalog=catalog();var draft=proposal(catalog,"SUPPORTED");core.reviewInput(catalog,draft);
+        var invalidFinal=changed(draft,p->((ObjectNode)p.at("/findings/0")).put("answerQuote","Newly invented student answer during review"));
+        var parsed=core.parseProposal(raw(invalidFinal).toString().getBytes(StandardCharsets.UTF_8),ReportType.EXPERIENCE);
+        assertFalse(core.validate(catalog,parsed,GenerationMode.AI).valid());assertThrows(ProposalException.class,()->core.proposalSha256(catalog,parsed));
+    }
+    @Test void comparisonReviewUsesItsOwnReportTypeAndRejectsMalformedReviewEnvelopes(){
+        var catalog=core.compile(v2(comparison(2,false),SOUND));var review=core.reviewInput(catalog,proposal(catalog,"SUPPORTED"));
+        assertEquals(1,core.providerProposalSchema(review).at("/properties/analysis/properties/crossMajorAnalysis/minItems").asInt());
+        var malformed=(ObjectNode)review.content();malformed.put("extra","not allowed");assertThrows(ReportInputException.class,()->core.providerProposalSchema(new SafeModelInput(review.schemaVersion(),review.catalogSha256(),malformed)));
+        var mismatch=(ObjectNode)review.content();((ObjectNode)mismatch.path("originalInput")).put("reportType","EXPERIENCE");assertThrows(ReportInputException.class,()->core.providerProposalSchema(new SafeModelInput(review.schemaVersion(),review.catalogSha256(),mismatch)));
+    }
+    @Test void laterMutationsCannotAlterTheOriginalCatalogDraftOrReviewRequest(){
+        var catalog=catalog();var draft=proposal(catalog,"SUPPORTED");var review=core.reviewInput(catalog,draft);var before=review.content();var original=core.modelInput(catalog).content();
+        ((ObjectNode)draft.analysis()).put("summary","Changed external copy");((ObjectNode)review.content().path("originalInput")).remove("sources");
+        assertEquals(before,review.content());assertEquals(original,core.modelInput(catalog).content());assertEquals(raw(draft),review.content().path("untrustedDraft"));
+    }
+    private Set<String> keys(JsonNode object){var result=new HashSet<String>();object.fieldNames().forEachRemaining(result::add);return result;}
+}

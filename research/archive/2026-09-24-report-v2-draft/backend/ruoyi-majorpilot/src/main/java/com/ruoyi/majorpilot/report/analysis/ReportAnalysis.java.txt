@@ -1,0 +1,184 @@
+package com.ruoyi.majorpilot.report.analysis;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.report.core.ReportInputException;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import java.util.*;
+
+/** Evidence-bound analysis compiler. Structural checks do not certify semantic correctness. */
+public final class ReportAnalysis {
+    private final ObjectMapper mapper;
+    public ReportAnalysis(ObjectMapper mapper){this.mapper=mapper;}
+
+    public JsonNode context(ReportInput input){
+        var root=mapper.createObjectNode();root.put("reportType",input.header().reportType().name());
+        var sources=root.putArray("sources");
+        for(var source:input.sources()){
+            validateSource(source);
+            var n=sources.addObject();n.put("majorCode",source.majorCode());n.set("context",source.analysisContext());
+            var evidence=n.putArray("evidence");
+            for(var item:source.items()){
+                var e=evidence.addObject();String key=switch(item.type()){case "ASSISTANCE_CONTEXT"->"hint:"+item.value().path("stepKey").asText()+":"+item.value().path("hintLevel").asInt();case "VERIFIED_EXECUTION"->"execution:"+item.value().path("operationKey").asText("classifier-evaluation");case "DERIVED_INTERPRETATION"->"derived:experience-preference";default->item.key();};e.put("evidenceId",item.publicId()).put("key",key).put("type",item.type());
+                if(item.type().equals("DERIVED_INTERPRETATION")){var value=mapper.createObjectNode();for(String field:List.of("scope","derivationRuleKey","interestingStepKeys","continueSimilarWork"))if(item.value().has(field))value.set(field,item.value().get(field));e.set("value",value);}else e.set("value",item.value());
+            }
+        }
+        var rules=root.putObject("analysisContract");rules.put("proposalSchemaVersion","report-analysis-proposal-v2");
+        rules.set("assessments",mapper.valueToTree(List.of("SUPPORTED","PARTIAL","NEEDS_REVISION","INSUFFICIENT")));
+        rules.put("coverage","AT_LEAST_ONE_FINDING_PER_ANSWERED_STEP").put("scope","THIS_EXPERIENCE_ONLY");
+        // Public recommendation fields only: AI must not change or rank the deterministic recommendation.
+        var next=root.putObject("nextRecommendation");var recommendation=input.nextRecommendation();
+        next.put("state",recommendation.state());if(recommendation.primaryMajor()==null)next.putNull("primaryMajor");else next.put("primaryMajor",recommendation.primaryMajor());
+        next.set("alternativeMajors",mapper.valueToTree(recommendation.alternativeMajors()));next.set("completedMajorCodes",mapper.valueToTree(recommendation.completedMajorCodes()));next.set("reasonCodes",mapper.valueToTree(recommendation.reasonCodes()));
+        return root;
+    }
+
+    public void validateSource(Source source){
+        var context=source.analysisContext();
+        require(context!=null&&context.isObject()&&"report-analysis-context-v2".equals(context.path("schemaVersion").asText())&&context.path("task").isObject()&&context.path("steps").isArray(),"REPORT_SOURCE_INVALID");
+        require(context.path("steps").size()>=1&&context.path("steps").size()<=30&&context.toString().length()<=250000,"REPORT_SOURCE_INVALID");
+        var items=new HashMap<String,EvidenceValue>();source.items().forEach(e->items.put(e.publicId(),e));
+        var frozen=frozenMap(context);require(frozen.size()==context.path("frozenSources").size(),"REPORT_SOURCE_INVALID");
+        for(var value:frozen.values()){
+            String type=value.path("sourceType").asText(),field=value.path("answerField").asText();
+            String expected=type.equals("STEP_RESPONSE")?"frozen-response:"+source.majorCode()+"/"+value.path("stepKey").asText()+":"+field:"frozen-reflection:"+source.majorCode()+"/"+field;
+            require(value.path("sourceRef").asText().equals(expected)&&value.path("sourceRef").asText().matches("frozen-(?:response:[A-Za-z0-9_./~-]{1,80}:|reflection:)[A-Za-z0-9_./~-]{1,160}")&&value.path("sourceSha256").asText().matches("[a-f0-9]{64}")&&value.path("value").isTextual()&&Set.of("STEP_RESPONSE","REFLECTION").contains(type),"REPORT_SOURCE_INVALID");
+            if(type.equals("REFLECTION"))require(matchesFrozenReflection(context,value),"REPORT_SOURCE_INVALID");
+        }
+        var steps=new HashSet<String>();int answers=0;
+        for(var step:context.path("steps")){
+            String key=step.path("stepKey").asText();
+            require(source.pins().stepTitles().containsKey(key)&&steps.add(key)&&step.path("answers").isArray()&&step.path("answers").size()<=100,"REPORT_SOURCE_INVALID");
+            var fields=new HashSet<String>();
+            for(var answer:step.path("answers")){
+                String field=answer.path("answerField").asText();String value=answer.path("value").asText();var evidence=items.get(answer.path("evidenceId").asText());
+                var frozenValue=frozen.get(answer.path("sourceRef").asText());
+                boolean snapshotBound=evidence!=null&&evidence.type().equals("STUDENT_ANALYSIS")&&evidence.key().equals("analysis:"+key)&&evidence.value().path("answers").at("/"+field).equals(answer.path("value"))&&!answer.has("sourceRef");
+                boolean frozenBound=evidence==null&&!answer.has("evidenceId")&&frozenValue!=null&&frozenValue.path("sourceType").asText().equals("STEP_RESPONSE")&&frozenValue.path("stepKey").asText().equals(key)&&frozenValue.path("answerField").asText().equals(field)&&frozenValue.path("value").equals(answer.path("value"))&&frozenValue.path("sourceSha256").equals(answer.path("sourceSha256"));
+                require(field.matches("[A-Za-z0-9_./~-]{1,160}")&&fields.add(field)&&answer.path("value").isTextual()&&!value.isBlank()&&value.length()<=12000&&(snapshotBound||frozenBound),"REPORT_SOURCE_INVALID");
+                answers++;
+            }
+        }
+        require(answers>0,"REPORT_SOURCE_INVALID");
+    }
+
+    public Validation validate(Catalog catalog,JsonNode analysis){
+        var errors=new ArrayList<Violation>();
+        if(analysis==null||!analysis.isObject())return new Validation(false,List.of(new Violation("ANALYSIS_REQUIRED","/analysis")));
+        var sources=sourceMap(catalog);var requiredSteps=new HashSet<String>();var requiredFields=new HashSet<String>();
+        boolean bound=com.ruoyi.majorpilot.report.core.ReportBindingCodec.enabled(catalog.analysisContext());
+        for(var entry:sources.entrySet())for(var step:entry.getValue().at("/context/steps")){if(!step.path("answers").isEmpty())requiredSteps.add(entry.getKey()+":"+step.path("stepKey").asText());if(bound)for(var answer:step.path("answers"))requiredFields.add(entry.getKey()+":"+step.path("stepKey").asText()+":"+answer.path("answerField").asText());}
+        var seenMajors=new HashSet<String>();int index=0;
+        for(var major:analysis.path("majorAnalyses")){
+            String code=major.path("majorCode").asText();var source=sources.get(code);String path="/analysis/majorAnalyses/"+index++;
+            if(source==null)issue(errors,"ANALYSIS_EVIDENCE_INVALID",path);
+            else{
+                if(!seenMajors.add(code))issue(errors,"ANALYSIS_MAJOR_DUPLICATE",path+"/majorCode");
+                if(!validRefs(major.path("evidenceRefs"),source,true))issue(errors,"ANALYSIS_EVIDENCE_INVALID",path);
+            }
+        }
+        if(!seenMajors.equals(sources.keySet()))issue(errors,"ANALYSIS_MAJOR_COVERAGE_INVALID","/analysis/majorAnalyses");
+        var seenFindings=new HashSet<String>();index=0;
+        for(var finding:analysis.path("findings")){
+            String code=finding.path("majorCode").asText(),stepKey=finding.path("stepKey").asText(),field=finding.path("answerField").asText();
+            String path="/analysis/findings/"+index++;var source=sources.get(code);var answer=findAnswer(source,stepKey,field);
+            String quote=finding.path("answerQuote").asText();
+            if(answer==null||quote.isBlank()||!answer.path("value").asText().contains(quote))issue(errors,"ANALYSIS_QUOTE_INVALID",path+"/answerQuote");
+            if(source==null||!validRefs(finding.path("evidenceRefs"),source,false)||answer!=null&&!strings(finding.path("evidenceRefs")).contains(answer.path(answer.has("evidenceId")?"evidenceId":"sourceRef").asText()))issue(errors,"ANALYSIS_EVIDENCE_INVALID",path+"/evidenceRefs");
+            if(!seenFindings.add(code+":"+stepKey+":"+field))issue(errors,"ANALYSIS_FINDING_DUPLICATE",path);
+            if(bound&&answer!=null)requiredFields.remove(code+":"+stepKey+":"+field);
+            if(answer!=null)requiredSteps.remove(code+":"+stepKey);
+        }
+        if(!requiredSteps.isEmpty())issue(errors,"ANALYSIS_STEP_COVERAGE_INVALID","/analysis/findings");
+        if(!requiredFields.isEmpty())issue(errors,"ANALYSIS_FIELD_COVERAGE_INVALID","/analysis/findings");
+        index=0;for(var comparison:analysis.path("crossMajorAnalysis")){
+            String path="/analysis/crossMajorAnalysis/"+index++;var majors=strings(comparison.path("majorCodes"));var refs=strings(comparison.path("evidenceRefs"));var legal=new HashSet<String>();
+            if(majors.size()<2||!sources.keySet().containsAll(majors))issue(errors,"ANALYSIS_COMPARISON_INVALID",path);
+            for(String major:majors){var source=sources.get(major);if(source==null)continue;var majorEvidence=evidenceMap(source);var frozen=frozenMap(source.path("context"));legal.addAll(majorEvidence.keySet());legal.addAll(frozen.keySet());if(refs.stream().noneMatch(id->isAnalysisRef(id,majorEvidence,frozen)))issue(errors,"ANALYSIS_EVIDENCE_INVALID",path);}
+            if(!legal.containsAll(refs))issue(errors,"ANALYSIS_EVIDENCE_INVALID",path);
+        }
+        if(catalog.reportType()==ReportType.EXPERIENCE&&!analysis.path("crossMajorAnalysis").isEmpty()||catalog.reportType()==ReportType.COMPARISON&&analysis.path("crossMajorAnalysis").isEmpty())issue(errors,"ANALYSIS_COMPARISON_INVALID","/analysis/crossMajorAnalysis");
+        if(!safeTextTree(analysis,null))issue(errors,"ANALYSIS_CONTENT_INVALID","/analysis");
+        var internalRefs=new HashSet<String>();for(var source:sources.values()){internalRefs.addAll(evidenceMap(source).keySet());internalRefs.addAll(frozenMap(source.path("context")).keySet());}
+        if(exposesInternalReference(analysis,null,internalRefs))issue(errors,"ANALYSIS_INTERNAL_REFERENCE_EXPOSED","/analysis");
+        return new Validation(errors.isEmpty(),errors.stream().limit(20).toList());
+    }
+
+    /** Internal IDs remain solely in ClaimLinks, never in the student-facing report. */
+    public ObjectNode publicBody(Catalog catalog,JsonNode analysis){
+        var result=(ObjectNode)analysis.deepCopy();result.put("status","COMPLETE");
+        for(var major:result.path("majorAnalyses"))((ObjectNode)major).remove("evidenceRefs");
+        var sources=sourceMap(catalog);
+        for(var finding:result.path("findings")){
+            var n=(ObjectNode)finding;n.remove("evidenceRefs");var source=sources.get(n.path("majorCode").asText());var step=findStep(source,n.path("stepKey").asText());var answer=findAnswer(source,n.path("stepKey").asText(),n.path("answerField").asText());
+            n.put("stepTitle",step.path("title").asText(n.path("stepKey").asText()));n.put("answerLabel",answer.path("label").asText(answer.path("answerLabel").asText(answerLabel(n.path("majorCode").asText(),n.path("answerField").asText()))));
+        }
+        for(var comparison:result.path("crossMajorAnalysis"))((ObjectNode)comparison).remove("evidenceRefs");
+        return result;
+    }
+
+    public ObjectNode unavailable(){
+        var result=mapper.createObjectNode();result.put("status","UNAVAILABLE").put("summary","本次深度分析暂未完成。以下仅展示已验证的任务记录和你的反思，不代表已评价开放题作答质量。");
+        result.putArray("majorAnalyses");result.putArray("findings");result.putArray("crossMajorAnalysis");return result;
+    }
+
+    public List<ClaimLink> claims(Catalog catalog,JsonNode analysis){
+        var result=new ArrayList<ClaimLink>();int order=0;var all=new LinkedHashSet<String>();
+        var frozen=new HashMap<String,JsonNode>();for(var source:sourceMap(catalog).values())frozen.putAll(frozenMap(source.path("context")));
+        for(var finding:analysis.path("findings"))all.addAll(strings(finding.path("evidenceRefs")));
+        result.add(link(++order,"summary",null,analysis.path("summary").asText(),List.copyOf(all),frozen));
+        for(var major:analysis.path("majorAnalyses"))for(String field:List.of("preparation","taskReasoning","nextPractice"))result.add(link(++order,"major:"+major.path("majorCode").asText()+":"+field,major.path("majorCode").asText(),major.path(field).asText(),strings(major.path("evidenceRefs")),frozen));
+        int count=0;for(var finding:analysis.path("findings")){String text="本次作答判读："+finding.path("reasoning").asText()+" 改进："+finding.path("improvement").asText()+" 示例："+finding.path("example").asText();result.add(link(++order,"finding:"+count++,finding.path("majorCode").asText(),text,strings(finding.path("evidenceRefs")),frozen));}
+        count=0;for(var comparison:analysis.path("crossMajorAnalysis"))result.add(link(++order,"comparison:"+count++,null,comparison.path("observation").asText()+" "+comparison.path("interpretation").asText()+" "+comparison.path("nextExperiment").asText(),strings(comparison.path("evidenceRefs")),frozen));
+        return List.copyOf(result);
+    }
+
+    public static boolean safeTextTree(JsonNode value,String key){
+        if(value.isTextual()){
+            String text=value.asText();if(text.matches("(?s).*[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F].*"))return false;
+            // Quotes are exact untrusted plain text, rendered by interpolation, never HTML/Markdown.
+            if("answerQuote".equals(key))return true;
+            // A comparison sign is not markup. All public fields still render as plain text.
+            if(text.matches("(?is).*(?:https?://|www\\.|</?[A-Za-z][A-Za-z0-9:-]*(?:\\s[^<>]*)?/?>|<!\\s*(?:DOCTYPE|--|\\[CDATA\\[)).*"))return false;
+            if(Set.of("answerQuote","evidenceRefs","majorCode","majorCodes","stepKey","answerField","assessment","status").contains(key==null?"":key))return true;
+            return !text.matches("(?is).*(你(?:最|更)?适合(?:读|学|选择)?(?:商科|AI|DS|BA|人工智能|数据科学|商业分析)|你不适合|你的智商|你的人格(?:是|属于)|录取概率(?:为|是)|适配度[：:是为 ]*\\d+).*" );
+        }
+        if(value.isArray()){for(var child:value)if(!safeTextTree(child,key))return false;}
+        if(value.isObject()){var it=value.fields();while(it.hasNext()){var e=it.next();if(!safeTextTree(e.getValue(),e.getKey()))return false;}}
+        return true;
+    }
+
+    private static boolean exposesInternalReference(JsonNode value,String key,Set<String> refs){
+        if(Set.of("answerQuote","evidenceRefs").contains(key==null?"":key))return false;
+        if(value.isTextual())return refs.stream().anyMatch(value.asText()::contains);
+        if(value.isArray()){for(var child:value)if(exposesInternalReference(child,key,refs))return true;}
+        if(value.isObject()){var fields=value.fields();while(fields.hasNext()){var field=fields.next();if(exposesInternalReference(field.getValue(),field.getKey(),refs))return true;}}
+        return false;
+    }
+
+    private ClaimLink link(int order,String key,String major,String text,List<String> refs,Map<String,JsonNode> frozen){var ids=new ArrayList<String>();var rules=new ArrayList<String>();rules.add("report-analysis-v2");for(String ref:refs)if(frozen.containsKey(ref))rules.add("report-analysis-v2:"+ref+":sha256:"+frozen.get(ref).path("sourceSha256").asText());else ids.add(ref);return new ClaimLink("DEEP_ANALYSIS",order,"analysis-v2:"+key,ClaimType.BOUNDED_INTERPRETATION,text,Confidence.BOUNDED,null,major,ids,rules);}
+    private Map<String,JsonNode> sourceMap(Catalog catalog){var result=new LinkedHashMap<String,JsonNode>();for(var source:catalog.analysisContext().path("sources"))result.put(source.path("majorCode").asText(),source);return result;}
+    private Map<String,JsonNode> evidenceMap(JsonNode source){var result=new HashMap<String,JsonNode>();for(var e:source.path("evidence"))result.put(e.path("evidenceId").asText(),e);return result;}
+    private boolean validRefs(JsonNode refs,JsonNode source,boolean requireAnalysis){if(!refs.isArray()||refs.isEmpty())return false;var allowed=evidenceMap(source);var frozen=frozenMap(source.path("context"));var ids=strings(refs);var legal=new HashSet<>(allowed.keySet());legal.addAll(frozen.keySet());return ids.size()==new HashSet<>(ids).size()&&legal.containsAll(ids)&&(!requireAnalysis||ids.stream().anyMatch(id->isAnalysisRef(id,allowed,frozen)));}
+    private static boolean isAnalysisRef(String ref,Map<String,JsonNode> evidence,Map<String,JsonNode> frozen){return evidence.containsKey(ref)&&evidence.get(ref).path("type").asText().equals("STUDENT_ANALYSIS")||frozen.containsKey(ref)&&frozen.get(ref).path("sourceType").asText().equals("STEP_RESPONSE");}
+    private static Map<String,JsonNode> frozenMap(JsonNode context){var values=new LinkedHashMap<String,JsonNode>();for(var source:context.path("frozenSources"))values.put(source.path("sourceRef").asText(),source);return values;}
+    private static boolean matchesFrozenReflection(JsonNode context,JsonNode source){for(var answer:context.at("/reflection/frozenAnswerReferences"))if(answer.path("sourceRef").equals(source.path("sourceRef"))&&answer.path("answerField").equals(source.path("answerField"))&&answer.path("value").equals(source.path("value"))&&answer.path("sourceSha256").equals(source.path("sourceSha256")))return true;return false;}
+    /** Trusted wording matching the task form, never generated by the model or copied from answers. */
+    private static String answerLabel(String major,String path){
+        String field=path.split("/")[0];
+        return switch(field){
+            case "businessQuestion"->"本次要回答的业务问题";case "decisionScope"->"本次可以决定的范围";case "metricReason"->"为什么采用这个口径？";case "focusReason"->"为什么优先这个环节？";case "priorityReason"->"为什么优先这个群体？";
+            case "observation"->major.equals("BUSINESS_ANALYTICS")?"观测：数据直接说明了什么？":"你观察到了什么？";case "hypothesis"->"可能原因：你的假设";case "unknownInformation"->"尚缺信息：还需要知道什么？";case "actionDescription"->"行动描述";case "actionReason"->"选择依据";case "testPlan"->"小范围验证计划";
+            case "duplicateReason"->"重复处理的理由";case "missingReason"->"缺失处理的理由";case "sampleInterpretation"->"这些分母说明了什么？";case "uncertaintyComment"->"哪些不确定性仍然存在？";case "unsupportedCausalClaim"->"一个不能由当前数据推出的因果结论";case "limitations"->"当前分析的限制";case "nextQuestion"->"下一步值得验证的问题";case "findings"->"本次发现与证据";
+            case "errorCostReason"->"错误代价与我的理由";case "errorPatterns"->"错误模式的解释";case "modificationReason"->"修改理由";case "expectedEffect"->"预期影响";case "comparisonNotes"->"哪些变化值得关注？";case "tradeoff"->"这次调整的代价或局限是什么？";case "decisionReason"->"决定的依据";case "monitoringItems"->"需要监控什么？";case "residualRisk"->"仍然存在的风险";
+            default->"本题的文字回答";
+        };
+    }
+    private JsonNode findStep(JsonNode source,String stepKey){if(source==null)return null;for(var step:source.at("/context/steps"))if(step.path("stepKey").asText().equals(stepKey))return step;return null;}
+    private JsonNode findAnswer(JsonNode source,String stepKey,String field){var step=findStep(source,stepKey);if(step==null)return null;for(var answer:step.path("answers"))if(answer.path("answerField").asText().equals(field))return answer;return null;}
+    private static List<String> strings(JsonNode values){var result=new ArrayList<String>();for(var value:values)result.add(value.asText());return result;}
+
+    private static void issue(List<Violation> errors,String code,String path){errors.add(new Violation(code,path));}
+    private static void require(boolean valid,String code){if(!valid)throw new ReportInputException(code);}
+}

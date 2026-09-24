@@ -1,0 +1,69 @@
+package majorpilot.harness;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruoyi.majorpilot.integration.ai.ReportGateway;
+import com.ruoyi.majorpilot.report.*;
+import com.ruoyi.majorpilot.report.core.ReportCore;
+import com.ruoyi.majorpilot.report.core.ReportModels.Catalog;
+import java.nio.file.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class P6HarnessReportJobsTest {
+    @TempDir Path temporary;
+    private Path directory() throws Exception {return Files.createDirectories(temporary.resolve("data/p6-harness"));}
+    private MockEnvironment environment(Path directory){var env=new MockEnvironment().withProperty("MP_P6_HARNESS_DIR",directory.toString()).withProperty("MP_P6_RUN_TAG","0123456789abcdef");env.setActiveProfiles("local","p6-harness");return env;}
+    private P6HarnessReportJobs jobs(ReportStore store,Path dir){when(store.mapper()).thenReturn(new ObjectMapper());return new P6HarnessReportJobs(store,mock(ReportCore.class),mock(ReportCoordinator.class),mock(ReportGateway.class),environment(dir));}
+    @Test void requiresExplicitTestProfileAndKeepsActualScheduledImplementation() throws Exception {
+        Path dir=directory();var env=environment(dir);env.setActiveProfiles("local");
+        assertThrows(IllegalStateException.class,()->new P6HarnessReportJobs(mock(ReportStore.class),mock(ReportCore.class),mock(ReportCoordinator.class),mock(ReportGateway.class),env));
+        assertEquals(ReportJobs.class,P6HarnessReportJobs.class.getMethod("tick").getDeclaringClass());
+        assertNotNull(P6HarnessReportJobs.class.getMethod("tick").getAnnotation(Scheduled.class));
+    }
+    @Test void malformedControlFailsWithoutDatabaseOrSecretEcho() throws Exception {
+        Path dir=directory();var store=mock(ReportStore.class);var jobs=jobs(store,dir);
+        Files.writeString(dir.resolve("checkpoint-control.json"),"{\"stage\":\"sensitive-synthetic-value\"}");
+        try{var failure=assertThrows(IllegalStateException.class,()->jobs.publish(null,null,null,null,null));assertFalse(failure.getMessage().contains("sensitive-synthetic"));verify(store,never()).tx();verify(store,never()).db();}finally{jobs.stop();}
+    }
+    @Test void passUsesRealPublicationFence() throws Exception {
+        Path dir=directory();var store=mock(ReportStore.class);var transaction=mock(TransactionTemplate.class);when(store.tx()).thenReturn(transaction);var jobs=jobs(store,dir);
+        try{assertFalse(jobs.publish(null,null,null,null,null));verify(store).tx();}finally{jobs.stop();}
+    }
+    @Test void interruptedGateCannotReachPublication() throws Exception {
+        Path dir=directory();var store=mock(ReportStore.class);var db=mock(JdbcTemplate.class);when(store.db()).thenReturn(db);
+        when(db.queryForObject(anyString(),eq(Integer.class),any(Object[].class))).thenReturn(1);
+        var jobs=jobs(store,dir);Files.writeString(dir.resolve("checkpoint-control.json"),"{\"stage\":\"BEFORE_PUBLISH\"}");
+        try{Thread.currentThread().interrupt();assertFalse(jobs.publish(new ReportJobs.Lease(1,2,3,4,1,"test-worker","REPORT_GENERATE"),null,null,null,null));assertTrue(Files.exists(dir.resolve("checkpoint-entered.json")));verify(store,never()).tx();}finally{Thread.interrupted();jobs.stop();}
+    }
+    @Test void afterDraftCheckpointRequiresTheRealSaveTransactionToCompleteFirst() throws Exception {
+        Path dir=directory();var store=mock(ReportStore.class);var db=mock(JdbcTemplate.class);var transaction=mock(TransactionTemplate.class);var core=mock(ReportCore.class);var catalog=mock(Catalog.class);var committed=new AtomicBoolean();
+        when(store.db()).thenReturn(db);when(store.tx()).thenReturn(transaction);when(store.mapper()).thenReturn(new ObjectMapper());
+        when(db.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(Map.of("status","ACTIVE","id",4L)));
+        when(db.queryForMap(anyString(),any(Object[].class))).thenReturn(Map.of("generation_target_version_id",4L));
+        when(db.queryForObject(anyString(),eq(Integer.class),any(Object[].class))).thenAnswer(call->{assertTrue(committed.get(),"Ownership checkpoint must follow the committed save transaction");return 1;});
+        var version=new HashMap<String,Object>();version.put("generation_phase","INITIAL_REQUESTED");version.put("claim_catalog_sha256","c".repeat(64));
+        when(store.version(4)).thenReturn(version);when(store.reviewRequired(version)).thenReturn(true);when(catalog.catalogSha256()).thenReturn("c".repeat(64));when(core.proposalSha256(catalog,null)).thenReturn("d".repeat(64));
+        when(transaction.execute(any())).thenAnswer(call->{Object result=((TransactionCallback<?>)call.getArgument(0)).doInTransaction(new SimpleTransactionStatus());committed.set(true);return result;});
+        var jobs=new P6HarnessReportJobs(store,core,mock(ReportCoordinator.class),mock(ReportGateway.class),environment(dir));Files.writeString(dir.resolve("checkpoint-control.json"),"{\"stage\":\"AFTER_DRAFT\"}");
+        try{
+            Thread.currentThread().interrupt();assertFalse(jobs.saveDraft(new ReportJobs.Lease(1,2,3,4,1,"test-worker","REPORT_GENERATE"),catalog,null));
+            assertTrue(committed.get());assertEquals("AFTER_DRAFT",store.mapper().readTree(Files.readString(dir.resolve("checkpoint-entered.json"))).path("stage").asText());
+            verify(db).update(startsWith("UPDATE mp_report_version SET generation_phase='DRAFT_READY'"),any(Object[].class));
+        }finally{Thread.interrupted();jobs.stop();}
+    }
+    @Test void unsuccessfulDraftSaveCannotEmitAnAfterDraftCheckpoint() throws Exception {
+        Path dir=directory();var store=mock(ReportStore.class);when(store.tx()).thenReturn(mock(TransactionTemplate.class));var jobs=jobs(store,dir);
+        Files.writeString(dir.resolve("checkpoint-control.json"),"{\"stage\":\"AFTER_DRAFT\"}");
+        try{assertFalse(jobs.saveDraft(null,null,null));assertFalse(Files.exists(dir.resolve("checkpoint-entered.json")));verify(store).tx();verify(store,never()).db();}finally{jobs.stop();}
+    }
+}

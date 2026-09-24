@@ -1,0 +1,73 @@
+// Explicit paid synthetic analysis-quality probe. Never imported by normal build/test runners.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, lstatSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ROOT } from './local-config.mjs';
+import { readLocalEnv, runtimeEnv } from './env.mjs';
+
+export const casesAllowed = Object.freeze(['ba-good', 'ba-concept-errors', 'ba-unrelated', 'ba-alternative', 'ai-metric-error', 'ds-causal-error']);
+export const maxDurationMsPerCase = 2_700_000;
+export const maxHttpAttemptsPerCase = 3;
+
+// Dependencies are injectable only in this local CLI module so offline tests never access
+// credentials, a real provider, the main runtime, or Maven. The CLI uses the real defaults.
+export function runAnalysisProbe(args, {
+  root = ROOT, readEnv = readLocalEnv, buildRuntimeEnv = runtimeEnv, runMaven = execFileSync,
+  log = value => console.log(value), error = value => console.error(value),
+} = {}) {
+  if (args.length === 1 && args[0] === '--check') {
+    const result = { result: 'PASS', scope: 'synthetic analysis probe static limits only', casesAllowed, maxCases: 6, maxHttpAttemptsPerCase, mandatoryIndependentRewrite: true, maxDurationMsPerCase, paidCalls: 0 };
+    log(JSON.stringify(result));
+    return { exitCode: 0, result };
+  }
+  assert.equal(args[0], '--live', 'Use --live --cases case-a,case-b --run-id new-descriptive-id [--provider BAILIAN|DEEPSEEK]');
+  assert.ok([5, 7].includes(args.length), 'Explicit cases and new run ID are required');
+  const options = new Map();
+  for (let i = 1; i < args.length; i += 2) {
+    assert.ok(['--cases', '--run-id', '--provider'].includes(args[i]) && !options.has(args[i]));
+    options.set(args[i], args[i + 1]);
+  }
+  const selected = options.get('--cases')?.split(',');
+  assert.ok(selected?.length >= 1 && selected.length <= 6 && selected.every(c => casesAllowed.includes(c)));
+  assert.equal(new Set(selected).size, selected.length, 'Each case can run only once per invocation');
+  const runId = options.get('--run-id'); assert.match(runId ?? '', /^[a-z0-9][a-z0-9-]{2,79}$/);
+  const explicitProvider = options.get('--provider');
+  if (explicitProvider !== undefined) assert.ok(['BAILIAN', 'DEEPSEEK'].includes(explicitProvider));
+  const local = readEnv();
+  const provider = explicitProvider ?? local.MP_REPORT_AI_PROVIDER ?? 'BAILIAN';
+  assert.ok(['BAILIAN', 'DEEPSEEK'].includes(provider));
+  assert.ok(local[`${provider}_API_KEY`]?.length, 'The selected provider key is missing; value suppressed');
+  const directory = path.join(root, 'data/report-analysis-probes');
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const stat = lstatSync(directory); assert.ok(stat.isDirectory() && !stat.isSymbolicLink() && !(stat.mode & 0o077));
+  const guard = path.join(directory, `${provider.toLowerCase()}-${runId}.attempt.json`);
+  const metadata = { provider, runId, cases: selected, maxHttpAttempts: selected.length * maxHttpAttemptsPerCase, mandatoryIndependentRewrite: true, maxDurationMsPerCase, maxTotalDurationMs: selected.length * maxDurationMsPerCase, createdAt: new Date().toISOString(), status: 'ATTEMPT_RESERVED' };
+  // Exclusive before Maven starts; compile failures/timeouts still consume this run ID.
+  writeFileSync(guard, JSON.stringify(metadata), { flag: 'wx', mode: 0o600 });
+  const env = {
+    ...buildRuntimeEnv(), MP_RUN_BAILIAN_TEST: 'false', MP_RUN_LIVE_REPORT_TESTS: 'false', MP_RUN_MYSQL_TESTS: 'false',
+    MP_REPORT_ANALYSIS_LIVE: 'true', MP_REPORT_ANALYSIS_LIVE_CONFIRM: 'synthetic-quality-only',
+    MP_REPORT_ANALYSIS_LIVE_CASES: selected.join(','), MP_REPORT_ANALYSIS_GUARD_FILE: guard,
+    MP_REPORT_AI_PROVIDER: provider, MAVEN_USER_HOME: path.join(root, 'data/maven-user'),
+  };
+  for (const suffix of ['_API_KEY', '_BASE_URL']) if (local[provider + suffix]) env[provider + suffix] = local[provider + suffix];
+  for (const key of ['MP_REPORT_AI_MODEL', 'MP_REPORT_AI_OUTPUT_FORMAT']) if (local[key]) env[key] = local[key];
+  let exitCode = 0;
+  try {
+    runMaven(path.join(root, 'backend/mvnw'), [`-Dmaven.repo.local=${root}/.local/m2`, '-Dtest=ReportAnalysisLiveTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], {
+      cwd: path.join(root, 'backend'), env, stdio: 'inherit', timeout: selected.length * maxDurationMsPerCase + 180000,
+    });
+    metadata.status = 'REWRITTEN_VALIDATED_REQUIRES_HUMAN_SEMANTIC_REVIEW';
+  } catch {
+    metadata.status = 'FAILED_OR_TIMED_OUT_DO_NOT_AUTOMATICALLY_REPEAT';
+    exitCode = 1;
+    error('Analysis probe did not complete successfully. The durable run guard remains; inspect safe metadata before any separately authorized new attempt.');
+  } finally {
+    metadata.finishedAt = new Date().toISOString();
+    writeFileSync(guard, JSON.stringify(metadata), { mode: 0o600 });
+  }
+  return { exitCode, guard, metadata };
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exitCode = runAnalysisProbe(process.argv.slice(2)).exitCode;

@@ -1,0 +1,99 @@
+package com.ruoyi.majorpilot.report;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.shared.ApiException;
+import com.ruoyi.majorpilot.report.core.ReportCore;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+
+class ReportAiAnalysisContextTest {
+    @Test void citedPatternSamplesExposeActualConfidenceAndRoutingWithoutGrading() throws Exception {
+        var frame=frame();assertEquals("ai-analysis-frame-v1",frame.path("schemaVersion").asText());
+        var samples=frame.at("/selectedPatterns/1/samples");assertEquals(2,samples.size());
+        assertEquals("practice-03",samples.get(0).path("sampleId").asText());
+        assertEquals(.993188,samples.get(0).path("confidence").asDouble());
+        assertFalse(samples.get(0).path("belowBaselineThreshold").asBoolean());
+        assertFalse(samples.get(0).path("automaticRouteIsCorrect").asBoolean());
+        assertEquals(.9,samples.get(1).path("confidence").asDouble());
+        assertTrue(samples.get(1).path("automaticRouteIsCorrect").asBoolean());
+        assertFalse(frame.toString().contains("assessment"));
+    }
+    @Test void increasingAllowedThresholdNeedNotChangeAnyPublicRoute() throws Exception {
+        var cases=frame().at("/publicThresholdSensitivity/cases");assertEquals(3,cases.size());
+        for(var c:cases)if(c.path("confidenceThreshold").asDouble()>=.55){
+            assertEquals(24,c.at("/metrics/sampleCount").asInt());assertEquals(12,c.at("/metrics/wrongAutoRoutedCount").asInt());
+            assertEquals(3,c.at("/metrics/manualReviewCount").asInt());assertEquals(0,c.path("changedRouteCountFromSavedConfiguration").asInt());
+        }
+    }
+    @Test void fixedEvaluationAndPublicPracticeAreDifferentPopulationsAndNoOnlineTraining() throws Exception {
+        var f=frame();assertFalse(f.at("/executionSemantics/learnsFromEvaluationOnRerun").asBoolean(true));
+        assertTrue(f.at("/configurationComparison/isBaselineConfiguration").asBoolean());
+        assertEquals(48,f.at("/fixedEvaluation/baseline/sampleCount").asInt());
+        assertEquals(39,f.at("/fixedEvaluation/baseline/autoRoutedCount").asInt());
+        assertEquals(27,f.at("/fixedEvaluation/baseline/correctAutoRoutedCount").asInt());
+        assertEquals(24,f.at("/publicThresholdSensitivity/sampleCount").asInt());
+    }
+    @Test void anotherLegitimatePatternCanSelectActualLowConfidenceAndCorrectCases() throws Exception {
+        var c=context();var a3=response(c,"a3-errors");a3.set("inspectedSampleIds",JSON.valueToTree(List.of("practice-01","practice-02","practice-03","practice-04","practice-05","practice-06","practice-13","practice-14")));
+        ((ObjectNode)a3.path("errorPatterns").get(1)).set("sampleIds",JSON.valueToTree(List.of("practice-13","practice-14")));
+        enrich(c);var samples=c.at("/task/analysisFrame/selectedPatterns/1/samples");
+        assertTrue(samples.get(0).path("belowBaselineThreshold").asBoolean());assertEquals("MANUAL_REVIEW",samples.get(0).path("routedLabel").asText());
+        assertTrue(samples.get(0).path("predictionMatchesPublicLabel").asBoolean());assertTrue(samples.get(0).path("automaticRouteIsCorrect").isNull());
+        assertFalse(samples.get(1).path("belowBaselineThreshold").asBoolean());assertTrue(samples.get(1).path("automaticRouteIsCorrect").asBoolean());
+        assertEquals("LOW_CONFIDENCE",c.at("/task/analysisFrame/selectedPatterns/1/selectedPatternCode").asText(),"Preserve the Student's code without silently grading/correcting it");
+    }
+    @Test void actualChangedDefinitionsExamplesAndPolicyDriveThePublicRecomputation() throws Exception {
+        var c=context();var golden=asset("AI","golden-private");var a4=response(c,"a4-configure");
+        for(String field:ReportAiAnalysisContext.CONFIG)a4.set(field,golden.path("changedConfig").path(field));
+        ((ObjectNode)c.path("verifiedExecutions").get(0)).set("value",golden.path("changed"));enrich(c);
+        var f=c.at("/task/analysisFrame");assertFalse(f.at("/configurationComparison/isBaselineConfiguration").asBoolean());assertFalse(f.at("/configurationComparison/changedFields").isEmpty());
+        assertEquals(golden.at("/changed/candidate/coverage"),f.at("/fixedEvaluation/candidate/coverage"));
+        var model=asset("AI","classifier-model");var practice=asset("AI","practice-public");
+        for(var choice:f.at("/publicThresholdSensitivity/cases")){
+            var config=(ObjectNode)golden.path("changedConfig").deepCopy();config.set("confidenceThreshold",choice.path("confidenceThreshold"));
+            var expected=com.ruoyi.majorpilot.classifier.FrozenClassifier.evaluate(model,config,practice);
+            for(String metric:List.of("sampleCount","autoRoutedCount","correctAutoRoutedCount","manualReviewCount","coverage","autoAccuracy","totalCorrectAutoRate"))assertEquals(expected.path(metric),choice.path("metrics").path(metric));
+        }
+    }
+    @Test void autoRoutePolicyDoesNotPretendThresholdAloneCreatesManualReview() throws Exception {
+        var c=context();response(c,"a4-configure").put("lowConfidencePolicy","AUTO_ROUTE");
+        var config=JSON.createObjectNode();for(String key:ReportAiAnalysisContext.CONFIG)config.set(key,response(c,"a4-configure").path(key));
+        // Test-only private fixture recomputation supplies an authentic aggregate, never private rows to the frame.
+        ((ObjectNode)c.path("verifiedExecutions").get(0)).set("value",com.ruoyi.majorpilot.classifier.FrozenClassifier.compare(asset("AI","classifier-model"),config,asset("AI","evaluation-private")));
+        enrich(c);for(var choice:c.at("/task/analysisFrame/publicThresholdSensitivity/cases")){assertEquals(0,choice.at("/metrics/manualReviewCount").asInt());assertEquals(0,choice.path("changedRouteCountFromSavedConfiguration").asInt());}
+    }
+    @Test void changingOnlyOpenProseNeverChangesTheDerivedFactsOrAddsPrivateLabels() throws Exception {
+        var c=context();var before=c.at("/task/analysisFrame").deepCopy();response(c,"a5-evaluate").put("comparisonNotes","换成另一种观点也不应改变确定性事实。");
+        response(c,"a4-configure").put("modificationReason","这是另一种合法计划，而不是新的配置参数。");enrich(c);assertEquals(before,c.at("/task/analysisFrame"));
+        String text=before.toString();assertFalse(text.contains("sample-001"));assertFalse(text.contains("baseCounts"));assertFalse(text.contains("vocabulary"));assertFalse(text.contains("NEEDS_REVISION"));assertTrue(text.length()<12000);
+        var original=c.deepCopy();enrich(c);assertEquals(new ReportCore(JSON).hash(original),new ReportCore(JSON).hash(c));
+    }
+    @Test void changedPublicMaterialUnknownSelectedSampleAndMissingExecutionFailClosed() throws Exception {
+        var changed=context();((ObjectNode)changed.at("/task/materials/2/content/0/baseline")).put("confidence",.1);assertThrows(ApiException.class,()->enrich(changed));
+        var unknown=context();((ObjectNode)response(unknown,"a3-errors").path("errorPatterns").get(0)).set("sampleIds",JSON.valueToTree(List.of("sample-001")));assertThrows(ApiException.class,()->enrich(unknown));
+        var missing=context();missing.putArray("verifiedExecutions");assertThrows(ApiException.class,()->enrich(missing));
+        var result=context();((ObjectNode)result.at("/verifiedExecutions/0/value/baseline")).put("sampleCount",49);assertThrows(ApiException.class,()->enrich(result));
+        var assets=ReportAnalysisLiveFixtures.aiPublicAssets();assets.put("classifier-model","{}".getBytes(java.nio.charset.StandardCharsets.UTF_8));assertThrows(ApiException.class,()->ReportAiAnalysisContext.enrich(JSON,context(),asset("AI","manifest"),assets));
+    }
+    @Test void missingFrozenChoicesAndWrongVersionAreNotGuessed() throws Exception {
+        var missing=context();response(missing,"a4-configure").remove("confidenceThreshold");assertThrows(ApiException.class,()->enrich(missing));
+        var missingSamples=context();response(missingSamples,"a3-errors").remove("errorPatterns");assertThrows(ApiException.class,()->enrich(missingSamples));
+        var old=context();((ObjectNode)old.path("task")).put("assessmentRubricVersion",ReportAnalysisContext.TARGET_RUBRIC);assertThrows(ApiException.class,()->enrich(old));
+        var recall=context();response(recall,"a2-metrics").put("priorityMetric","RECALL");enrich(recall);assertEquals("RECALL",recall.at("/task/analysisFrame/metricScopes/selectedPriorityMetric").asText());
+    }
+    @Test void v25FrameSurvivesPreboundInitialAndReviewWithFullAnswerSourceOwnership() throws Exception {
+        var core=new ReportCore(JSON);var input=ReportAnalysisLiveFixtures.input("ai-metric-error");var catalog=core.compile(input);var safe=core.modelInput(catalog);core.validateModelBinding(safe);
+        assertEquals("report-model-input-v3",safe.schemaVersion());assertEquals(11,safe.content().at("/bindingCatalog/findings").size());
+        assertEquals(.993188,safe.content().at("/sources/0/context/task/analysisFrame/selectedPatterns/1/samples/0/confidence").asDouble());
+        assertFalse(safe.content().at("/sources/0/context/task/analysisFrame/fixedEvaluation").has("evidenceRefs"));assertEquals(1,safe.content().at("/sources/0/context/task/analysisFrame/fixedEvaluation/supportKeys").size());
+        var proposal=com.ruoyi.majorpilot.report.core.ReportBindingFixtures.proposal(catalog);var wire=core.modelProposal(catalog,proposal);var decoded=core.parseModelProposal(JSON.writeValueAsBytes(wire),safe);assertEquals(proposal,decoded);
+        var review=core.reviewInput(catalog,decoded);core.validateModelBinding(review);assertEquals(safe.content(),review.content().path("originalInput"));assertEquals(decoded,core.parseModelProposal(JSON.writeValueAsBytes(wire),review));
+    }
+    private ObjectNode context() throws Exception {return (ObjectNode)ReportAnalysisLiveFixtures.input("ai-metric-error").sources().getFirst().analysisContext();}
+    private static ObjectNode response(JsonNode context,String key){for(var step:context.path("steps"))if(key.equals(step.path("stepKey").asText()))return (ObjectNode)step.path("submittedResponse");throw new IllegalArgumentException();}
+    private static void enrich(ObjectNode context) throws Exception {ReportAiAnalysisContext.enrich(JSON,context,asset("AI","manifest"),ReportAnalysisLiveFixtures.aiPublicAssets());}
+    private JsonNode frame() throws Exception {return ReportAnalysisLiveFixtures.input("ai-metric-error").sources().getFirst().analysisContext().at("/task/analysisFrame");}
+}

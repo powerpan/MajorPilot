@@ -1,0 +1,15 @@
+package com.ruoyi.majorpilot.integration.ai;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruoyi.majorpilot.report.core.ReportCore;
+import org.springframework.core.env.Environment;
+
+/** Explicit report opt-in, independent of P0 and task-hint live modes. No startup network activity. */
+public final class ReportConfiguredGateway implements ReportGateway {
+    private static final org.slf4j.Logger LOG=org.slf4j.LoggerFactory.getLogger(ReportConfiguredGateway.class);
+    private final ReportGateway delegate;
+    public ReportConfiguredGateway(ObjectMapper mapper,ReportCore core,Environment env){ReportGateway selected=null;if(env.getProperty("MP_REPORT_AI_ENABLED",Boolean.class,false)){try{String provider=env.getProperty("MP_REPORT_AI_PROVIDER","BAILIAN").toUpperCase(java.util.Locale.ROOT);var settings=ReportModelSettings.from(env,provider);if(provider.equals("BAILIAN"))selected=new ReportHttpGateway(mapper,core,provider,env.getProperty("BAILIAN_API_KEY"),value(env,"BAILIAN_BASE_URL",BailianAiGateway.DEFAULT_BASE_URL),value(env,"MP_REPORT_AI_MODEL",ReportHttpGateway.BAILIAN_MODEL),settings);else if(provider.equals("DEEPSEEK"))selected=new ReportHttpGateway(mapper,core,provider,env.getProperty("DEEPSEEK_API_KEY"),value(env,"DEEPSEEK_BASE_URL",ReportHttpGateway.DEEPSEEK_BASE_URL),value(env,"MP_REPORT_AI_MODEL",ReportHttpGateway.DEEPSEEK_MODEL),settings);else throw new AiFailure(AiFailure.Code.CONFIG_INVALID);}catch(AiFailure ignored){LOG.warn("Report AI configuration invalid (CONFIG_INVALID); only AI reports are disabled. Check report-only settings; BAILIAN MP_REPORT_AI_MAX_OUTPUT_TOKENS must be 8192..32768; JSON_SCHEMA is supported only for BAILIAN. Configured values and credentials are suppressed.");}}delegate=selected;}
+    @Override public boolean available(){return delegate!=null&&delegate.available();}
+    @Override public Identity identity(){return delegate==null?null:delegate.identity();}
+    @Override public Outcome attempt(Attempt request){if(!available())throw new AiFailure(AiFailure.Code.CONFIG_INVALID);return delegate.attempt(request);}
+    private static String value(Environment env,String key,String fallback){String result=env.getProperty(key);return result==null||result.isBlank()?fallback:result;}
+}

@@ -1,0 +1,56 @@
+package com.ruoyi.majorpilot.report;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.businessanalytics.BaSemantics;
+import com.ruoyi.majorpilot.shared.ApiException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Map;
+
+/** Exact B6 target semantics, not an effect prediction, evaluation, or replacement strategy. */
+final class ReportBaActionTargetContext {
+    private record Metric(String label,String numerator,String numeratorLabel,boolean starter){}
+    private static final Map<String,Metric> METRICS=Map.of(
+        "COMPLETION_RATE",new Metric("整体完成率（完成 / 报名）","completed_count","完成人数",false),
+        "FIRST_LESSON_RATE",new Metric("首课率（首课 / 报名）","first_lesson_count","开始首课人数",false),
+        "WEEK_ONE_ACTIVE_RATE",new Metric("开课首周活跃率（活跃 / 报名）","week_one_active_count","开课首周活跃人数",false),
+        "ASSIGNMENT_SUBMISSION_RATE",new Metric("作业提交率（提交 / 报名）","assignment_submitted_count","提交作业人数",false),
+        "STARTER_COMPLETION_RATE",new Metric("已开始学习者完成率（完成 / 首课）","completed_count","完成人数",true));
+    private static final Map<String,String> GROUP_LABELS=Map.of("FOUNDATIONS","基础课程","APPLIED","应用课程","ORGANIC","自然来源","PARTNER","合作来源","CAMPAIGN","活动来源");
+    private ReportBaActionTargetContext(){}
+
+    static ObjectNode build(ObjectMapper mapper,JsonNode response,JsonNode parameters,String prioritySegment,JsonNode verifiedSegments,JsonNode evidenceRefs){
+        var action=mapper.createObjectNode();for(String field:BaSemantics.ACTION_FIELDS)if(response.has(field))action.set(field,response.path(field));
+        // Closed experiences already passed this same rule. Missing/zero-denominator or impossible
+        // targets are not converted to a fabricated baseline, clipped target, or substitute metric.
+        try{BaSemantics.validateAction(action,parameters,prioritySegment,verifiedSegments);}catch(ApiException invalid){throw new ApiException(409,"REPORT_SOURCE_INVALID");}
+        require(evidenceRefs.isArray()&&!evidenceRefs.isEmpty());
+        JsonNode comparison=null;for(var segment:verifiedSegments.path("segments"))if(prioritySegment.equals(segment.path("segmentKey").asText())){require(comparison==null);comparison=segment.path("comparison");}
+        require(comparison!=null);var metric=METRICS.get(action.path("successMetric").asText());require(metric!=null);
+        var counts=comparison.path("stageCounts");String denominatorField=metric.starter()?"first_lesson_count":"enrolled_count";
+        long numerator=counts.path(metric.numerator()).asLong(),denominator=counts.path(denominatorField).asLong(),enrolled=counts.path("enrolled_count").asLong(),contacts=comparison.path("supportContactCount").asLong();
+        var increase=action.path("targetChangePercentagePoints").decimalValue();var maximum=action.path("guardrailMaximum").decimalValue();
+        var frame=mapper.createObjectNode().put("schemaVersion","ba-action-target-frame-v1");
+        frame.putObject("group").put("dimension",parameters.path("segmentBy").asText()).put("key",prioritySegment).put("label",GROUP_LABELS.get(prioritySegment));
+        frame.putObject("successMetric").put("key",action.path("successMetric").asText()).put("label",metric.label()).put("unit","百分比").put("numeratorField",metric.numerator()).put("numeratorLabel",metric.numeratorLabel()).put("denominatorField",denominatorField).put("denominatorLabel",metric.starter()?"开始首课人数":"报名人数");
+        var source=frame.putObject("baselineSource").put("kind","SERVER_VERIFIED_HISTORICAL_COMPARISON").put("operationKey","ba-segments");
+        source.set("evidenceRefs",evidenceRefs.deepCopy());source.set("datasetSha256",verifiedSegments.path("datasetSha256"));source.set("window",verifiedSegments.at("/windows/comparison").deepCopy());source.put("participantObservationDays",28);
+        var target=frame.putObject("target").put("kind","STUDENT_DEFINED_HISTORICAL_BASELINE_PLUS_PP").put("label","学生已填写的历史基线提升目标（非预测）");
+        target.put("baselineNumerator",numerator).put("baselineDenominator",denominator).put("baselinePercent",percent(BigDecimal.valueOf(numerator).multiply(BigDecimal.valueOf(100)),denominator));
+        target.set("increasePercentagePoints",action.path("targetChangePercentagePoints").deepCopy());
+        target.put("absoluteTargetPercent",percent(BigDecimal.valueOf(numerator).multiply(BigDecimal.valueOf(100)).add(increase.multiply(BigDecimal.valueOf(denominator))),denominator));
+        target.put("changeUnit","百分点").put("isPrediction",false).put("isNewExample",false).put("isConcurrentControlDifference",false);
+        target.put("comparisonBoundary","既有目标=所选群体历史对比窗口基线+已填写提升百分点；同期试验组与对照组的差值是另一个效果比较，不能用它替换原目标，达到历史目标也不证明干预有效。");
+        var guardrail=frame.putObject("supportGuardrail").put("metric","SUPPORT_CONTACTS_PER_100_ENROLLED").put("label","每100名报名者的支持联系次数").put("unit","次/100名报名者");
+        guardrail.set("maximum",action.path("guardrailMaximum").deepCopy());guardrail.put("baselineContactEvents",contacts).put("baselineEnrolled",enrolled).put("baselinePer100",percent(BigDecimal.valueOf(contacts).multiply(BigDecimal.valueOf(100)),enrolled));
+        // Headroom may be negative: an allowed student ceiling can be below the observed baseline.
+        guardrail.put("headroomPer100",percent(maximum.multiply(BigDecimal.valueOf(enrolled)).subtract(BigDecimal.valueOf(contacts).multiply(BigDecimal.valueOf(100))),enrolled));
+        guardrail.put("headroomDefinition","学生上限减历史同群体基线；可为负，不是可增加的人员容量或可行性保证。").put("countsEventsNotPeople",true);
+        frame.putObject("observation").put("participantWindowDays",28).set("reviewDaysAfterLastParticipant",action.path("reviewAfterDays").deepCopy());
+        return frame;
+    }
+    private static BigDecimal percent(BigDecimal numerator,long denominator){require(denominator>0);return numerator.divide(BigDecimal.valueOf(denominator),6,RoundingMode.HALF_UP).stripTrailingZeros();}
+    private static void require(boolean valid){if(!valid)throw new ApiException(409,"REPORT_SOURCE_INVALID");}
+}

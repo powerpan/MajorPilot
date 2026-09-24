@@ -1,0 +1,79 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.Instant;
+import java.util.*;
+
+/** Value-only integration boundary. No persistence, network or current-state lookups. */
+public final class ReportModels {
+    private ReportModels() {}
+    public enum ReportType { EXPERIENCE, COMPARISON }
+    public enum GenerationMode { AI, DETERMINISTIC_FALLBACK }
+    public enum ClaimType { OBSERVED_FACT, STUDENT_SELF_REPORT, BOUNDED_INTERPRETATION, LIMITATION, NEXT_STEP }
+    public enum Confidence { DIRECT, SELF_REPORTED, BOUNDED, RULE_BASED }
+    public static final List<String> MAJORS=List.of("AI","BUSINESS_ANALYTICS","DATA_SCIENCE");
+    public static final List<String> EXPERIENCE_SECTIONS=List.of("OVERVIEW","WHAT_YOU_DID","EXPERIENCE_PREFERENCE","CURRENT_PREPARATION","TASK_PERFORMANCE","WORK_STYLE_CONNECTION","EVIDENCE_BOUNDARIES","OTHER_MAJOR_DIFFERENCES","NEXT_EXPERIENCE");
+    public static final List<String> COMPARISON_SECTIONS=List.of("SCOPE_AND_SOURCES","WORK_COMPLETED","SELF_REPORTED_EXPERIENCE","COMMON_DIMENSIONS","MAJOR_SPECIFIC_EXPERIENCE","UNKNOWNS","NEXT_VERIFICATION","REMAINING_MAJOR");
+    public static final List<String> DIMENSIONS=List.of("PROBLEM_INTEREST","QUANTITATIVE_COMFORT","UNCERTAINTY_HANDLING","WORK_FOCUS","HELP_AND_ITERATION","EXPLANATION_INTEREST","CONTINUATION_WILLINGNESS");
+    public record Header(String reportId,String reportVersionId,int versionNo,ReportType reportType,String studentPublicId,Instant generatedAt) {}
+    public record VersionPins(String requestSchemaVersion,String inputSchemaVersion,String claimRuleVersion,String templateVersion,String promptVersion,String outputSchemaVersion) {
+        public static VersionPins v1(){return new VersionPins("report-request-v1","report-input-v1","report-claims-v1","report-template-v1","report-prompt-v1","report-v1");}
+        public static VersionPins v2(){return new VersionPins("report-request-v2","report-input-v2","report-claims-v2","report-template-v2","report-prompt-v2","report-v2");}
+    }
+    /** Server-resolved provenance, never an alternative to the persistence authorization fence. */
+    public record ProductAuthorization(String authorizationId,String authorityCode,String authorizationReference,Instant authorizedAt,String originalRunMode,String taskManifestSha256,String closedInputSha256) {}
+    public record SourcePins(String runId,String runMode,String contentKind,String runStatus,String taskVersionId,String taskManifestSha256,String taskVersionCode,String taskTitle,String decisionProfileId,String profileSha256,String closedInputSha256,String questionSetVersion,Map<String,String> stepTitles,@JsonInclude(JsonInclude.Include.NON_NULL) ProductAuthorization productAuthorization) {
+        public SourcePins{stepTitles=Collections.unmodifiableMap(new LinkedHashMap<>(stepTitles));}
+        /** Preserve the historical STANDARD JSON shape and its frozen input/catalog hashes. */
+        public SourcePins(String runId,String runMode,String contentKind,String runStatus,String taskVersionId,String taskManifestSha256,String taskVersionCode,String taskTitle,String decisionProfileId,String profileSha256,String closedInputSha256,String questionSetVersion,Map<String,String> stepTitles){this(runId,runMode,contentKind,runStatus,taskVersionId,taskManifestSha256,taskVersionCode,taskTitle,decisionProfileId,profileSha256,closedInputSha256,questionSetVersion,stepTitles,null);}
+    }
+    /** The persistence adapter verifies the historical 8-field snapshot hash before projection. */
+    public record SnapshotRef(String snapshotId,String status,String studentPublicId,String runId,String taskVersionId,String decisionProfileId,String closedInputSha256,String snapshotSha256,String sourceRule,String effectiveRule) {}
+    public record EvidenceValue(String publicId,String key,String type,JsonNode value,String summary,List<String> allowedClaimTypes,Instant observedAt) {
+        public EvidenceValue{value=value==null?null:value.deepCopy();allowedClaimTypes=List.copyOf(allowedClaimTypes);}
+        @Override public JsonNode value(){return value==null?null:value.deepCopy();}
+    }
+    public record ExperienceVersionRef(String reportId,String reportVersionId,int versionNo,String reportBodySha256,JsonNode validatedPublicBody) {
+        public ExperienceVersionRef{validatedPublicBody=validatedPublicBody==null?null:validatedPublicBody.deepCopy();}
+        @Override public JsonNode validatedPublicBody(){return validatedPublicBody==null?null:validatedPublicBody.deepCopy();}
+    }
+    public record Source(String majorCode,String studentPublicId,SourcePins pins,SnapshotRef snapshot,List<EvidenceValue> items,ExperienceVersionRef experienceVersion,@JsonInclude(JsonInclude.Include.NON_NULL) JsonNode analysisContext) {
+        public Source{items=List.copyOf(items);analysisContext=analysisContext==null?null:analysisContext.deepCopy();}
+        public Source(String majorCode,String studentPublicId,SourcePins pins,SnapshotRef snapshot,List<EvidenceValue> items,ExperienceVersionRef experienceVersion){this(majorCode,studentPublicId,pins,snapshot,items,experienceVersion,null);}
+        @Override public JsonNode analysisContext(){return analysisContext==null?null:analysisContext.deepCopy();}
+    }
+    public record NextProjection(String state,String recommendationId,String sourceRunId,String ruleVersion,List<String> completedMajorCodes,String primaryMajor,List<String> alternativeMajors,List<String> reasonCodes) {
+        public NextProjection{completedMajorCodes=List.copyOf(completedMajorCodes);alternativeMajors=List.copyOf(alternativeMajors);reasonCodes=List.copyOf(reasonCodes);}
+    }
+    public record ReportInput(Header header,VersionPins versions,List<Source> sources,NextProjection nextRecommendation) {public ReportInput{sources=List.copyOf(sources);}}
+    public record Entry(String statementKey,ClaimType claimType,List<String> allowedSectionKeys,List<String> evidenceIds,List<String> ruleRefs,JsonNode valueBindings,String attribution,Confidence confidence,Map<String,String> phrasings,String basisSummary,String majorCode,String dimensionKey,String slot) {
+        public Entry{allowedSectionKeys=List.copyOf(allowedSectionKeys);evidenceIds=List.copyOf(evidenceIds);ruleRefs=List.copyOf(ruleRefs);valueBindings=valueBindings==null?null:valueBindings.deepCopy();phrasings=Collections.unmodifiableMap(new TreeMap<>(phrasings));}
+        @Override public JsonNode valueBindings(){return valueBindings==null?null:valueBindings.deepCopy();}
+    }
+    public record Catalog(ReportType reportType,String inputSha256,String claimRuleVersion,List<Entry> entries,String catalogSha256,@JsonInclude(JsonInclude.Include.NON_NULL) JsonNode analysisContext) {
+        public Catalog{entries=List.copyOf(entries);analysisContext=analysisContext==null?null:analysisContext.deepCopy();}
+        public Catalog(ReportType reportType,String inputSha256,String claimRuleVersion,List<Entry> entries,String catalogSha256){this(reportType,inputSha256,claimRuleVersion,entries,catalogSha256,null);}
+        @Override public JsonNode analysisContext(){return analysisContext==null?null:analysisContext.deepCopy();}
+    }
+    public record Selection(String statementKey,String phrasingKey) {}
+    public record ProposalSection(String sectionKey,List<Selection> selections) {public ProposalSection{selections=List.copyOf(selections);}}
+    public record Proposal(String schemaVersion,ReportType reportType,List<ProposalSection> sections,@JsonInclude(JsonInclude.Include.NON_NULL) JsonNode analysis) {
+        public Proposal{sections=List.copyOf(sections);analysis=analysis==null?null:analysis.deepCopy();}
+        public Proposal(String schemaVersion,ReportType reportType,List<ProposalSection> sections){this(schemaVersion,reportType,sections,null);}
+        @Override public JsonNode analysis(){return analysis==null?null:analysis.deepCopy();}
+    }
+    public record Violation(String code,String path) {}
+    public record Validation(boolean valid,List<Violation> issues) {public Validation{issues=List.copyOf(issues);}}
+    public record ClaimLink(String sectionKey,int claimOrder,String statementKey,ClaimType claimType,String text,Confidence confidence,String dimensionKey,String majorCode,List<String> evidenceIds,List<String> ruleRefs) {public ClaimLink{evidenceIds=List.copyOf(evidenceIds);ruleRefs=List.copyOf(ruleRefs);}}
+    public record ValidatedReport(JsonNode publicReportJson,List<ClaimLink> claims,String bodySha256,String catalogSha256,Validation validation) {
+        public ValidatedReport{publicReportJson=publicReportJson.deepCopy();claims=List.copyOf(claims);}
+        @Override public JsonNode publicReportJson(){return publicReportJson.deepCopy();}
+    }
+    public record SafeModelInput(String schemaVersion,String catalogSha256,JsonNode content,@com.fasterxml.jackson.annotation.JsonIgnore Catalog bindingCatalogContext) {
+        public SafeModelInput{content=content.deepCopy();}
+        public SafeModelInput(String schemaVersion,String catalogSha256,JsonNode content){this(schemaVersion,catalogSha256,content,null);}
+        @Override public JsonNode content(){return content.deepCopy();}
+        @Override public String toString(){return "SafeModelInput[schemaVersion="+schemaVersion+",bound="+(bindingCatalogContext!=null)+"]";}
+    }
+}

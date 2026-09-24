@@ -1,0 +1,14 @@
+package com.ruoyi.majorpilot.report;
+
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.JSON;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+/** Offline fixture checks do not call a gateway or measure model quality. */
+class ReportAnalysisQualityFixturesTest {
+    @Test void realTaskFixturesCompileWithoutNetworkAndVaryOnlyOpenBaAnswers()throws Exception{
+        var core=new ReportCore(JSON);var baseline=ReportAnalysisLiveFixtures.input("ba-good");var baseEvidence=baseline.sources().getFirst().items().stream().filter(e->!e.type().equals("STUDENT_ANALYSIS")).toList();
+        for(String name:ReportAnalysisLiveFixtures.CASES){var input=ReportAnalysisLiveFixtures.input(name);var model=core.modelInput(core.compile(input));assertEquals(ReportBindingCodec.INPUT_SCHEMA,model.schemaVersion());assertNotNull(model.bindingCatalogContext());assertFalse(model.content().at("/sources/0/context/task/materials").isEmpty());assertEquals(ReportAnalysisContext.RUBRIC,model.content().at("/sources/0/context/task/assessmentRubricVersion").asText());int answers=0;for(var step:model.content().at("/sources/0/context/steps")){assertEquals(ReportAnalysisContext.RUBRIC,step.at("/rubric/version").asText());assertEquals(JSON.valueToTree(ReportAnalysisContext.criteria(step.path("stepKey").asText())),step.at("/rubric/criteria"));answers+=step.path("answers").size();}assertEquals(answers,model.content().at("/bindingCatalog/findings").size());if(name.startsWith("ba-"))assertEquals(baseEvidence,input.sources().getFirst().items().stream().filter(e->!e.type().equals("STUDENT_ANALYSIS")).toList());}
+    }
+}

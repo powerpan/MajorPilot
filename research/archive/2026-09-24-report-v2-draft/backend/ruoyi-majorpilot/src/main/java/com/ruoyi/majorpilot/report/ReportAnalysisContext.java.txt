@@ -1,0 +1,298 @@
+package com.ruoyi.majorpilot.report;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.content.TaskContent;
+import com.ruoyi.majorpilot.content.TaskContentProvider;
+import com.ruoyi.majorpilot.report.core.ReportModels.EvidenceValue;
+import com.ruoyi.majorpilot.businessanalytics.BaSemantics;
+import com.ruoyi.majorpilot.businessanalytics.BaStatistics;
+import com.ruoyi.majorpilot.shared.CanonicalJson;
+import java.util.*;
+import static com.ruoyi.majorpilot.report.ReportStore.*;
+
+/** Versioned, allowlisted reading context. Raw submissions remain unverified, never answer keys. */
+final class ReportAnalysisContext {
+    static final String VERSION="report-analysis-context-v2";
+    static final String LEGACY_RUBRIC="report-assessment-rubric-v2";
+    static final String PREVIOUS_RUBRIC="report-assessment-rubric-v2.1";
+    static final String AGGREGATE_RUBRIC="report-assessment-rubric-v2.2";
+    static final String FRAME_RUBRIC="report-assessment-rubric-v2.3";
+    static final String TARGET_RUBRIC="report-assessment-rubric-v2.4";
+    static final String RUBRIC="report-assessment-rubric-v2.5";
+    private final ReportStore store;
+    private final TaskContentProvider content;
+    ReportAnalysisContext(ReportStore store,TaskContentProvider content){this.store=store;this.content=content;}
+
+    JsonNode build(long student,long run,long profile,TaskContent.Version task,JsonNode closed,List<EvidenceValue> evidence){
+        return build(student,run,profile,task,closed,evidence,RUBRIC);
+    }
+    JsonNode build(long student,long run,long profile,TaskContent.Version task,JsonNode closed,List<EvidenceValue> evidence,String rubricVersion){
+        requireRubricVersion(rubricVersion);
+        var manifest=task.manifest();var result=store.mapper().createObjectNode();result.put("schemaVersion",VERSION);
+        var taskContext=select(manifest,"schemaVersion","majorCode","versionCode","title","scenario","goals");
+        taskContext.put("assessmentRubricVersion",rubricVersion);
+        taskContext.put("assessmentBoundary","只评价本次提交在题目与已验证结果下是否有依据，不推断长期能力、人格、专业适配度或商业收益。提示使用不是负面能力证据，未知学科背景不得臆测。");
+        taskContext.put("professionalReviewClaimed",false);
+        taskContext.set("materials",materials(task));result.set("task",taskContext);
+        var frozen=responses(run,closed);var frozenSources=result.putArray("frozenSources");var steps=result.putArray("steps");
+        for(var definition:manifest.path("steps")){
+            String key=definition.path("stepKey").asText();var response=frozen.get(key);require(response!=null);var raw=response.value();
+            var step=steps.addObject();step.put("stepKey",key);step.put("title",definition.path("title").asText());step.set("instructions",definition.path("instructions").deepCopy());
+            step.set("inputSchema",definition.path("inputSchema").deepCopy());
+            step.set("rubric",store.mapper().valueToTree(map("version",rubricVersion,"source","TASK_INSTRUCTIONS_AND_PUBLIC_MATERIALS","criteria",criteria(key,rubricVersion))));
+            step.set("submittedResponse",schemaProjection(raw,definition.path("inputSchema")));
+            var answers=step.putArray("answers");
+            var analysis=evidence.stream().filter(e->e.type().equals("STUDENT_ANALYSIS")&&e.key().equals("analysis:"+key)).findFirst().orElse(null);
+            if(analysis!=null){require(analysis.allowedClaimTypes().isEmpty()&&analysis.value().path("verificationStatus").asText().equals("UNVERIFIED"));
+                var original=analysis.value().path("answers");require(original.isObject());original.fields().forEachRemaining(field->require(raw.has(field.getKey())&&raw.get(field.getKey()).equals(field.getValue())));
+                flatten(original,definition.path("inputSchema"),"",analysis.publicId(),answers);
+            }
+            var all=store.mapper().createArrayNode();flatten(raw,definition.path("inputSchema"),"",null,all);
+            Set<String> included=new HashSet<>();answers.forEach(a->included.add(a.path("answerField").asText()));
+            for(var answer:all)if(!included.contains(answer.path("answerField").asText())){var value=(ObjectNode)answer.deepCopy();String field=value.path("answerField").asText(),ref="frozen-response:"+task.majorCode()+"/"+key+":"+field;
+                value.put("sourceRef",ref);value.put("sourceSha256",response.sha());answers.add(value);
+                frozenSources.add(store.mapper().valueToTree(map("sourceRef",ref,"sourceType","STEP_RESPONSE","stepKey",key,"answerField",field,"revision",response.revision(),"sourceSha256",response.sha(),"value",value.path("value").asText())));
+            }
+            var observations=step.putArray("responseEvidence");for(var e:evidence)if(e.key().equals("step:"+key))observations.add(evidence(e));
+        }
+        var executions=result.putArray("verifiedExecutions");evidence.stream().filter(e->e.type().equals("VERIFIED_EXECUTION")).forEach(e->executions.add(evidence(e)));
+        result.set("reflection",reflection(run,closed,manifest,evidence,frozenSources));
+        var support=result.putObject("supportContext");support.put("interpretationBoundary","提示层级说明支持条件，不等同于能力高低；没有提示记录也不能推断独立完成或既有知识。");
+        support.set("hints",hints(run,closed,evidence));
+        result.set("background",background(student,profile));
+        enrichAggregateLineage(store.mapper(),result,manifest,rubricVersion);
+        if(RUBRIC.equals(rubricVersion)&&"AI".equals(task.majorCode())){
+            var assets=new LinkedHashMap<String,byte[]>();for(String key:ReportAiAnalysisContext.ASSETS)assets.put(key,content.publicAsset(task,key).bytes());
+            verifyAiExecution(run,task,closed,frozen,evidence,assets.get("classifier-model"));
+            ReportAiAnalysisContext.enrich(store.mapper(),result,manifest,assets);
+        }
+        return result;
+    }
+    /** Versioned arithmetic from pinned public rows, never a grade or an authored answer key. */
+    static void enrichAggregateLineage(ObjectMapper mapper,ObjectNode context,JsonNode manifest,String rubricVersion){
+        requireRubricVersion(rubricVersion);
+        if((FRAME_RUBRIC.equals(rubricVersion)||TARGET_RUBRIC.equals(rubricVersion)||RUBRIC.equals(rubricVersion))&&"DATA_SCIENCE".equals(manifest.path("majorCode").asText())){
+            require(VERSION.equals(context.path("schemaVersion").asText())&&rubricVersion.equals(context.at("/task/assessmentRubricVersion").asText()));
+            ReportDsAnalysisContext.enrich(mapper,context,manifest);return;
+        }
+        if(!(AGGREGATE_RUBRIC.equals(rubricVersion)||FRAME_RUBRIC.equals(rubricVersion)||TARGET_RUBRIC.equals(rubricVersion)||RUBRIC.equals(rubricVersion))||!"BUSINESS_ANALYTICS".equals(manifest.path("majorCode").asText()))return;
+        require(VERSION.equals(context.path("schemaVersion").asText())&&"task-manifest-v4".equals(manifest.path("schemaVersion").asText()));
+        var task=context.path("task");require(task.isObject()&&task.path("schemaVersion").equals(manifest.path("schemaVersion"))&&task.path("majorCode").equals(manifest.path("majorCode"))&&task.path("versionCode").equals(manifest.path("versionCode"))&&rubricVersion.equals(task.path("assessmentRubricVersion").asText()));
+        JsonNode rows=uniqueEntry(task.path("materials"),"assetKey","weekly-funnel").path("content");
+        JsonNode dictionary=uniqueEntry(task.path("materials"),"assetKey","data-dictionary").path("content");
+        require("ba-dictionary-v1".equals(dictionary.path("schemaVersion").asText())&&"COHORT_COURSE_SOURCE".equals(dictionary.path("observationUnit").asText()));
+        for(String dimension:List.of("course_track","signup_source"))require(dictionary.path("groupOrder").path(dimension).equals(mapper.valueToTree(BaSemantics.GROUPS.get(dimension))));
+        String datasetSha=uniqueEntry(manifest.path("assets"),"assetKey","weekly-funnel").path("sha256").asText();require(datasetSha.matches("[a-f0-9]{64}"));
+        var operation=uniqueEntry(manifest.path("operations"),"operationKey","ba-segments");
+        require("BUSINESS_ANALYSIS".equals(operation.path("engineType").asText())&&"ba-metrics-v1".equals(operation.path("engineVersion").asText())&&"weekly-funnel".equals(operation.path("datasetAssetKey").asText()));
+        var b2=uniqueEntry(context.path("steps"),"stepKey","b2-metric").path("submittedResponse");
+        var b3=uniqueEntry(context.path("steps"),"stepKey","b3-funnel").path("submittedResponse");
+        var b4=uniqueEntry(context.path("steps"),"stepKey","b4-segment").path("submittedResponse");
+        var parameters=mapper.createObjectNode();for(String key:BaSemantics.WINDOWS)parameters.set(key,b2.path(key));
+        parameters.set("numerator",b2.path("numerator"));parameters.set("denominator",b2.path("denominator"));parameters.set("focusTransitionKey",b3.path("focusTransitionKey"));parameters.set("segmentBy",b4.path("segmentBy"));
+        final JsonNode selected;
+        try{selected=BaStatistics.calculate("ba-segments",rows,parameters,datasetSha);}catch(RuntimeException invalid){throw new com.ruoyi.majorpilot.shared.ApiException(409,"REPORT_SOURCE_INVALID");}
+        var refs=mapper.createArrayNode();
+        for(var execution:context.path("verifiedExecutions"))if("VERIFIED_EXECUTION".equals(execution.path("type").asText())&&sameNumbers(selected,execution.path("value")))refs.add(execution.path("evidenceId"));
+        require(!refs.isEmpty()); // No guessed windows, mixed material versions, or unbound B4 results.
+        var facts=mapper.createObjectNode().put("schemaVersion","ba-aggregate-lineage-v1").put("sourceAssetKey","weekly-funnel").put("datasetSha256",datasetSha).put("materialCanonicalSha256",CanonicalJson.hash(mapper,rows));
+        facts.set("selection",parameters.deepCopy());facts.put("observationWindowDays",28);facts.put("overallEqualsDisjointGroupCountSums",true);
+        var lineage=facts.putObject("verifiedSegmentSource").put("stepKey","b4-segment").put("operationKey","ba-segments").put("segmentBy",parameters.path("segmentBy").asText());lineage.set("evidenceRefs",refs);
+        facts.putArray("aggregationRules")
+            .add("同一数据版本、窗口及分母口径下，课程分组或来源分组各自互斥且穷尽；先加总分子和分母计数再算整体率，不平均分组百分比。B4的完整分组计数也能支持可复算的整体观察，不因B2展示更直接就把B4引用判错；未写加总过程可建议补充表达。")
+            .add("每组未启动人数=报名人数-首课人数。课程、渠道及课程×渠道的未启动分布直接从已有交叉聚合行计算，不是仍需采集的信息；不能只凭两张边际分布猜交叉分布。")
+            .add("支持联系为事件次数，可加总；每100名报名者支持联系=合计联系次数/合计报名人数×100，不是被联系人数百分比。计数、比例及构成不能单独证明原因或干预效果。");
+        facts.putArray("notRecordedInAggregateRows").add("个体未启动的具体障碍和原因").add("支持信息是否触达某人、内容是否被理解").add("个体支持事件与启动结果的关联").add("未来干预的反事实效果、资源可行性与统计充分性");
+        var periods=facts.putObject("periods");
+        var grouped=new LinkedHashMap<String,JsonNode>();
+        for(String dimension:List.of("course_track","signup_source")){var p=parameters.deepCopy();p.put("segmentBy",dimension);grouped.put(dimension,BaStatistics.calculate("ba-segments",rows,p,datasetSha));}
+        for(String period:List.of("baseline","comparison")){
+            int start=parameters.path(period+"StartWeek").asInt(),end=parameters.path(period+"EndWeek").asInt();var out=periods.putObject(period).put("startWeek",start).put("endWeek",end);var overall=out.putObject("overall");
+            for(String key:List.of("enrolled_count","first_lesson_count","completed_count","support_contact_count","nonStarterCount"))overall.put(key,0L);
+            for(String dimension:List.of("course_track","signup_source")){
+                var groups=out.putObject(dimension.equals("course_track")?"byCourse":"bySource");
+                for(var segment:grouped.get(dimension).path("segments")){
+                    var p=segment.path(period);var counts=p.path("stageCounts");var group=groups.putObject(segment.path("segmentKey").asText());
+                    for(String key:List.of("enrolled_count","first_lesson_count","completed_count"))group.set(key,counts.path(key));
+                    group.set("support_contact_count",p.path("supportContactCount"));group.put("nonStarterCount",counts.path("enrolled_count").asLong()-counts.path("first_lesson_count").asLong());
+                    if(dimension.equals("course_track"))group.fields().forEachRemaining(field->overall.put(field.getKey(),overall.path(field.getKey()).asLong()+field.getValue().asLong()));
+                }
+            }
+            var cross=out.putObject("nonStartersByCourseAndSource");
+            for(String course:BaSemantics.GROUPS.get("course_track")){var channels=cross.putObject(course);for(String channel:BaSemantics.GROUPS.get("signup_source")){
+                long count=0;for(var row:rows)if(row.path("week").asInt()>=start&&row.path("week").asInt()<=end&&course.equals(row.path("course_track").asText())&&channel.equals(row.path("signup_source").asText()))count+=row.path("enrolled_count").asLong()-row.path("first_lesson_count").asLong();channels.put(channel,count);
+            }}
+        }
+        // v2.2 must retain its exact tree, including the absence of the fields below.
+        if(FRAME_RUBRIC.equals(rubricVersion)||TARGET_RUBRIC.equals(rubricVersion)||RUBRIC.equals(rubricVersion))enrichCrossGroupInventory(facts,rows,parameters);
+        ((ObjectNode)task).set("aggregateLineage",facts);
+        if(TARGET_RUBRIC.equals(rubricVersion)||RUBRIC.equals(rubricVersion))((ObjectNode)task).set("actionTargetFrame",ReportBaActionTargetContext.build(mapper,uniqueEntry(context.path("steps"),"stepKey","b6-action").path("submittedResponse"),parameters,b4.path("prioritySegmentKey").asText(),selected,refs));
+    }
+    /** Cross counts originate in actual joint rows, not inferred from two marginal tables. */
+    private static void enrichCrossGroupInventory(ObjectNode facts,JsonNode rows,JsonNode parameters){
+        facts.put("schemaVersion","ba-aggregate-lineage-v2");
+        var source=facts.putObject("crossGroupSource").put("kind","PINNED_PUBLIC_ROWS").put("sourceAssetKey","weekly-funnel");
+        source.set("datasetSha256",facts.path("datasetSha256"));source.set("materialCanonicalSha256",facts.path("materialCanonicalSha256"));
+        source.putArray("groupBy").add("course_track").add("signup_source");
+        var windows=source.putObject("windows");for(String key:BaSemantics.WINDOWS)windows.set(key,parameters.path(key));
+        source.put("aggregation","SUM_COUNTS_WITHIN_WINDOW_AND_JOINT_GROUP").put("nonStarterDefinition","enrolled_count - first_lesson_count");
+        source.put("deltaDefinition","COMPARISON_MINUS_BASELINE").put("interpretationBoundary","DESCRIPTIVE_NOT_CAUSAL");
+        var keys=List.of("enrolled_count","first_lesson_count","completed_count","support_contact_count","nonStarterCount");
+        var cells=facts.putArray("crossGroupCounts");
+        for(String course:BaSemantics.GROUPS.get("course_track"))for(String channel:BaSemantics.GROUPS.get("signup_source")){
+            var cell=cells.addObject().put("course_track",course).put("signup_source",channel);
+            for(String period:List.of("baseline","comparison")){
+                int start=parameters.path(period+"StartWeek").asInt(),end=parameters.path(period+"EndWeek").asInt();var counts=cell.putObject(period);keys.forEach(key->counts.put(key,0L));
+                for(var row:rows)if(row.path("week").asInt()>=start&&row.path("week").asInt()<=end&&course.equals(row.path("course_track").asText())&&channel.equals(row.path("signup_source").asText()))
+                    for(String key:keys)if(!key.equals("nonStarterCount"))counts.put(key,counts.path(key).asLong()+row.path(key).asLong());
+                counts.put("nonStarterCount",counts.path("enrolled_count").asLong()-counts.path("first_lesson_count").asLong());
+            }
+            var delta=cell.putObject("delta");for(String key:keys)delta.put(key,cell.path("comparison").path(key).asLong()-cell.path("baseline").path(key).asLong());
+        }
+        var inventory=facts.putObject("informationInventory").put("schemaVersion","ba-information-inventory-v1");var available=inventory.putArray("availableDerived");
+        available.addObject().put("description","固定窗口内总体、课程和渠道各自的报名、首课、完成、支持联系及未启动计数").put("factsPath","/task/aggregateLineage/periods");
+        available.addObject().put("description","固定窗口内课程×渠道交叉分组的报名、首课、完成、支持联系及未启动计数；可计算这些已观察人数的渠道构成").put("factsPath","/task/aggregateLineage/crossGroupCounts");
+        available.addObject().put("description","两窗口各课程×渠道计数的增减及其对总体人数变化的算术贡献；这是描述性构成，不是原因归因").put("factsPath","/task/aggregateLineage/crossGroupCounts");
+        inventory.set("unobserved",facts.path("notRecordedInAggregateRows").deepCopy());
+    }
+    private static JsonNode uniqueEntry(JsonNode array,String key,String value){require(array.isArray());JsonNode found=null;for(var entry:array)if(value.equals(entry.path(key).asText())){require(found==null);found=entry;}require(found!=null);return found;}
+    private static boolean sameNumbers(JsonNode a,JsonNode b){return a.equals((left,right)->left.isNumber()&&right.isNumber()?left.decimalValue().compareTo(right.decimalValue()):left.equals(right)?0:1,b);}
+    private record FrozenResponse(JsonNode value,long revision,String sha){}
+    /** Rebind the frozen aggregate to its original successful execution/configuration, without exposing its row IDs. */
+    private void verifyAiExecution(long run,TaskContent.Version task,JsonNode closed,Map<String,FrozenResponse> responses,List<EvidenceValue> evidence,byte[] modelBytes){
+        final JsonNode model;try{model=store.mapper().readTree(modelBytes);}catch(Exception bad){throw new com.ruoyi.majorpilot.shared.ApiException(409,"REPORT_SOURCE_INVALID");}
+        var config=store.mapper().createObjectNode();var a4=responses.get("a4-configure");var a5=responses.get("a5-evaluate");require(a4!=null&&a5!=null);
+        for(String key:ReportAiAnalysisContext.CONFIG)config.set(key,a4.value().path(key));
+        final JsonNode normalized;try{normalized=com.ruoyi.majorpilot.classifier.FrozenClassifier.normalize(model,config);}catch(RuntimeException bad){throw new com.ruoyi.majorpilot.shared.ApiException(409,"REPORT_SOURCE_INVALID");}
+        var sorted=new TreeMap<String,JsonNode>();normalized.fields().forEachRemaining(e->sorted.put(e.getKey(),e.getValue()));
+        String configSha=com.ruoyi.majorpilot.shared.Secrets.hash(task.taskVersionId()+"\0ai-evaluate\0"+store.json(sorted));
+        require(closed.path("executions").size()==1);var execution=uniqueEntry(closed.path("executions"),"operationKey","ai-evaluate");
+        require("a5-evaluate".equals(execution.path("stepKey").asText())&&execution.path("appliedRevision").asLong()==a5.revision());
+        var sources=store.mapper().valueToTree(Map.of("a4-configure",a4.revision()));require(store.hash(sources).equals(store.hash(execution.path("sourceRevisions"))));
+        var row=store.db().queryForMap("SELECT public_id,operation_key,step_key,engine_type,engine_version,evaluation_config_sha256,result_json,status,trust_level FROM mp_execution_record WHERE id=? AND experience_run_id=?",execution.path("executionId").asLong(),run);
+        var value=store.node(row.get("result_json"));String resultSha=store.hash(value);
+        require(s(row,"public_id").equals(execution.path("publicId").asText())&&"ai-evaluate".equals(s(row,"operation_key"))&&"a5-evaluate".equals(s(row,"step_key"))&&"FROZEN_CLASSIFIER".equals(s(row,"engine_type"))&&"classifier-v1".equals(s(row,"engine_version"))&&"SUCCEEDED".equals(s(row,"status"))&&"SERVER_VERIFIED".equals(s(row,"trust_level"))&&configSha.equals(s(row,"evaluation_config_sha256"))&&resultSha.equals(execution.path("resultSha256").asText()));
+        require(evidence.stream().filter(e->"VERIFIED_EXECUTION".equals(e.type())).count()==1&&evidence.stream().anyMatch(e->"VERIFIED_EXECUTION".equals(e.type())&&e.key().equals("execution:"+s(row,"public_id"))&&store.hash(e.value()).equals(resultSha)));
+        require(store.db().queryForObject("SELECT COUNT(*) FROM mp_response_execution x JOIN mp_step_response_revision r ON r.id=x.response_revision_id JOIN mp_step_state s ON s.id=r.step_state_id WHERE x.execution_record_id=? AND s.experience_run_id=? AND s.step_key='a5-evaluate' AND r.revision_no=? AND x.source_binding_sha256=?",Integer.class,execution.path("executionId").asLong(),run,a5.revision(),store.hash(sources))>0);
+    }
+    private Map<String,FrozenResponse> responses(long run,JsonNode closed){
+        var result=new LinkedHashMap<String,FrozenResponse>();for(var step:closed.path("steps")){
+            var row=store.db().queryForMap("SELECT r.response_json,r.content_sha256,r.revision_no,s.step_key FROM mp_step_response_revision r JOIN mp_step_state s ON s.id=r.step_state_id WHERE r.id=? AND s.experience_run_id=?",step.path("revisionId").asLong(),run);
+            var value=store.node(row.get("response_json"));require(s(row,"content_sha256").equals(step.path("sha256").asText())&&store.hash(value).equals(step.path("valueSha256").asText())&&n(row,"revision_no")==step.path("revision").asLong()&&s(row,"step_key").equals(step.path("stepKey").asText()));
+            require(result.put(step.path("stepKey").asText(),new FrozenResponse(value,n(row,"revision_no"),step.path("valueSha256").asText()))==null);
+        }return result;
+    }
+    private JsonNode reflection(long run,JsonNode closed,JsonNode manifest,List<EvidenceValue> evidence,ArrayNode frozenSources){
+        var row=store.db().queryForMap("SELECT draft_json,status,row_version,question_set_version FROM mp_reflection WHERE id=? AND experience_run_id=?",closed.path("reflectionId").asLong(),run);
+        var value=store.node(row.get("draft_json"));require("SUBMITTED".equals(s(row,"status"))&&n(row,"row_version")==closed.path("reflectionRevision").asLong()&&store.hash(value).equals(closed.path("reflectionSha256").asText())&&s(row,"question_set_version").equals(manifest.path("reflection").path("questionSetVersion").asText()));
+        var result=select(manifest.path("reflection"),"questionSetVersion","instructions","inputSchema");
+        result.set("answers",schemaProjection(value,manifest.path("reflection").path("inputSchema")));result.put("attribution","STUDENT_SELF_REPORT");
+        var references=result.putArray("evidence");evidence.stream().filter(e->e.type().equals("SELF_REPORT")).forEach(e->references.add(evidence(e)));
+        var notes=result.putArray("frozenAnswerReferences");flatten(value,manifest.path("reflection").path("inputSchema"),"",null,notes);
+        // A normalized optional skip is not a submitted reflective answer.
+        for(int index=notes.size()-1;index>=0;index--)if(notes.get(index).path("answerField").asText().equals("aiFollowUp")&&notes.get(index).path("value").asText().equals("SKIPPED"))notes.remove(index);
+        for(var note:notes){var answer=(ObjectNode)note;String field=answer.path("answerField").asText(),ref="frozen-reflection:"+manifest.path("majorCode").asText()+"/"+field,sha=closed.path("reflectionSha256").asText();answer.put("sourceRef",ref);answer.put("sourceSha256",sha);answer.put("attribution","STUDENT_SELF_REPORT");
+            frozenSources.add(store.mapper().valueToTree(map("sourceRef",ref,"sourceType","REFLECTION","answerField",field,"revision",n(row,"row_version"),"sourceSha256",sha,"value",answer.path("value").asText())));
+        }return result;
+    }
+    private JsonNode background(long student,long profile){
+        var result=store.mapper().createObjectNode();result.put("attribution","SELF_REPORTED_INTAKE_NOT_VERIFIED_ABILITY");
+        var allowed=Set.of("currentField","consideredMajors","majorFamiliarity","foundationSelfView","scenarioPreference","workElements","decisionUncertainties");
+        for(var answer:store.db().queryForList("SELECT a.question_key,a.answer_json FROM mp_decision_answer a JOIN mp_decision_profile p ON p.id=a.decision_profile_id WHERE p.id=? AND p.student_id=? ORDER BY a.question_key",profile,student))if(allowed.contains(s(answer,"question_key")))result.set(s(answer,"question_key"),store.node(answer.get("answer_json")));
+        return result;
+    }
+    private JsonNode hints(long run,JsonNode closed,List<EvidenceValue> evidence){
+        var result=store.mapper().createArrayNode();for(var frozen:closed.path("hints")){
+            var row=store.db().queryForMap("SELECT step_key,hint_level,input_revision,status,response_json FROM mp_hint_request WHERE id=? AND experience_run_id=?",frozen.path("hintId").asLong(),run);var response=store.node(row.get("response_json"));
+            require(Set.of("SUCCEEDED","FALLBACK").contains(s(row,"status"))&&s(row,"step_key").equals(frozen.path("stepKey").asText())&&n(row,"hint_level")==frozen.path("hintLevel").asLong()&&n(row,"input_revision")==frozen.path("inputRevision").asLong()&&store.hash(response).equals(frozen.path("responseSha256").asText()));
+            var item=evidence.stream().filter(e->e.type().equals("ASSISTANCE_CONTEXT")&&e.key().equals("hint:"+frozen.path("hintId").asLong())).findFirst().orElseThrow(()->new com.ruoyi.majorpilot.shared.ApiException(409,"REPORT_SOURCE_INVALID"));
+            var hint=result.addObject();hint.put("evidenceId",item.publicId());hint.put("stepKey",s(row,"step_key"));hint.put("hintLevel",n(row,"hint_level"));hint.put("status",s(row,"status"));hint.set("providedHint",select(response,"schemaVersion","hintText"));
+        }return result;
+    }
+    private JsonNode materials(TaskContent.Version task){
+        // No private labels, raw event history, CSV duplicates, SQL/code execution text or identity-bearing data.
+        Set<String> allowed=switch(task.majorCode()){
+            case "BUSINESS_ANALYTICS"->Set.of("business-brief","data-dictionary","weekly-funnel");
+            case "DATA_SCIENCE"->Set.of("data-dictionary");
+            case "AI"->Set.of("classifier-model","example-pool","practice-public","evaluation-public","baseline-summary");
+            default->Set.of();};
+        var result=store.mapper().createArrayNode();for(var asset:task.manifest().path("assets")){
+            String key=asset.path("assetKey").asText();if(!allowed.contains(key))continue;
+            require(asset.path("visibility").asText().equals("PUBLIC")&&asset.path("mediaType").asText().equals("application/json"));
+            var loaded=content.publicAsset(task,key);require(loaded.sha256().equals(asset.path("sha256").asText()));JsonNode value;
+            try{value=store.mapper().readTree(loaded.bytes());}catch(Exception invalid){throw new com.ruoyi.majorpilot.shared.ApiException(409,"REPORT_SOURCE_INVALID");}
+            if(key.equals("classifier-model"))value=select(value,"schemaVersion","labelOrder","definitionVariants","examples","baselineConfig");
+            var item=result.addObject();item.put("assetKey",key);item.set("content",value);
+        }return result;
+    }
+    private ObjectNode evidence(EvidenceValue e){var result=store.mapper().createObjectNode();result.put("evidenceId",e.publicId());if(!Set.of("ASSISTANCE_CONTEXT","VERIFIED_EXECUTION").contains(e.type()))result.put("key",e.key());result.put("type",e.type());result.set("value",e.value());return result;}
+    private ObjectNode select(JsonNode value,String... fields){var result=store.mapper().createObjectNode();for(String field:fields)if(value.has(field))result.set(field,value.get(field).deepCopy());return result;}
+    private JsonNode schemaProjection(JsonNode value,JsonNode schema){
+        if(value.isObject()){var result=store.mapper().createObjectNode();schema.path("properties").fields().forEachRemaining(field->{if(value.has(field.getKey()))result.set(field.getKey(),schemaProjection(value.get(field.getKey()),field.getValue()));});return result;}
+        if(value.isArray()){var result=store.mapper().createArrayNode();value.forEach(item->result.add(schemaProjection(item,schema.path("items"))));return result;}
+        return value.deepCopy();
+    }
+    private void flatten(JsonNode value,JsonNode schema,String path,String evidenceId,ArrayNode result){
+        if(value.isObject()){value.fields().forEachRemaining(field->{var definition=schema.path("properties").path(field.getKey());if(!definition.isMissingNode())flatten(field.getValue(),definition,path.isEmpty()?field.getKey():path+"/"+field.getKey(),evidenceId,result);});return;}
+        if(value.isArray()){for(int i=0;i<value.size();i++)flatten(value.get(i),schema.path("items"),path+"/"+i,evidenceId,result);return;}
+        if(!value.isTextual()||schema.has("enum")||schema.has("const")||value.asText().isBlank())return;
+        var item=result.addObject();item.put("answerField",path);item.put("value",value.asText());item.put("verificationStatus","UNVERIFIED");if(evidenceId!=null)item.put("evidenceId",evidenceId);
+    }
+    static void requireRubricVersion(String version){require(LEGACY_RUBRIC.equals(version)||PREVIOUS_RUBRIC.equals(version)||AGGREGATE_RUBRIC.equals(version)||FRAME_RUBRIC.equals(version)||TARGET_RUBRIC.equals(version)||RUBRIC.equals(version));}
+    static List<String> criteria(String step){return criteria(step,RUBRIC);}
+    static List<String> criteria(String step,String version){
+        requireRubricVersion(version);
+        if(LEGACY_RUBRIC.equals(version))return legacyCriteria(step);
+        return switch(step){
+            case "b1-context"->List.of(
+                "本题只要求可观察的业务问题、团队可采取或验证的决策范围及数据不能回答的事项；收入、满意度与退课原因不在数据内。不能要求学生在本题已给出后续步骤的完整试验条件。",
+                "若范围合法且未把群体差异直接命名为原因，应保留其原方向；进阶补充应明确为后续练习，不可当作本题错误。",
+                "通用校准（不是本题答案）：错评‘只提出先验证一个支持改进，未写随机分组，所以范围错误’；改评‘范围可由团队采取，具体分组和停止规则留给行动计划步骤’。");
+            case "b3-funnel"->List.of(
+                "用所选相邻环节的固定分母、人数及变化解释优先理由，区分比例变化与绝对人数损失；排序只是辅助，学生不必选最大降幅或排序第一。",
+                "合法环节选择不等于理由已充分：若缺数字或取舍依据，可指出缺口并保留原选择；不能替换成你偏好的环节，也不能无资料断言该环节干预更直接、低成本或价值最大。",
+                "通用校准（不是本题答案）：错评‘另一个环节降幅最大，所以当前选择错误’；改评‘当前环节允许选择，请补足其损失、范围与优先验证理由；最大降幅不是唯一优先标准’。");
+            case "b4-segment"->List.of(
+                "围绕学生选定的相邻环节，在相同时间窗和分母下比较群体；转化比例、未到达绝对人数、总体完成率和支持负荷各自回答不同问题，不可互相替代。未到达绝对人数等于该环节分母减到达人数。",
+                "更高启动转化率意味着未启动比例更低，不代表启动问题更集中；即使未启动绝对人数更多，也只支持人数规模方面的讨论。更低后续完成率不能单独定位到启动环节。",
+                "原群体选择合法时保留该方案，但不替缺少依据的理由编造支持。结合人数、转化和支持负荷说明已有材料支持什么、尚不支持什么；课程或来源标签不是学员素质或渠道因果效果。先使用已给数据，不把已有构成说成仍需采集。",
+                "通用校准（不是本题答案）：错评‘甲组启动率更高且最终完成率低，所以甲组启动问题更集中’；改评‘甲组未启动比例更低；若绝对未启动人数较多，只能据此讨论覆盖人数，最终完成率低还需检查后续环节’。");
+            case "b5-hypothesis"->List.of(
+                "本题判断是否把已观察结果、待验证原因假设与真正未知的信息分开；原因应与问题相关且保持假设身份，不能要求此时完成后续试验设计。",
+                "可建议检验某项可观察预测并说明判定前提，但干预未奏效不等于机制假设被否定。结果可能受触达、实施、干预是否改变目标机制、比较方式与不确定性影响；不得直接从未提升推出一般原因不存在。",
+                "通用校准（不是本题答案）：错误示例‘发说明后指标未提升，因此否定说明不清这一原因’；修正示例‘本次发送方案未显示预期改善；仍需检查实际触达和理解、是否改变相关障碍及比较的不确定性，不能据此直接否定原因假设’。");
+            case "b6-action"->List.of(
+                "行动应与已选群体和问题一致；结构化目标百分点、护栏和复盘日已填写时，要评价依据是否充分，不得说没有填写，也不能把原目标改称模型新举的假设。比例、百分点、单位及所有新增算式须复核。",
+                "历史同群体基线说明现状和运营目标，不是干预反事实。区分运营目标是否达到与相对于可比同期对照的干预效果；达到某历史基线加目标值，不自动证明行动有效或可以扩大。",
+                "优先建议同期随机分组；按批次交替、前后或分期比较不等于随机分组，若提出这种方案，必须同时说明时间混杂、群体构成差异及因果限制，不可把它与随机分组并列为同等强度的方法。",
+                "支持护栏单位为次/100名报名者，联系次数可大于人数，先对照同群体基线；目标及护栏需可行性依据。计划应含比较方法、成熟观察窗口、判断和停止条件，不能用任意人数或小幅提升承诺扩大。",
+                "每名参与者观察入组后28天；最后一人入组28或42天后复盘，42天复盘不意味着改变指标窗口。",
+                "通用校准（不是本题答案）：错误示例‘两周交替开展，试行后高于历史目标即可证明有效’；修正示例‘优先在同一时期随机分组比较；若只能交替开展，须说明时间与构成混杂，历史目标达成与干预效果判断分开’。");
+            default->legacyCriteria(step);
+        };
+    }
+    /** Immutable v2 text: rebuilding a pinned historical source must preserve its canonical hash. */
+    private static List<String> legacyCriteria(String step){return switch(step){
+        case "a1-task"->List.of("区分分类路由任务与生成答案、评价学员能力。");
+        case "a2-metrics"->List.of("解释所选指标的分母及业务错误代价；覆盖率与自动分类准确率不是同一指标。");
+        case "a3-errors"->List.of("错误模式须由所引公开样本支持，不能仅抄类别名称或把单个例子概括为普遍原因。");
+        case "a4-configure"->List.of("配置修改应针对已识别问题，说明预期机制；预期不是已发生效果。");
+        case "a5-evaluate"->List.of("比较相同固定评价集的前后结果，区分覆盖率、准确率、人工复核与各类错误；改善须同时说明代价。");
+        case "a6-decision"->List.of("使用决定应与本次结果和错误代价一致，监控须可观察，残余风险和小样本限制不可省略。");
+        case "d1-context"->List.of("区分学员观察单位与课程或日期，界定完成课程的目标字段。");
+        case "d2-quality"->List.of("区分精确重复、缺失、合理极端与不适用，结合字段含义解释保留、删除或插补的后果。");
+        case "d3-profile"->List.of("用实际清洗后样本和分布统计解释所选变量，指出样本、缺失与极端值的边界。");
+        case "d4-relationship"->List.of("具体说明比较对象、样本量和所选关系；相关、组间差异不自动证明因果。");
+        case "d5-stratify"->List.of("对照总体与分层结果，考虑构成差异、样本量与未观测混杂；因果判断应符合观察性数据边界。");
+        case "d6-conclusion"->List.of("每项发现与所引步骤结果一致，区分支持、不支持、信息不足；后续问题应回应已知限制并可验证。");
+        case "b1-context"->List.of("业务问题应可由本数据观察，决策范围须是团队可采取或验证的行动，不是把群体差异命名为原因；收入、满意度与退课原因不在数据内。");
+        case "b2-metric"->List.of("解释完成率分子、报名或开始首课分母为何回答该问题；等长不重叠成熟批次不是个人纵向追踪，百分点不等于相对百分比。");
+        case "b3-funnel"->List.of("用相邻转化分母、人数及变化说明优先环节，不以最低比例直接推断原因或最大商业价值。");
+        case "b4-segment"->List.of("优先群体理由须结合样本量、转化与支持负荷；课程或来源的排序不证明学员素质、渠道因果效果。");
+        case "b5-hypothesis"->List.of("清楚分开已观察结果、待验证原因假设与未知信息，假设应有可能证伪的检查。");
+        case "b6-action"->List.of("行动与已选群体和问题一致；目标百分点是待检验目标而非模型预测，需基线与可行性依据。","支持护栏单位为次/100名报名者，联系次数可大于人数，先对照同群体基线；计划应含对照或比较方法、成熟观察窗口、判断和停止条件。","每名参与者观察入组后28天；最后一人入组28或42天后复盘，42天复盘不意味着改变指标窗口。");
+        default->List.of("依据本步骤原题、公开材料和验证结果评价本次提交，不臆测动机或稳定能力。");};}
+}

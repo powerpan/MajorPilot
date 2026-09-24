@@ -1,0 +1,46 @@
+package com.ruoyi.majorpilot.integration.ai;
+
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportAnalysisFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
+
+class ReportModelSettingsTest {
+    @Test void fifteenMinuteRequestIsTheDefaultAndTheExactAcceptedMaximum(){
+        assertEquals(2_700_000,ReportModelSettings.MAX_TOTAL_BUDGET_MS);
+        for(String provider:List.of("BAILIAN","DEEPSEEK")){
+            var defaults=ReportModelSettings.defaults(provider);assertEquals(900_000,defaults.requestTimeoutMs());
+            var accepted=ReportModelSettings.from(new MockEnvironment().withProperty("MP_REPORT_AI_TIMEOUT_MS","900000"),provider);
+            assertEquals(900_000,accepted.requestTimeoutMs());
+            assertEquals(AiFailure.Code.CONFIG_INVALID,assertThrows(AiFailure.class,()->ReportModelSettings.from(new MockEnvironment().withProperty("MP_REPORT_AI_TIMEOUT_MS","900001"),provider)).code());
+            assertEquals(AiFailure.Code.CONFIG_INVALID,assertThrows(AiFailure.class,()->new ReportModelSettings(900_001,defaults.maxOutputTokens(),defaults.thinkingBudgetTokens(),defaults.maxResponseBytes(),defaults.outputFormat())).code());
+        }
+    }
+    @Test void v2InitialAndReviewEachHonorRequestCapAndRemainingTotalBudgetWithoutRetry(){
+        var core=new ReportCore(JSON);var catalog=core.compile(v2(experience("AI",false),SOUND));
+        for(var stage:List.of(ReportGateway.Stage.INITIAL,ReportGateway.Stage.REVIEW)){
+            var input=stage==ReportGateway.Stage.REVIEW?core.reviewInput(catalog,proposal(catalog,"SUPPORTED")):core.modelInput(catalog);
+            for(long remaining:new long[]{2_700_000,899_999}){
+                var calls=new AtomicInteger();
+                var gateway=new ReportHttpGateway(JSON,core,"BAILIAN","synthetic-key",BailianAiGateway.DEFAULT_BASE_URL,ReportHttpGateway.BAILIAN_MODEL,(request,timeout)->{
+                    calls.incrementAndGet();assertEquals(Math.min(900_000,remaining),timeout);assertEquals(timeout,request.timeout().orElseThrow().toMillis());assertEquals("text/event-stream",request.headers().firstValue("Accept").orElseThrow());
+                    return new BailianAiGateway.TransportResponse(503,new byte[0]);
+                });
+                var outcome=gateway.attempt(new ReportGateway.Attempt("bounded-v2-timeout",stage,input,List.of(),remaining));
+                assertEquals(ReportGateway.Status.UPSTREAM_FAILURE,outcome.status());assertEquals(1,calls.get());assertEquals(1,outcome.telemetry().httpAttempts());
+                var over=gateway.attempt(new ReportGateway.Attempt("invalid-total",stage,input,List.of(),2_700_001));assertEquals(0,over.telemetry().httpAttempts());assertEquals(1,calls.get());
+            }
+        }
+    }
+    @Test void legacyJobRetains45SecondNonStreamingRequest(){
+        var core=new ReportCore(JSON);var input=core.modelInput(core.compile(experience("AI",true)));var calls=new AtomicInteger();
+        var gateway=new ReportHttpGateway(JSON,core,"BAILIAN","synthetic-key",BailianAiGateway.DEFAULT_BASE_URL,ReportHttpGateway.BAILIAN_MODEL,(request,timeout)->{
+            calls.incrementAndGet();assertEquals(45_000,timeout);assertEquals(45_000,request.timeout().orElseThrow().toMillis());assertTrue(request.headers().firstValue("Accept").isEmpty());return new BailianAiGateway.TransportResponse(503,new byte[0]);
+        });
+        var outcome=gateway.attempt(new ReportGateway.Attempt("legacy-budget",ReportGateway.Stage.INITIAL,input,List.of(),45_000));assertEquals(ReportGateway.Status.UPSTREAM_FAILURE,outcome.status());assertEquals(1,calls.get());
+    }
+}

@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import Ajv2020 from 'ajv/dist/2020.js';
+import addFormats from 'ajv-formats';
+const read=path=>JSON.parse(readFileSync(new URL(path,import.meta.url),'utf8'));
+const ajv=new Ajv2020({strict:true,allErrors:true});addFormats(ajv);
+const output=ajv.compile(read('../schemas/report-v2.json'));
+const proposal=ajv.compile(read('../schemas/report-analysis-proposal-v2.json'));
+const text='本次判断应联系题目要求和已验证的数据，补充必要的观察窗口与对照条件。';
+const analysis=()=>({summary:text,majorAnalyses:[{majorCode:'BUSINESS_ANALYTICS',preparation:text,taskReasoning:text,nextPractice:text,evidenceRefs:['00000000000000000000000001']}],findings:[{majorCode:'BUSINESS_ANALYTICS',stepKey:'b6-action',answerField:'testPlan',answerQuote:'先划分对照组，再按相同观察窗口比较。',assessment:'PARTIAL',reasoning:text,improvement:text,example:text,evidenceRefs:['00000000000000000000000001']}],crossMajorAnalysis:[]});
+test('analysis proposal admits meaningful prose but not arbitrary extra fields or rankings',()=>{
+ const value={schemaVersion:'report-analysis-proposal-v2',reportType:'EXPERIENCE',analysis:analysis()};
+ assert.ok(proposal(value),JSON.stringify(proposal.errors));
+ for(const mutate of [v=>{v.analysis.fitScore=90;},v=>{v.analysis.findings[0].assessment='BAD_STUDENT';},v=>{v.analysis.findings[0].reasoning='短';},v=>{v.analysis.findings[0].evidenceRefs=[];},v=>{v.analysis.findings[0].answerQuote='字'.repeat(1201);},v=>{v.analysis.findings[0].claimType='OBSERVED_FACT';}]){
+  const changed=structuredClone(value);mutate(changed);assert.equal(proposal(changed),false);
+ }
+});
+test('v2 public output includes readable answer attribution but strips internal references',()=>{
+ const body=read('../examples/reports/business_analytics.json');body.schemaVersion='report-v2';body.analysis={status:'COMPLETE',...analysis()};
+ for(const item of body.analysis.majorAnalyses)delete item.evidenceRefs;
+ for(const item of body.analysis.findings){delete item.evidenceRefs;item.stepTitle='行动与验证';item.answerLabel='验证计划';}
+ assert.ok(output(body),JSON.stringify(output.errors));
+ body.analysis.findings[0].evidenceRefs=['internal'];assert.equal(output(body),false);delete body.analysis.findings[0].evidenceRefs;
+ body.analysis.findings[0].operatorId='internal';assert.equal(output(body),false);
+});
+test('v2 fallback is explicit rather than pretending a completed analysis',()=>{
+ const body=read('../examples/reports/business_analytics-fallback.json');body.schemaVersion='report-v2';body.analysis={status:'UNAVAILABLE',summary:'本次深入分析尚未完成，已有任务事实仍然可以查看。',majorAnalyses:[],findings:[],crossMajorAnalysis:[]};
+ assert.ok(output(body),JSON.stringify(output.errors));
+ body.analysis.status='MAYBE';assert.equal(output(body),false);
+});

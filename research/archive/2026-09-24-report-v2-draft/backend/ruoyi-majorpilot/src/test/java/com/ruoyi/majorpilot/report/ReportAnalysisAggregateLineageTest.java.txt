@@ -1,0 +1,169 @@
+package com.ruoyi.majorpilot.report;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.report.core.*;
+import com.ruoyi.majorpilot.report.core.ReportModels.*;
+import com.ruoyi.majorpilot.businessanalytics.BaStatistics;
+import com.ruoyi.majorpilot.shared.ApiException;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+/** Frozen public materials, not authored answers, control aggregate facts. No database or gateway. */
+class ReportAnalysisAggregateLineageTest {
+    @Test void actualBaInputMakesLegalSegmentToOverallAggregationExplicit() throws Exception {
+        var context=ReportAnalysisLiveFixtures.input("ba-good").sources().getFirst().analysisContext();
+        var facts=context.at("/task/aggregateLineage");
+        assertFalse(facts.isMissingNode(),"Production context must expose recomputable aggregate lineage");
+        assertEquals("ba-aggregate-lineage-v2",facts.path("schemaVersion").asText());
+        assertEquals("enrolled_count",facts.at("/selection/denominator").asText());
+        assertEquals(180,facts.at("/periods/baseline/overall/enrolled_count").asInt());
+        assertEquals(100,facts.at("/periods/baseline/overall/completed_count").asInt());
+        assertEquals(179,facts.at("/periods/comparison/overall/enrolled_count").asInt());
+        assertEquals(58,facts.at("/periods/comparison/overall/completed_count").asInt());
+        assertTrue(facts.path("overallEqualsDisjointGroupCountSums").asBoolean());
+        assertEquals("b4-segment",facts.at("/verifiedSegmentSource/stepKey").asText());
+        for(String period:new String[]{"baseline","comparison"})for(String dimension:new String[]{"byCourse","bySource"}) {
+            var p=facts.path("periods").path(period);long enrolled=0,completed=0;
+            for(var group:p.path(dimension)){enrolled+=group.path("enrolled_count").asLong();completed+=group.path("completed_count").asLong();}
+            assertEquals(p.at("/overall/enrolled_count").asLong(),enrolled);
+            assertEquals(p.at("/overall/completed_count").asLong(),completed);
+        }
+    }
+    @Test void existingCrossClassifiedNonStarterDistributionIsDerivedNotDeclaredUnknown() throws Exception {
+        var facts=ReportAnalysisLiveFixtures.input("ba-good").sources().getFirst().analysisContext().at("/task/aggregateLineage");
+        assertFalse(facts.isMissingNode(),"Known enrolled-minus-first-lesson counts must not be treated as missing");
+        var p=facts.at("/periods/comparison");
+        assertEquals(37,p.at("/overall/nonStarterCount").asInt());
+        assertEquals(21,p.at("/byCourse/APPLIED/nonStarterCount").asInt());
+        assertEquals(16,p.at("/byCourse/FOUNDATIONS/nonStarterCount").asInt());
+        assertEquals(8,p.at("/nonStartersByCourseAndSource/APPLIED/ORGANIC").asInt());
+        assertEquals(2,p.at("/nonStartersByCourseAndSource/APPLIED/PARTNER").asInt());
+        assertEquals(11,p.at("/nonStartersByCourseAndSource/APPLIED/CAMPAIGN").asInt());
+        assertEquals(3,p.at("/nonStartersByCourseAndSource/FOUNDATIONS/ORGANIC").asInt());
+        assertEquals(3,p.at("/nonStartersByCourseAndSource/FOUNDATIONS/PARTNER").asInt());
+        assertEquals(10,p.at("/nonStartersByCourseAndSource/FOUNDATIONS/CAMPAIGN").asInt());
+    }
+    @Test void crossedCountsAndDeltasExposeExistingCompositionWithoutInventingItsCause() throws Exception {
+        var facts=context().at("/task/aggregateLineage");var cross=facts.path("crossGroupCounts");
+        assertEquals(6,cross.size(),"One count record for each actual course/source cell");
+        for(var cell:cross){
+            String course=cell.path("course_track").asText(),channel=cell.path("signup_source").asText();
+            for(String period:List.of("baseline","comparison"))assertEquals(
+                cell.path(period).path("enrolled_count").asLong()-cell.path(period).path("first_lesson_count").asLong(),cell.path(period).path("nonStarterCount").asLong());
+            for(String key:COUNT_KEYS)assertEquals(cell.path("comparison").path(key).asLong()-cell.path("baseline").path(key).asLong(),cell.path("delta").path(key).asLong());
+            if(course.equals("APPLIED"))switch(channel){
+                case "ORGANIC"->{assertEquals(26,cell.at("/baseline/enrolled_count").asInt());assertEquals(34,cell.at("/comparison/enrolled_count").asInt());assertEquals(8,cell.at("/delta/enrolled_count").asInt());}
+                case "PARTNER"->{assertEquals(12,cell.at("/baseline/enrolled_count").asInt());assertEquals(22,cell.at("/comparison/enrolled_count").asInt());assertEquals(10,cell.at("/delta/enrolled_count").asInt());}
+                case "CAMPAIGN"->{assertEquals(15,cell.at("/baseline/enrolled_count").asInt());assertEquals(58,cell.at("/comparison/enrolled_count").asInt());assertEquals(43,cell.at("/delta/enrolled_count").asInt());}
+                default->fail("Unexpected channel");
+            }
+        }
+        var source=facts.path("crossGroupSource");assertEquals("PINNED_PUBLIC_ROWS",source.path("kind").asText());
+        assertEquals(facts.path("datasetSha256"),source.path("datasetSha256"));assertEquals(facts.path("materialCanonicalSha256"),source.path("materialCanonicalSha256"));
+        assertEquals("weekly-funnel",source.path("sourceAssetKey").asText());assertFalse(source.has("evidenceRefs"),"A marginal execution must not be represented as the cross table's source");
+        assertEquals("COMPARISON_MINUS_BASELINE",source.path("deltaDefinition").asText());assertEquals("DESCRIPTIVE_NOT_CAUSAL",source.path("interpretationBoundary").asText());
+    }
+    @Test void crossedSumsReconcileBothMarginalsOverallAndExistingNonStarters() throws Exception {
+        var facts=context().at("/task/aggregateLineage");
+        for(String period:List.of("baseline","comparison"))for(String key:COUNT_KEYS){
+            long overall=0;var courses=new java.util.HashMap<String,Long>();var channels=new java.util.HashMap<String,Long>();
+            for(var cell:facts.path("crossGroupCounts")){
+                long count=cell.path(period).path(key).asLong();overall+=count;String course=cell.path("course_track").asText(),channel=cell.path("signup_source").asText();
+                courses.merge(course,count,Long::sum);channels.merge(channel,count,Long::sum);
+                if(key.equals("nonStarterCount"))assertEquals(facts.path("periods").path(period).path("nonStartersByCourseAndSource").path(course).path(channel).asLong(),count);
+            }
+            assertEquals(facts.path("periods").path(period).path("overall").path(key).asLong(),overall);
+            for(var entry:courses.entrySet())assertEquals(facts.path("periods").path(period).path("byCourse").path(entry.getKey()).path(key).asLong(),entry.getValue());
+            for(var entry:channels.entrySet())assertEquals(facts.path("periods").path(period).path("bySource").path(entry.getKey()).path(key).asLong(),entry.getValue());
+        }
+    }
+    @Test void informationInventorySeparatesComputableCountsFromUnobservedReasons() throws Exception {
+        var context=context();var facts=context.at("/task/aggregateLineage");var inventory=facts.path("informationInventory");
+        assertEquals("ba-information-inventory-v1",inventory.path("schemaVersion").asText());
+        assertFalse(inventory.path("availableDerived").isEmpty());
+        for(var entry:inventory.path("availableDerived")){assertFalse(entry.path("description").asText().isBlank());assertFalse(context.at(entry.path("factsPath").asText()).isMissingNode());}
+        assertEquals(facts.path("notRecordedInAggregateRows"),inventory.path("unobserved"));
+        assertFalse(inventory.path("unobserved").toString().contains("报名构成"));assertTrue(inventory.path("unobserved").toString().contains("具体障碍和原因"));
+        String before=new ReportCore(JSON).hash(context);enrich(context);assertEquals(before,new ReportCore(JSON).hash(context),"The same frozen selection rebuilds byte-stable facts");
+    }
+    @Test void factsDoNotDependOnQualityCaseOrAnyOpenAnswerText() throws Exception {
+        var good=ReportAnalysisLiveFixtures.input("ba-good").sources().getFirst().analysisContext().at("/task/aggregateLineage");
+        for(String name:List.of("ba-concept-errors","ba-unrelated","ba-alternative"))assertEquals(good,ReportAnalysisLiveFixtures.input(name).sources().getFirst().analysisContext().at("/task/aggregateLineage"));
+        assertTrue(JSON.writeValueAsBytes(good).length<9000,"Keep the new facts compact, without repeating the 72 input rows");
+        assertFalse(good.toString().contains("ba-good"));
+    }
+    @Test void frozenWindowDenominatorAndGroupingSelectionsControlTheProjection() throws Exception {
+        var context=context();var b2=response(context,"b2-metric");
+        b2.put("baselineStartWeek",2).put("baselineEndWeek",4).put("comparisonStartWeek",8).put("comparisonEndWeek",10).put("denominator","first_lesson_count");
+        response(context,"b3-funnel").put("focusTransitionKey","FIRST_LESSON_TO_WEEK_ONE_ACTIVE");response(context,"b4-segment").put("segmentBy","signup_source").put("prioritySegmentKey","CAMPAIGN");
+        response(context,"b6-action").put("targetSegmentKey","CAMPAIGN");
+        var parameters=JSON.createObjectNode();for(String key:List.of("baselineStartWeek","baselineEndWeek","comparisonStartWeek","comparisonEndWeek","numerator","denominator"))parameters.set(key,b2.path(key));
+        parameters.put("focusTransitionKey","FIRST_LESSON_TO_WEEK_ONE_ACTIVE").put("segmentBy","signup_source");
+        var rows=asset("BUSINESS_ANALYTICS","weekly-funnel");String sha=context.at("/task/aggregateLineage/datasetSha256").asText();
+        for(var e:context.path("verifiedExecutions"))if(e.at("/value/operationKey").asText().equals("ba-segments"))((ObjectNode)e).set("value",BaStatistics.calculate("ba-segments",rows,parameters,sha));
+        enrich(context);var facts=context.at("/task/aggregateLineage");assertEquals(parameters,facts.path("selection"));
+        assertEquals(90,facts.at("/periods/baseline/overall/enrolled_count").asInt());
+        assertEquals(46,facts.at("/periods/baseline/overall/completed_count").asInt());
+        assertEquals(35,facts.at("/periods/comparison/overall/completed_count").asInt());
+        assertEquals(8,facts.at("/periods/comparison/startWeek").asInt());assertEquals("signup_source",facts.at("/verifiedSegmentSource/segmentBy").asText());
+        for(var cell:facts.path("crossGroupCounts"))for(String period:List.of("baseline","comparison"))for(String key:COUNT_KEYS){
+            long expected=0;int start=parameters.path(period+"StartWeek").asInt(),end=parameters.path(period+"EndWeek").asInt();
+            for(var row:rows)if(row.path("week").asInt()>=start&&row.path("week").asInt()<=end&&row.path("course_track").equals(cell.path("course_track"))&&row.path("signup_source").equals(cell.path("signup_source")))
+                expected+=key.equals("nonStarterCount")?row.path("enrolled_count").asLong()-row.path("first_lesson_count").asLong():row.path(key).asLong();
+            assertEquals(expected,cell.path(period).path(key).asLong(),period+" "+key);
+        }
+    }
+    @Test void unknownSchemaMixedVersionsAndMismatchedResultsCannotProduceTrustedFacts() throws Exception {
+        for(String fault:List.of("context-schema","task-schema","dictionary-schema","engine-schema","dataset-hash","selected-window","execution-count","raw-count","valid-raw-count","duplicate-material")){
+            var context=context();var manifest=(ObjectNode)asset("BUSINESS_ANALYTICS","manifest").deepCopy();
+            switch(fault){
+                case "context-schema"->context.put("schemaVersion","unknown-context");
+                case "task-schema"->manifest.put("schemaVersion","unknown-task");
+                case "dictionary-schema"->((ObjectNode)material(context,"data-dictionary")).put("schemaVersion","unknown-dictionary");
+                case "engine-schema"->{for(var op:manifest.path("operations"))if(op.path("operationKey").asText().equals("ba-segments"))((ObjectNode)op).put("engineVersion","unknown-engine");}
+                case "dataset-hash"->{for(var a:manifest.path("assets"))if(a.path("assetKey").asText().equals("weekly-funnel"))((ObjectNode)a).put("sha256","0".repeat(64));}
+                case "selected-window"->response(context,"b2-metric").put("comparisonStartWeek",8);
+                case "execution-count"->{for(var e:context.path("verifiedExecutions"))if(e.at("/value/operationKey").asText().equals("ba-segments"))((ObjectNode)e.at("/value/segments/0/comparison/stageCounts")).put("completed_count",26);}
+                case "raw-count"->((ObjectNode)material(context,"weekly-funnel").get(0)).put("enrolled_count",-1);
+                case "valid-raw-count"->{var row=(ObjectNode)material(context,"weekly-funnel").get(0);row.put("enrolled_count",row.path("enrolled_count").asLong()+1);}
+                default->((com.fasterxml.jackson.databind.node.ArrayNode)context.at("/task/materials")).add(context.at("/task/materials/0").deepCopy());
+            }
+            // Repeated or foreign material sources may not silently replace the pinned inputs.
+            if(fault.equals("duplicate-material")){
+                var materials=(com.fasterxml.jackson.databind.node.ArrayNode)context.at("/task/materials");
+                for(var item:materials)if(item.path("assetKey").asText().equals("weekly-funnel")){materials.add(item.deepCopy());break;}
+            }
+            assertEquals("REPORT_SOURCE_INVALID",assertThrows(ApiException.class,()->ReportAnalysisContext.enrichAggregateLineage(JSON,context,manifest,ReportAnalysisContext.RUBRIC),fault).code);
+        }
+    }
+    @Test void allFourHistoricalVersionsPreservePreChangeSourceCatalogAndReviewHashes() throws Exception {
+        var core=new ReportCore(JSON);var original=ReportAnalysisLiveFixtures.input("ba-good");
+        var goldens=Map.of(
+            // Immutable Qqq8dc, captured before v2.4 action targets or model-input-v3 existed.
+            "report-assessment-rubric-v2.3",List.of("6a2f1412e830eed253286979f16b87934d5520e5139cb9edd5c1267e0008eae7","702171543461a870f06bec980f7488984c4eb12cf3681021e67ceba51748c86d","fe591fafc5fba613f47b32a03087792ab0eab337d1754cfb372b75176c2af1d8","2c3ecf4835a6e7fe46f426225bd72fb2237d4f3e9e7131c302ee9d0bfd00913d","e2782bcafa2cec13dff93ccf36833ac14a70e214ca0886bbce0158733fcbcd14","8cdf80b20142f1056577d8090e76cfd6d7513f5168a29374466fa5bce938697f"),
+            // Captured from immutable f45d9b classpath BLVvgL BEFORE the v2.3 factory change.
+            "report-assessment-rubric-v2.2",List.of("b40dc2855bc5fdd43a7ba4523d06606af1e0f3c446f769577b96ef92f2d52fc3","58433792efd98a7d8f856d6ca075931c3ca8184da87a0831f73a8ca83b584efe","b51f7b91fb4bfbbc0110ea5bf125f8d21a938d5336ab456a97b1da8134f5cc71","703085daef6294ca98f507d572f9077585e99b955a52502ed45b6fe7d7ab26d1","3f757fc4c97b38ad9c17670d82861f547c46146752dd9ac0bb39fd999620933c","6d65ad380f34e2a43d91532c9036b2850492087d6338778e3378b1cf1be35ef7"),
+            "report-assessment-rubric-v2.1",List.of("6b9dabc1676b8ccd96743a2c3562894139e6bf26fac896dfd517c99f6a25e81d","44d930e03333d5d926c4bdd059857634f3ba713e8319af4b20b361ba3577fa3e","f626b8e646fa81d5bb88d252e2605a6a0202038d92ec7cd37e06f99f044bb322","1fb84d79e934f1e9cb00868ec74e196f4d3fdb8cf671758fe2409c9a023ef21f","c573db2eb1ab20b9700f06b47f45bb0f1b0cf389bcc6ec34497388e5ea9f1523","f63189ed0180690dae31ca7e57ce27c596f02437046c9997785003fe20760770"),
+            "report-assessment-rubric-v2",List.of("2867987aa2aeff0d0fc297c73d4d6405176e4bb339673266581597009a1c48a8","837468fd7ae5ddd411acb0f0f0d19acaba8a9f2e081d289a837502e3232ae66f","e2547f168e4f4e2d2b2775f149c1b4a2f3fec0b985f369a80e10ab49bec83913","c7dcb56b8696c177a11152594532c9c7f4c10770f4b5155811b3dffcfaaadc0d","19cb00ee583aaf7d28b054e0c623268425bb4c75f602f316e35456ebc5c33e1a","cc957d279f95c07a1d53ce9ee58de07ca774091296c696ef187a519655fefe00"));
+        for(var entry:goldens.entrySet()){
+            String version=entry.getKey();var context=context();((ObjectNode)context.path("task")).remove(List.of("aggregateLineage","actionTargetFrame"));((ObjectNode)context.path("task")).put("assessmentRubricVersion",version);
+            for(var step:context.path("steps")){var rubric=(ObjectNode)step.path("rubric");rubric.put("version",version);rubric.set("criteria",JSON.valueToTree(ReportAnalysisContext.criteria(step.path("stepKey").asText(),version)));}
+            String before=core.hash(context);ReportAnalysisContext.enrichAggregateLineage(JSON,context,asset("BUSINESS_ANALYTICS","manifest"),version);
+            if(version.equals("report-assessment-rubric-v2.3")){assertEquals("ba-aggregate-lineage-v2",context.at("/task/aggregateLineage/schemaVersion").asText());assertTrue(context.at("/task/aggregateLineage").has("crossGroupCounts"));}
+            else if(version.equals("report-assessment-rubric-v2.2")){assertEquals("ba-aggregate-lineage-v1",context.at("/task/aggregateLineage/schemaVersion").asText());assertFalse(context.at("/task/aggregateLineage").has("crossGroupCounts"));}
+            else{assertEquals(before,core.hash(context));assertFalse(context.path("task").has("aggregateLineage"));}
+            assertFalse(context.path("task").has("actionTargetFrame"));
+            var old=original.sources().getFirst();var source=new Source(old.majorCode(),old.studentPublicId(),old.pins(),old.snapshot(),old.items(),old.experienceVersion(),context);var input=new ReportInput(original.header(),original.versions(),List.of(source),original.nextRecommendation());var catalog=core.compile(input);var proposal=ReportAnalysisFixtures.proposal(catalog,"SUPPORTED");
+            assertEquals(entry.getValue(),List.of(core.hash(context),core.hash(JSON.valueToTree(source)),core.hash(JSON.valueToTree(input)),catalog.catalogSha256(),core.hash(core.modelInput(catalog).content()),core.hash(core.reviewInput(catalog,proposal).content())),version);
+        }
+    private static final List<String> COUNT_KEYS=List.of("enrolled_count","first_lesson_count","completed_count","support_contact_count","nonStarterCount");
+    }
+    private ObjectNode context() throws Exception{return (ObjectNode)ReportAnalysisLiveFixtures.input("ba-good").sources().getFirst().analysisContext();}
+    private static ObjectNode response(JsonNode context,String stepKey){for(var step:context.path("steps"))if(stepKey.equals(step.path("stepKey").asText()))return (ObjectNode)step.path("submittedResponse");throw new AssertionError(stepKey);}
+    private static JsonNode material(JsonNode context,String key){for(var material:context.at("/task/materials"))if(key.equals(material.path("assetKey").asText()))return material.path("content");throw new AssertionError(key);}
+    private static void enrich(ObjectNode context){ReportAnalysisContext.enrichAggregateLineage(JSON,context,asset("BUSINESS_ANALYTICS","manifest"),ReportAnalysisContext.RUBRIC);}
+}

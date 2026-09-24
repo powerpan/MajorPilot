@@ -1,0 +1,32 @@
+package com.ruoyi.majorpilot.report;
+
+import com.ruoyi.majorpilot.integration.ai.ReportGateway;
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+
+class ReportAnalysisProbeSequenceTest {
+    final ReportCore core=new ReportCore(JSON);
+    final ReportModels.Catalog catalog=core.compile(ReportAnalysisFixtures.v2(experience("BUSINESS_ANALYTICS",true),ReportAnalysisFixtures.SOUND));
+    ReportGateway.Outcome valid(){return new ReportGateway.Outcome(ReportGateway.Status.PROPOSAL_RECEIVED,ReportAnalysisFixtures.proposal(catalog,"PARTIAL"),List.of(),null,null);}
+    ReportGateway.Outcome invalid(){return new ReportGateway.Outcome(ReportGateway.Status.INVALID_OUTPUT,null,List.of(new ReportModels.Violation("STRUCTURE_INVALID","/")),"INVALID_OUTPUT",null);}
+    ReportGateway.Outcome failed(){return new ReportGateway.Outcome(ReportGateway.Status.UPSTREAM_FAILURE,null,List.of(),"TIMEOUT",null);}
+    @Test void validDraftIsNeverThePublishedResultAndReviewIsMandatory(){var sequence=new ReportAnalysisProbeSequence(core,catalog);assertEquals(ReportGateway.Stage.INITIAL,sequence.stage());sequence.accept(valid());assertNull(sequence.finalProposal());assertTrue(sequence.hasNext());assertEquals(ReportGateway.Stage.REVIEW,sequence.stage());assertEquals("report-model-review-input-v1",sequence.input().schemaVersion());assertTrue(sequence.issues().isEmpty());sequence.accept(valid());assertNotNull(sequence.finalProposal());assertEquals(2,sequence.attempts());assertFalse(sequence.hasNext());assertThrows(IllegalStateException.class,()->sequence.accept(valid()));}
+    @Test void oneInitialRepairStillRequiresReviewAndCapsAtThree(){var sequence=new ReportAnalysisProbeSequence(core,catalog);sequence.accept(invalid());assertEquals(ReportGateway.Stage.REPAIR,sequence.stage());assertFalse(sequence.issues().isEmpty());sequence.accept(valid());assertEquals(ReportGateway.Stage.REVIEW,sequence.stage());assertTrue(sequence.issues().isEmpty());assertNull(sequence.finalProposal());sequence.accept(valid());assertEquals(3,sequence.attempts());assertNotNull(sequence.finalProposal());assertFalse(sequence.hasNext());assertThrows(IllegalStateException.class,sequence::input);}
+    @Test void reviewFailureHasNoRepairRetryOrDraftPublication(){for(var outcome:List.of(invalid(),failed())){var sequence=new ReportAnalysisProbeSequence(core,catalog);sequence.accept(valid());sequence.accept(outcome);assertEquals(2,sequence.attempts());assertNotNull(sequence.draft());assertNull(sequence.finalProposal());assertFalse(sequence.hasNext());assertThrows(IllegalStateException.class,sequence::stage);}}
+    @Test void upstreamFailureOrTwiceInvalidDraftStopsWithoutReview(){var sequence=new ReportAnalysisProbeSequence(core,catalog);sequence.accept(failed());assertEquals(1,sequence.attempts());assertFalse(sequence.hasNext());assertNull(sequence.finalProposal());var repaired=new ReportAnalysisProbeSequence(core,catalog);repaired.accept(invalid());repaired.accept(invalid());assertEquals(2,repaired.attempts());assertFalse(repaired.hasNext());assertNull(repaired.draft());assertNull(repaired.finalProposal());}
+    @Test void currentBoundSequenceRetainsAllAnswerBindingsAcrossInitialRepairAndIndependentReview()throws Exception{
+        for(String name:List.of("ba-good","ai-metric-error","ds-causal-error")){
+            var current=core.compile(ReportAnalysisLiveFixtures.input(name));var sequence=new ReportAnalysisProbeSequence(core,current);var original=sequence.input();
+            assertEquals(ReportBindingCodec.INPUT_SCHEMA,original.schemaVersion());assertNotNull(original.bindingCatalogContext());
+            sequence.accept(invalid());assertEquals(ReportGateway.Stage.REPAIR,sequence.stage());assertEquals(original,sequence.input());
+            var proposal=ReportBindingFixtures.proposal(current);var outcome=new ReportGateway.Outcome(ReportGateway.Status.PROPOSAL_RECEIVED,proposal,List.of(),null,null);
+            sequence.accept(outcome);assertNull(sequence.finalProposal());assertEquals(ReportGateway.Stage.REVIEW,sequence.stage());var review=sequence.input();
+            assertEquals(ReportBindingCodec.REVIEW_SCHEMA,review.schemaVersion());assertEquals(original.content(),review.content().path("originalInput"));assertEquals(core.modelProposal(current,proposal),review.content().path("untrustedDraft"));
+            assertTrue(review.content().at("/untrustedDraft/analysis/findings").isObject());assertEquals(original.content().at("/bindingCatalog/findings").size(),review.content().at("/untrustedDraft/analysis/findings").size());
+            sequence.accept(outcome);assertEquals(proposal,sequence.finalProposal());assertEquals(3,sequence.attempts());assertFalse(sequence.hasNext());
+        }
+    }
+}

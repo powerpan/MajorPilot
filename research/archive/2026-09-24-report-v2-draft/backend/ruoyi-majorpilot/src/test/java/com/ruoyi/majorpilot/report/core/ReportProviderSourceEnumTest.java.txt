@@ -1,0 +1,78 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportAnalysisFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+
+/** Provider enums prevent invented IDs; they do not replace source/answer ownership checks. */
+class ReportProviderSourceEnumTest {
+    private final ReportCore core=new ReportCore(JSON);
+    private static final List<String> SECTIONS=List.of("majorAnalyses","findings","crossMajorAnalysis");
+
+    private Catalog mixedCatalog(){
+        var input=v2(experience("AI",false),SOUND);var source=input.sources().getFirst();
+        var context=(ObjectNode)source.analysisContext();var step=context.path("steps").get(0);var answer=(ObjectNode)step.path("answers").get(0);
+        String ref="frozen-response:AI/"+step.path("stepKey").asText()+":reason";
+        answer.remove("evidenceId");answer.put("sourceRef",ref).put("sourceSha256","d".repeat(64));
+        context.withArray("frozenSources").addObject().put("sourceRef",ref).put("sourceType","STEP_RESPONSE").put("stepKey",step.path("stepKey").asText()).put("answerField","reason").put("revision",1).put("sourceSha256","d".repeat(64)).put("value",SOUND);
+        var mixed=new Source(source.majorCode(),source.studentPublicId(),source.pins(),source.snapshot(),source.items(),source.experienceVersion(),context);
+        return core.compile(new ReportInput(input.header(),input.versions(),List.of(mixed),input.nextRecommendation()));
+    }
+    private JsonNode refs(JsonNode schema,String section){return schema.at("/properties/analysis/properties/"+section+"/items/properties/evidenceRefs/items/enum");}
+    private Set<String> strings(JsonNode values){var result=new TreeSet<String>();values.forEach(v->result.add(v.asText()));return result;}
+    private Set<String> expectedRefs(JsonNode input){var result=new TreeSet<String>();for(var source:input.path("sources")){source.path("evidence").forEach(e->result.add(e.path("evidenceId").asText()));source.at("/context/frozenSources").forEach(f->result.add(f.path("sourceRef").asText()));}return result;}
+
+    @Test void allReferenceSlotsUseExactlyTheActualMixedWhitelistAndCurrentMajor(){
+        var input=core.modelInput(mixedCatalog());var expected=expectedRefs(input.content());var schema=core.providerProposalSchema(input);
+        assertEquals(1,expected.stream().filter(r->r.startsWith("frozen-")).count());assertTrue(expected.stream().anyMatch(r->r.matches("[0-7][0-9A-HJKMNP-TV-Z]{25}")));
+        for(String section:SECTIONS){assertEquals(expected,strings(refs(schema,section)));assertFalse(strings(refs(schema,section)).contains("frozen-response:AI/a5-evaluate:comparisonNotes"));}
+        assertEquals(JSON.valueToTree(List.of("AI")),schema.at("/properties/analysis/properties/majorAnalyses/items/properties/majorCode/enum"));
+        assertEquals(JSON.valueToTree(List.of("AI")),schema.at("/properties/analysis/properties/findings/items/properties/majorCode/enum"));
+        assertEquals(JSON.valueToTree(List.of("AI")),schema.at("/properties/analysis/properties/crossMajorAnalysis/items/properties/majorCodes/items/enum"));
+    }
+    @Test void reviewUsesOriginalInputWhitelistNotTheDraftAndDoesNotMutateAnyInputOrCatalog(){
+        var catalog=mixedCatalog();var input=core.modelInput(catalog);var draft=proposal(catalog,"SUPPORTED");var review=core.reviewInput(catalog,draft);
+        String catalogBefore=JSON.valueToTree(catalog).toString(),inputBefore=input.content().toString(),reviewBefore=review.content().toString();
+        var initialSchema=core.providerProposalSchema(input);var reviewSchema=core.providerProposalSchema(review);assertEquals(initialSchema,reviewSchema);
+        ((ArrayNode)refs(reviewSchema,"findings")).add("forged-after-projection");
+        assertEquals(initialSchema,core.providerProposalSchema(review));assertEquals(catalogBefore,JSON.valueToTree(catalog).toString());assertEquals(inputBefore,input.content().toString());assertEquals(reviewBefore,review.content().toString());assertEquals(catalog.catalogSha256(),review.catalogSha256());
+    }
+    @Test void comparisonUnionCannotAuthorizeACrossOwnerReferenceLocally(){
+        var catalog=core.compile(v2(comparison(2,false),SOUND));var input=core.modelInput(catalog);var schema=core.providerProposalSchema(input);
+        assertEquals(expectedRefs(input.content()),strings(refs(schema,"findings")));
+        var other=input.content().path("sources").get(1).at("/context/steps/0/answers/0/evidenceId").asText();
+        var analysis=proposal(catalog,"SUPPORTED").analysis();((ArrayNode)analysis.at("/findings/0/evidenceRefs")).add(other);
+        assertTrue(strings(refs(schema,"findings")).contains(other));
+        var result=core.validate(catalog,new Proposal("report-analysis-proposal-v2",ReportType.COMPARISON,List.of(),analysis),GenerationMode.AI);
+        assertFalse(result.valid());assertTrue(result.issues().contains(new Violation("ANALYSIS_EVIDENCE_INVALID","/analysis/findings/0/evidenceRefs")));
+    }
+    @Test void missingEmptyMalformedDuplicateOrForeignOwnerWhitelistsFailClosed(){
+        var input=core.modelInput(mixedCatalog());
+        for(String mutation:List.of("missing","empty","bad-id","non-string-id","bad-frozen","foreign-frozen","duplicate")){
+            var content=(ObjectNode)input.content().deepCopy();var source=(ObjectNode)content.path("sources").get(0);var evidence=(ArrayNode)source.path("evidence");var frozen=(ArrayNode)source.at("/context/frozenSources");
+            switch(mutation){
+                case "missing"->source.remove("evidence");
+                case "empty"->{evidence.removeAll();frozen.removeAll();}
+                case "bad-id"->((ObjectNode)evidence.get(0)).put("evidenceId","not-a-real-reference");
+                case "non-string-id"->((ObjectNode)evidence.get(0)).put("evidenceId",42);
+                case "bad-frozen"->((ObjectNode)frozen.get(0)).put("sourceRef","frozen-response:invalid");
+                case "foreign-frozen"->((ObjectNode)frozen.get(0)).put("sourceRef","frozen-response:DATA_SCIENCE/d1-context:reason");
+                case "duplicate"->evidence.add(evidence.get(0).deepCopy());
+            }
+            var failure=assertThrows(ReportInputException.class,()->core.providerProposalSchema(new SafeModelInput(input.schemaVersion(),input.catalogSha256(),content)),mutation);assertEquals("REPORT_CATALOG_INVALID",failure.code);
+        }
+    }
+    @Test void legacyAndLocalContractsDoNotAcquireProviderOnlyEnums(){
+        var legacyCatalog=core.compile(experience("AI",false));var legacyInput=core.modelInput(legacyCatalog);var legacy=core.defaultProposal(legacyCatalog,true);
+        assertThrows(ReportInputException.class,()->core.providerProposalSchema(legacyInput));assertEquals(legacy,core.parseProposal(JSON.valueToTree(legacy).toString().getBytes(StandardCharsets.UTF_8)));assertTrue(core.validate(legacyCatalog,legacy,GenerationMode.AI).valid());
+        var catalog=mixedCatalog();var value=raw(proposal(catalog,"SUPPORTED"));((ArrayNode)value.at("/analysis/findings/0/evidenceRefs")).add(id(999999));
+        assertTrue(new ReportSchema(JSON).analysisProposal(value));assertFalse(core.validate(catalog,core.parseProposal(value.toString().getBytes(StandardCharsets.UTF_8)),GenerationMode.AI).valid());
+        core.providerProposalSchema(core.modelInput(catalog));assertTrue(new ReportSchema(JSON).analysisProposal(value));
+    }
+}

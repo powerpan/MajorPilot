@@ -1,0 +1,65 @@
+package com.ruoyi.majorpilot.integration.ai;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.*;
+import com.ruoyi.majorpilot.report.ReportAnalysisLiveFixtures;
+import com.ruoyi.majorpilot.report.core.ReportCore;
+import com.ruoyi.majorpilot.report.core.ReportModels.SafeModelInput;
+import com.ruoyi.majorpilot.report.core.ReportModels.Proposal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.*;
+
+/** TEST SOURCE ONLY. UNVALIDATED synthetic final-message diagnostics, never a publication source. */
+public final class SyntheticReportFinalCapture {
+    private SyntheticReportFinalCapture(){}
+    public static ReportGateway create(ObjectMapper mapper,ReportCore core,String provider,String key,String baseUrl,String model,ReportModelSettings settings,Path guard,Path directory,String testCase,int attempt,ReportGateway.Stage stage,SafeModelInput input,Proposal validatedDraft)throws Exception{
+        require("true".equals(System.getenv("MP_REPORT_ANALYSIS_LIVE"))&&"synthetic-quality-only".equals(System.getenv("MP_REPORT_ANALYSIS_LIVE_CONFIRM")));
+        require(guard.toString().equals(System.getenv("MP_REPORT_ANALYSIS_GUARD_FILE"))&&ReportAnalysisLiveFixtures.CASES.contains(testCase)&&attempt>=1&&attempt<=3);
+        regularPrivateFile(guard);regularPrivateFile(Path.of(guard+".started"));
+        var reservation=mapper.readTree(Files.readString(guard));require(reservation.path("status").asText().equals("ATTEMPT_RESERVED")&&reservation.path("maxHttpAttempts").asInt()==reservation.path("cases").size()*3);boolean included=false;for(var name:reservation.path("cases"))if(name.asText().equals(testCase))included=true;require(included);
+        // Prevent this diagnostic route from being repurposed to capture real Student submissions.
+        validateSyntheticInput(core,testCase,attempt,stage,input,validatedDraft);
+        Path output=directory.resolve(fileName(testCase,attempt));
+        return new ReportHttpGateway(mapper,core,provider,key,baseUrl,model,settings,capturingTransport(mapper,new ReportHttpTransport(settings.maxResponseBytes()),output,settings.maxResponseBytes()));
+    }
+
+    public static String fileName(String testCase,int attempt){require(ReportAnalysisLiveFixtures.CASES.contains(testCase)&&attempt>=1&&attempt<=3);return testCase+"-attempt-"+attempt+".UNVALIDATED_FINAL_ONLY.json";}
+
+    /** Compare a reconstructed reviewed draft against the same exact synthetic source, never arbitrary input. */
+    static void validateSyntheticInput(ReportCore core,String testCase,int attempt,ReportGateway.Stage stage,SafeModelInput input,Proposal validatedDraft)throws Exception{
+        require(ReportAnalysisLiveFixtures.CASES.contains(testCase)&&stage!=null);
+        var catalog=core.compile(ReportAnalysisLiveFixtures.input(testCase));
+        if(stage==ReportGateway.Stage.REVIEW){
+            require((attempt==2||attempt==3)&&validatedDraft!=null);
+            require(core.reviewInput(catalog,validatedDraft).equals(input));
+        }else{
+            require(validatedDraft==null&&(stage==ReportGateway.Stage.INITIAL&&attempt==1||stage==ReportGateway.Stage.REPAIR&&attempt==2));
+            require(core.modelInput(catalog).equals(input));
+        }
+    }
+
+    /** Package-private injection for offline tests, with no network or environment access. */
+    static BailianAiGateway.Transport capturingTransport(ObjectMapper mapper,BailianAiGateway.Transport delegate,Path output,int maxBytes)throws Exception{
+        require(output.isAbsolute()&&output.getFileName().toString().endsWith(".UNVALIDATED_FINAL_ONLY.json"));
+        require(Files.isDirectory(output.getParent(),LinkOption.NOFOLLOW_LINKS)&&!Files.isSymbolicLink(output.getParent())&&Files.getPosixFilePermissions(output.getParent()).equals(PosixFilePermissions.fromString("rwx------"))&&!Files.exists(output,LinkOption.NOFOLLOW_LINKS));
+        return (request,timeout)->{
+            var response=delegate.send(request,timeout);
+            // Never inspect or persist request headers/body, the full envelope, or reasoning_content.
+            if(response.status()>=200&&response.status()<300&&response.body()!=null&&response.body().length<=maxBytes){
+                var diagnostic=mapper.createObjectNode().put("status","UNVALIDATED_FINAL_OUTPUT").put("purpose","SYNTHETIC_SCHEMA_DIAGNOSTIC_ONLY_NOT_PUBLISHABLE");
+                try{
+                    var envelope=mapper.reader().with(JsonParser.Feature.STRICT_DUPLICATE_DETECTION).with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(response.body());
+                    var content=envelope.at("/choices/0/message/content");
+                    if(content.isTextual()&&content.asText().getBytes(StandardCharsets.UTF_8).length<=524288)diagnostic.put("finalMessageContent",content.asText());
+                    else diagnostic.put("captureSafeCode","FINAL_CONTENT_UNAVAILABLE_OR_TOO_LARGE");
+                }catch(Exception invalid){diagnostic.put("captureSafeCode","ENVELOPE_NOT_VALID_JSON");}
+                try{Files.createFile(output,PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));Files.writeString(output,diagnostic.toPrettyString(),StandardCharsets.UTF_8,StandardOpenOption.TRUNCATE_EXISTING);}catch(Exception ignored){throw new AiFailure(AiFailure.Code.INVALID_OUTPUT);}
+            }
+            return response;
+        };
+    }
+    private static void regularPrivateFile(Path file)throws Exception{require(file.isAbsolute()&&Files.isRegularFile(file,LinkOption.NOFOLLOW_LINKS)&&!Files.isSymbolicLink(file)&&Files.getPosixFilePermissions(file).equals(PosixFilePermissions.fromString("rw-------")));}
+    private static void require(boolean condition){if(!condition)throw new IllegalArgumentException("Synthetic unvalidated diagnostic guard rejected");}
+}

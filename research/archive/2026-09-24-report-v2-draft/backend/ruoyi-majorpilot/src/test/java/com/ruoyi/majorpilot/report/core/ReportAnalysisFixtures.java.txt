@@ -1,0 +1,54 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import java.util.*;
+
+/** Synthetic wiring fixtures only. These authored responses do not prove real model quality. */
+public final class ReportAnalysisFixtures {
+    private ReportAnalysisFixtures(){}
+    public static final String SOUND="当前差异只是观察，不能证明渠道导致完成率下降。我会比较同课程同时间窗口的样本，并先做小范围对照试验。";
+    public static final String WRONG="完成率下降说明活动来源的学员素质低，所以只要停止活动渠道就一定能提升完成率。";
+    public static final String CARELESS="不知道，随便填，反正选这个应该可以，所有结论都一样。";
+    public static final String ALTERNATIVE="先研究首次学习前的等待天数，再对同一渠道按课程分层，检查总体差异是否主要来自课程构成变化。";
+
+    public static ReportInput v2(ReportInput input,String answer){
+        var sources=new ArrayList<Source>();
+        for(var source:input.sources()){
+            var items=new ArrayList<>(source.items().stream().filter(e->!e.type().equals("STUDENT_ANALYSIS")).toList());
+            var context=JSON.createObjectNode().put("schemaVersion","report-analysis-context-v2");
+            context.putObject("task").put("title",source.pins().taskTitle()).put("evaluationRules","区分已观察结果、原因假设与待验证行动，允许有依据的不同路径。");
+            var steps=context.putArray("steps");int next=40000+MAJORS.indexOf(source.majorCode())*100;
+            for(var entry:source.pins().stepTitles().entrySet()){
+                String evidenceId=id(++next);var evidenceValue=JSON.createObjectNode();evidenceValue.putObject("answers").put("reason",answer);items.add(new EvidenceValue(evidenceId,"analysis:"+entry.getKey(),"STUDENT_ANALYSIS",evidenceValue,"Synthetic original answer",List.of(),NOW));
+                var step=steps.addObject().put("stepKey",entry.getKey()).put("title",entry.getValue()).put("instructions","请说明你的推理依据，给出限制和下一步验证方法。").put("rubric","证据与结论相符；不将相关当因果；评价的是本次原文，不推断长期能力。");
+                step.putArray("answers").addObject().put("answerField","reason").put("label","推理理由").put("value",answer).put("evidenceId",evidenceId);
+            }
+            context.putArray("frozenSources");context.putArray("verifiedExecutions");context.putObject("reflection").put("continueSimilarWork","YES");context.putObject("background").put("businessFamiliarity","BEGINNER");context.putObject("supportContext").put("meaning","Requested help is not an ability score");
+            sources.add(new Source(source.majorCode(),source.studentPublicId(),source.pins(),source.snapshot(),items,source.experienceVersion(),context));
+        }
+        return new ReportInput(input.header(),VersionPins.v2(),sources,input.nextRecommendation());
+    }
+
+    public static Proposal proposal(Catalog catalog,String assessment){
+        var analysis=JSON.createObjectNode().put("summary","这份分析只针对本次已保存的回答及固定数据，分别观察概念使用、推理过程和需要补足的具体步骤，不将任务结果视为长期能力。");
+        var majors=analysis.putArray("majorAnalyses");var findings=analysis.putArray("findings");var comparison=analysis.putArray("crossMajorAnalysis");var firstRefs=new ArrayList<String>();var majorCodes=new ArrayList<String>();
+        for(var source:catalog.analysisContext().path("sources")){
+            String major=source.path("majorCode").asText();majorCodes.add(major);var first=source.at("/context/steps/0/answers/0");String firstRef=ref(first);firstRefs.add(firstRef);
+            var n=majors.addObject().put("majorCode",major).put("preparation","本次回答提供了判断准备度的具体材料，仍需将所用术语与题目口径逐项核对，不能仅凭执行成功推断已经掌握概念。").put("taskReasoning","需要检查回答是否将观察结果和因果解释分开，并把每项行动建议绑定到可验证的问题、比较条件及失败标准，这仅限本次任务。").put("nextPractice","下一次练习可在同一份固定数据上写出两种竞争解释，为每种解释列出需要补充的信息与可执行的验证步骤。");
+            n.putArray("evidenceRefs").add(firstRef);
+            for(var step:source.at("/context/steps")){
+                if(step.path("answers").isEmpty())continue;var answer=step.path("answers").get(0);var f=findings.addObject().put("majorCode",major).put("stepKey",step.path("stepKey").asText()).put("answerField",answer.path("answerField").asText()).put("answerQuote",answer.path("value").asText()).put("assessment",assessment);
+                f.put("reasoning",switch(assessment){case "SUPPORTED"->"回答明确保留了不确定性，并提出了具有比较条件的验证方向；这一写法在本次任务中有依据，但仍不能保证行动的实际效果。";case "NEEDS_REVISION"->"回答把群体间观察到的差异直接解释为学员素质，并对停止渠道后的收益作确定预测；固定数据没有测量素质，也没有提供干预因果证据。";case "INSUFFICIENT"->"当前回答没有提供可检查的指标、观察依据或验证路径，因此不足以评价本题的推理是否成立；这只说明本次表达缺少材料，不是对能力的判断。";default->"回答提供了初步的比较方向，但没有说明如何保持时间窗口与样本口径一致，仍需要补充约束，才能让结论对应本次固定结果。";});
+                f.put("improvement","将观察、原因假设和建议行动分成三句话，明确每句话的依据、尚缺的信息及可证伪条件；目标应与当前指标单位保持一致。").put("example","例如：当前群体完成率存在差异；一种可能解释是课程构成不同；先按课程和入组周分层检查，再决定是否做小范围对照试验。");f.putArray("evidenceRefs").add(ref(answer));
+            }
+        }
+        if(catalog.reportType()==ReportType.COMPARISON){var c=comparison.addObject();c.set("majorCodes",JSON.valueToTree(majorCodes));c.put("observation","这些来源都包含对观察结果与原因解释的文字表述，但各专业任务的输入和操作条件不同，不能直接用结果数值排列能力。").put("interpretation","可以比较你在不同问题中是否持续写明证据边界、替代解释和验证条件；这种对照指向本次作答方式，不产生专业优劣结论。").put("nextExperiment","选择一个尚未验证的假设，用同一份固定材料分别写出模型、数据和业务行动三种验证路径，记录哪一步需要更多概念支持。");c.set("evidenceRefs",JSON.valueToTree(firstRefs));}
+        return new Proposal("report-analysis-proposal-v2",catalog.reportType(),List.of(),analysis);
+    }
+
+    public static ObjectNode raw(Proposal proposal){var value=(ObjectNode)JSON.valueToTree(proposal);value.remove("sections");return value;}
+    private static String ref(JsonNode answer){return answer.path(answer.has("evidenceId")?"evidenceId":"sourceRef").asText();}
+}

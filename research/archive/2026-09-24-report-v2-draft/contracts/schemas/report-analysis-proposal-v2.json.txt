@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://majorpilot.local/schemas/report-analysis-proposal-v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reportType",
+    "analysis"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "report-analysis-proposal-v2"
+    },
+    "reportType": {
+      "enum": [
+        "EXPERIENCE",
+        "COMPARISON"
+      ]
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "majorAnalyses",
+        "findings",
+        "crossMajorAnalysis"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 30,
+          "maxLength": 1800
+        },
+        "majorAnalyses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "majorCode",
+              "preparation",
+              "taskReasoning",
+              "nextPractice",
+              "evidenceRefs"
+            ],
+            "properties": {
+              "majorCode": {
+                "enum": [
+                  "AI",
+                  "BUSINESS_ANALYTICS",
+                  "DATA_SCIENCE"
+                ]
+              },
+              "preparation": {
+                "type": "string",
+                "minLength": 30,
+                "maxLength": 1800
+              },
+              "taskReasoning": {
+                "type": "string",
+                "minLength": 30,
+                "maxLength": 1800
+              },
+              "nextPractice": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1400
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|frozen-response:[A-Za-z0-9_./~-]{1,80}:[A-Za-z0-9_./~-]{1,160}|frozen-reflection:[A-Za-z0-9_./~-]{1,160})$"
+                },
+                "minItems": 1,
+                "maxItems": 40,
+                "uniqueItems": true
+              }
+            }
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "majorCode",
+              "stepKey",
+              "answerField",
+              "answerQuote",
+              "assessment",
+              "reasoning",
+              "improvement",
+              "example",
+              "evidenceRefs"
+            ],
+            "properties": {
+              "majorCode": {
+                "enum": [
+                  "AI",
+                  "BUSINESS_ANALYTICS",
+                  "DATA_SCIENCE"
+                ]
+              },
+              "stepKey": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              "answerField": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_./~-]{1,160}$"
+              },
+              "answerQuote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1200
+              },
+              "assessment": {
+                "enum": [
+                  "SUPPORTED",
+                  "PARTIAL",
+                  "NEEDS_REVISION",
+                  "INSUFFICIENT"
+                ]
+              },
+              "reasoning": {
+                "type": "string",
+                "minLength": 30,
+                "maxLength": 1800
+              },
+              "improvement": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1400
+              },
+              "example": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 1400
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|frozen-response:[A-Za-z0-9_./~-]{1,80}:[A-Za-z0-9_./~-]{1,160}|frozen-reflection:[A-Za-z0-9_./~-]{1,160})$"
+                },
+                "minItems": 1,
+                "maxItems": 40,
+                "uniqueItems": true
+              }
+            }
+          },
+          "minItems": 1,
+          "maxItems": 60
+        },
+        "crossMajorAnalysis": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "majorCodes",
+              "observation",
+              "interpretation",
+              "nextExperiment",
+              "evidenceRefs"
+            ],
+            "properties": {
+              "majorCodes": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "AI",
+                    "BUSINESS_ANALYTICS",
+                    "DATA_SCIENCE"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              "observation": {
+                "type": "string",
+                "minLength": 30,
+                "maxLength": 1800
+              },
+              "interpretation": {
+                "type": "string",
+                "minLength": 30,
+                "maxLength": 1800
+              },
+              "nextExperiment": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 1400
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|frozen-response:[A-Za-z0-9_./~-]{1,80}:[A-Za-z0-9_./~-]{1,160}|frozen-reflection:[A-Za-z0-9_./~-]{1,160})$"
+                },
+                "minItems": 1,
+                "maxItems": 40,
+                "uniqueItems": true
+              }
+            }
+          },
+          "minItems": 0,
+          "maxItems": 8
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://majorpilot.local/schemas/report-analysis-wire-proposal-v3.json",
+  "$comment": "Catalog-bound schema template. Frozen F keys and their per-field segment/support enums are expanded before local or provider validation.",
+  "$defs": {
+    "boundFinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["quoteSegmentKey", "assessment", "reasoning", "improvement", "example", "supportKeys"],
+      "properties": {
+        "quoteSegmentKey": {"type": "string", "pattern": "^S[0-9]{3}$"},
+        "assessment": {"type": "string", "enum": ["SUPPORTED", "PARTIAL", "NEEDS_REVISION", "INSUFFICIENT"]},
+        "reasoning": {"type": "string", "minLength": 30, "maxLength": 1800},
+        "improvement": {"type": "string", "minLength": 20, "maxLength": 1400},
+        "example": {"type": "string", "minLength": 10, "maxLength": 1400},
+        "supportKeys": {"type": "array", "minItems": 0, "maxItems": 39, "uniqueItems": true, "items": {"type": "string", "pattern": "^E[0-9]{5}$"}}
+      }
+    }
+  },
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "reportType", "analysis"],
+  "properties": {
+    "schemaVersion": {"type": "string", "const": "report-analysis-wire-proposal-v3"},
+    "reportType": {"type": "string", "enum": ["EXPERIENCE", "COMPARISON"]},
+    "analysis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["summary", "majorAnalyses", "findings", "crossMajorAnalysis"],
+      "properties": {
+        "summary": {"type": "string", "minLength": 30, "maxLength": 1800},
+        "majorAnalyses": {
+          "type": "array", "minItems": 1, "maxItems": 3,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["majorCode", "preparation", "taskReasoning", "nextPractice", "supportKeys"],
+            "properties": {
+              "majorCode": {"type": "string", "enum": ["AI", "BUSINESS_ANALYTICS", "DATA_SCIENCE"]},
+              "preparation": {"type": "string", "minLength": 30, "maxLength": 1800},
+              "taskReasoning": {"type": "string", "minLength": 30, "maxLength": 1800},
+              "nextPractice": {"type": "string", "minLength": 20, "maxLength": 1400},
+              "supportKeys": {"type": "array", "minItems": 1, "maxItems": 40, "uniqueItems": true, "items": {"type": "string", "pattern": "^E[0-9]{5}$"}}
+            }
+          }
+        },
+        "findings": {
+          "type": "object", "additionalProperties": false, "required": [], "properties": {}
+        },
+        "crossMajorAnalysis": {
+          "type": "array", "minItems": 0, "maxItems": 8,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["majorCodes", "observation", "interpretation", "nextExperiment", "supportKeys"],
+            "properties": {
+              "majorCodes": {"type": "array", "minItems": 2, "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "enum": ["AI", "BUSINESS_ANALYTICS", "DATA_SCIENCE"]}},
+              "observation": {"type": "string", "minLength": 30, "maxLength": 1800},
+              "interpretation": {"type": "string", "minLength": 30, "maxLength": 1800},
+              "nextExperiment": {"type": "string", "minLength": 20, "maxLength": 1400},
+              "supportKeys": {"type": "array", "minItems": 2, "maxItems": 40, "uniqueItems": true, "items": {"type": "string", "pattern": "^E[0-9]{5}$"}}
+            }
+          }
+        }
+      }
+    }
+  }
+}

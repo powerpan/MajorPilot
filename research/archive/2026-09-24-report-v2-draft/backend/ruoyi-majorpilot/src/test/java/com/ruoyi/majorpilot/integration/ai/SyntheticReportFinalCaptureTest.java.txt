@@ -1,0 +1,65 @@
+package com.ruoyi.majorpilot.integration.ai;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.JSON;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.report.ReportAnalysisLiveFixtures;
+import com.ruoyi.majorpilot.report.core.*;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+
+class SyntheticReportFinalCaptureTest {
+    private Path target()throws Exception{return Files.createTempDirectory("majorpilot-final-capture-offline-",PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))).resolve("ba-good-attempt-1.UNVALIDATED_FINAL_ONLY.json");}
+    private HttpRequest request(){return HttpRequest.newBuilder(URI.create("https://synthetic.invalid")).header("Authorization","Bearer NEVER_CAPTURE_REQUEST_KEY").POST(HttpRequest.BodyPublishers.ofString("NEVER_CAPTURE_REQUEST_BODY")).build();}
+
+    @Test void onlyFinalChannelTextIsCapturedWithoutEnvelopeRequestOrPrivateReasoning()throws Exception{
+        var output=target();var envelope=JSON.createObjectNode().put("providerSecretMetadata","NEVER_CAPTURE_ENVELOPE");var message=envelope.putArray("choices").addObject().putObject("message");message.put("content","{\"analysis\":{\"test\":\"invalid-schema-final-text\"}}").put("reasoning_content","NEVER_CAPTURE_PRIVATE_REASONING");
+        var raw=envelope.toString().getBytes(StandardCharsets.UTF_8);var transport=SyntheticReportFinalCapture.capturingTransport(JSON,(request,timeout)->new BailianAiGateway.TransportResponse(200,raw),output,1048576);assertArrayEquals(raw,transport.send(request(),1000).body());
+        var text=Files.readString(output);assertTrue(text.contains("UNVALIDATED_FINAL_OUTPUT"));assertTrue(text.contains("NOT_PUBLISHABLE"));assertTrue(text.contains("invalid-schema-final-text"));for(String forbidden:new String[]{"NEVER_CAPTURE", "reasoning_content", "providerSecretMetadata", "Authorization"})assertFalse(text.contains(forbidden));assertEquals(PosixFilePermissions.fromString("rw-------"),Files.getPosixFilePermissions(output));
+    }
+    @Test void malformedEnvelopeRecordsOnlySafeMetadataNotRawBytes()throws Exception{
+        var output=target();var transport=SyntheticReportFinalCapture.capturingTransport(JSON,(request,timeout)->new BailianAiGateway.TransportResponse(200,"UNPARSEABLE_PRIVATE_BODY".getBytes(StandardCharsets.UTF_8)),output,1048576);transport.send(request(),1000);String text=Files.readString(output);assertTrue(text.contains("ENVELOPE_NOT_VALID_JSON"));assertFalse(text.contains("UNPARSEABLE_PRIVATE_BODY"));
+    }
+    @Test void preexistingCaptureCannotBeOverwrittenOrTriggerAnotherRequest()throws Exception{
+        var output=target();Files.writeString(output,"unchanged",StandardCharsets.UTF_8);var calls=new AtomicInteger();assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.capturingTransport(JSON,(request,timeout)->{calls.incrementAndGet();return new BailianAiGateway.TransportResponse(200,new byte[0]);},output,1048576));assertEquals(0,calls.get());assertEquals("unchanged",Files.readString(output));
+    }
+    @Test void providerErrorAndOversizeBodyAreNeverCaptured()throws Exception{
+        for(int code:new int[]{400,200}){var output=target();byte[] bytes="PRIVATE_ERROR_OR_OVERSIZE_RESPONSE".getBytes(StandardCharsets.UTF_8);var transport=SyntheticReportFinalCapture.capturingTransport(JSON,(request,timeout)->new BailianAiGateway.TransportResponse(code,bytes),output,code==200?4:1048576);transport.send(request(),1000);assertFalse(Files.exists(output));}
+    }
+    @Test void reviewCaptureRequiresValidatedDraftRebuiltAgainstTheExactSyntheticOriginal()throws Exception{
+        var core=new ReportCore(JSON);var catalog=core.compile(ReportAnalysisLiveFixtures.input("ba-good"));var original=core.modelInput(catalog);var draft=ReportBindingFixtures.proposal(catalog);var review=core.reviewInput(catalog,draft);
+        assertEquals(ReportBindingCodec.INPUT_SCHEMA,original.schemaVersion());assertEquals(ReportBindingCodec.REVIEW_SCHEMA,review.schemaVersion());
+        assertEquals(core.modelProposal(catalog,draft),review.content().path("untrustedDraft"));assertTrue(review.content().at("/untrustedDraft/analysis/findings").isObject());
+        assertDoesNotThrow(()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",1,ReportGateway.Stage.INITIAL,original,null));
+        assertDoesNotThrow(()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",2,ReportGateway.Stage.REPAIR,original,null));
+        for(int attempt:new int[]{2,3})assertDoesNotThrow(()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",attempt,ReportGateway.Stage.REVIEW,review,draft));
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",2,ReportGateway.Stage.REVIEW,review,null));
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",2,ReportGateway.Stage.REVIEW,original,draft));
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",1,ReportGateway.Stage.INITIAL,review,null));
+        var changed=(ObjectNode)review.content();((ObjectNode)changed.path("originalInput")).put("privateStudentData","NEVER_CAPTURE_REAL_INPUT");var foreign=new ReportModels.SafeModelInput(review.schemaVersion(),review.catalogSha256(),changed);
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",2,ReportGateway.Stage.REVIEW,foreign,draft));
+        var invalidAnalysis=(ObjectNode)draft.analysis();((ObjectNode)invalidAnalysis.at("/findings/0")).put("answerQuote","Invented answer not in synthetic fixture");var invalidDraft=new ReportModels.Proposal(draft.schemaVersion(),draft.reportType(),draft.sections(),invalidAnalysis);
+        assertThrows(ProposalException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",2,ReportGateway.Stage.REVIEW,review,invalidDraft));
+    }
+    @Test void fourthAttemptAndReviewBeforeDraftAreForbidden()throws Exception{
+        var core=new ReportCore(JSON);var catalog=core.compile(ReportAnalysisLiveFixtures.input("ba-good"));var draft=ReportBindingFixtures.proposal(catalog);var review=core.reviewInput(catalog,draft);
+        for(int attempt:new int[]{0,1,4})assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",attempt,ReportGateway.Stage.REVIEW,review,draft));
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.fileName("ba-good",4));
+        assertEquals("ba-good-attempt-3.UNVALIDATED_FINAL_ONLY.json",SyntheticReportFinalCapture.fileName("ba-good",3));
+    }
+    @Test void boundCaptureRequiresTheExactSyntheticBindingCatalogAndLocalDecodingState()throws Exception{
+        var core=new ReportCore(JSON);var catalog=core.compile(ReportAnalysisLiveFixtures.input("ba-good"));var original=core.modelInput(catalog);
+        var noSidecar=new ReportModels.SafeModelInput(original.schemaVersion(),original.catalogSha256(),original.content());
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",1,ReportGateway.Stage.INITIAL,noSidecar,null));
+        var changed=(ObjectNode)original.content();((ObjectNode)changed.at("/bindingCatalog/findings/0")).put("answerText","Foreign answer must not enter the synthetic diagnostic capture");
+        var foreign=new ReportModels.SafeModelInput(original.schemaVersion(),original.catalogSha256(),changed,original.bindingCatalogContext());
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",1,ReportGateway.Stage.INITIAL,foreign,null));
+        var other=core.compile(ReportAnalysisLiveFixtures.input("ba-concept-errors"));var wrongSidecar=new ReportModels.SafeModelInput(original.schemaVersion(),original.catalogSha256(),original.content(),other);
+        assertThrows(IllegalArgumentException.class,()->SyntheticReportFinalCapture.validateSyntheticInput(core,"ba-good",1,ReportGateway.Stage.INITIAL,wrongSidecar,null));
+    }
+}

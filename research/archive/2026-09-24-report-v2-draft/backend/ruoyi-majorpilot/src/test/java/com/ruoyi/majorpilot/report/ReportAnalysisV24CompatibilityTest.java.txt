@@ -1,0 +1,43 @@
+package com.ruoyi.majorpilot.report;
+import static org.junit.jupiter.api.Assertions.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.report.core.*;
+import com.ruoyi.majorpilot.report.core.ReportModels.*;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+
+/** Six-level v2.4 goldens captured BEFORE the v2.5 source edit from immutable CQAdO4. */
+class ReportAnalysisV24CompatibilityTest {
+    private static final Map<String,List<String>> GOLDENS=Map.of(
+        "ba-good",List.of("23694c0371f4f14c1d5f582292e503eaf2fb847eb844ec4a0d5ba5436f5ee78d","9c8ddfb307b3f74e200a571818f43712f4b232b20e6edd5214d90f9f92335751","66c3de236b56f039e1d01ecc46e9bd5dd07c83b86a5101ed73a2a80d99f8deba","70e0fe412b04ec36f8bf841eedc65c894a3871bd597ced5519ab50cbc8c49ba0","469e615d9e9922bb0f87c3437f71b2bce47da66f10096f194705a824787eccc3","019ee21c90128927607a63d7746310485af1f65572acaf1b4f48702d5936422a"),
+        "ds-causal-error",List.of("87d487ae5fdd763a45efe27d9faf9445b18697d31ff3f7054d2147d2baeb64db","a6fea58a03d9940fddc5433c0f66e9d99cfb4c0f27ad3d4eb9e459498cb3b05b","3ec985f2a970d66a7b3fc2ba0418856c72acdcbe2444cade317dcf3d20062366","494887229d708beea29e31d06f2802aff2333a13d047ddfbb81b5eb7fa2fbdac","8e9927c2665473117fb81e36af6cdb9c3ce6654703b670d6cce73d1605ba0604","19209c7e857e7ff20cba625ad5a8b1370a37dc35ba5ece5c3ed67ec69f2e0590"),
+        "ai-metric-error",List.of("b6b91c15b77f382b61127d75a3ae5493b755f1f2bb6f8e15b438164472b5f4a4","cada6105dea14586e7480af83fb38afb4c865a3e79598b512873fb9cd339330d","5c8b5cd1aee5d09959021204010efc9012f772c6deefde112151eefbf2314159","6b312d6c8921c93abd44800be144627d64968996bd30cea6bcaf0eb23c74aef1","899a5cabcb1ec900ba01cf67f0ca23f373852d99fac2be894d079560fc0e81dd","4143f49a912bffea6fb1ccf1318492bba022fa13d094a647795987704ae47413"));
+    @Test void v24AllMajorsRetainContextSourceInputCatalogModelAndReviewHashes() throws Exception {
+        var core=new ReportCore(JSON);
+        for(var expected:GOLDENS.entrySet()){
+            var current=ReportAnalysisLiveFixtures.input(expected.getKey());var source=current.sources().getFirst();var context=(ObjectNode)source.analysisContext();
+            ((ObjectNode)context.path("task")).put("assessmentRubricVersion",ReportAnalysisContext.TARGET_RUBRIC);
+            if(source.majorCode().equals("AI"))((ObjectNode)context.path("task")).remove("analysisFrame");
+            for(var step:context.path("steps"))((ObjectNode)step.path("rubric")).put("version",ReportAnalysisContext.TARGET_RUBRIC);
+            String before=core.hash(context);ReportAnalysisContext.enrichAggregateLineage(JSON,context,asset(source.majorCode(),"manifest"),ReportAnalysisContext.TARGET_RUBRIC);assertEquals(before,core.hash(context));
+            source=new Source(source.majorCode(),source.studentPublicId(),source.pins(),source.snapshot(),source.items(),source.experienceVersion(),context);var input=new ReportInput(current.header(),current.versions(),List.of(source),current.nextRecommendation());var catalog=core.compile(input);
+            var proposal=ReportBindingFixtures.proposal(catalog);assertEquals("report-model-input-v3",core.modelInput(catalog).schemaVersion());assertEquals("report-model-review-input-v2",core.reviewInput(catalog,proposal).schemaVersion());
+            assertEquals(expected.getValue(),List.of(core.hash(context),core.hash(JSON.valueToTree(source)),core.hash(JSON.valueToTree(input)),catalog.catalogSha256(),core.hash(core.modelInput(catalog).content()),core.hash(core.reviewInput(catalog,proposal).content())),expected.getKey());
+        }
+    }
+    @Test void v24AndV25UseTheSameBoundProtocolButOlderProtocolSourcesCannotMix(){
+        var input=ReportBindingFixtures.comparisonInput();var sources=new ArrayList<>(input.sources());var second=sources.get(1);var context=(ObjectNode)second.analysisContext();((ObjectNode)context.path("task")).put("assessmentRubricVersion",ReportAnalysisContext.RUBRIC);sources.set(1,new Source(second.majorCode(),second.studentPublicId(),second.pins(),second.snapshot(),second.items(),second.experienceVersion(),context));
+        var mixed=new ReportInput(input.header(),input.versions(),sources,input.nextRecommendation());var core=new ReportCore(JSON);assertEquals("report-model-input-v3",core.modelInput(core.compile(mixed)).schemaVersion());
+        ((ObjectNode)context.path("task")).put("assessmentRubricVersion",ReportAnalysisContext.FRAME_RUBRIC);sources.set(1,new Source(second.majorCode(),second.studentPublicId(),second.pins(),second.snapshot(),second.items(),second.experienceVersion(),context));
+        assertThrows(ReportInputException.class,()->core.compile(new ReportInput(input.header(),input.versions(),sources,input.nextRecommendation())));
+    }
+    @Test void allFourBaCasesAndDsHaveExactlyTheSameOutboundContentAfterOnlyRubricLabelNormalization() throws Exception {
+        var expected=Map.of("ba-good","469e615d9e9922bb0f87c3437f71b2bce47da66f10096f194705a824787eccc3","ba-concept-errors","a544d984dbdd3c46e5e8b59a677c5a2834a499da2bbf1b314dc1733f7bafa032","ba-unrelated","f8c6bd69dcc2c1c99aff94c1ae9d463d389eadb6a3931e7f87c57ca5a39d1bd1","ba-alternative","0c4eb0604ea0c4168613a3314fc52fc9c74362688b10dc63351f4958ec064b31","ds-causal-error","8e9927c2665473117fb81e36af6cdb9c3ce6654703b670d6cce73d1605ba0604");
+        var core=new ReportCore(JSON);for(var entry:expected.entrySet()){
+            var original=ReportAnalysisLiveFixtures.input(entry.getKey());var catalog=core.compile(original);var current=core.modelInput(catalog);assertEquals("report-model-input-v3",current.schemaVersion());
+            var normalized=(ObjectNode)current.content();for(var source:normalized.path("sources")){var context=source.path("context");assertEquals(ReportAnalysisContext.RUBRIC,context.at("/task/assessmentRubricVersion").asText());((ObjectNode)context.path("task")).put("assessmentRubricVersion",ReportAnalysisContext.TARGET_RUBRIC);for(var step:context.path("steps"))((ObjectNode)step.path("rubric")).put("version",ReportAnalysisContext.TARGET_RUBRIC);}
+            assertEquals(entry.getValue(),core.hash(normalized),entry.getKey()+" must preserve every other data/wire/binding field from immutable v2.4");
+        }
+    }
+}

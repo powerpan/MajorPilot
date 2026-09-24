@@ -1,0 +1,164 @@
+package majorpilot.harness;
+
+import static org.junit.jupiter.api.Assertions.*;
+import com.ruoyi.majorpilot.integration.ai.ReportGateway;
+import com.ruoyi.majorpilot.report.core.ReportCore;
+import com.ruoyi.majorpilot.report.core.ReportModels.GenerationMode;
+import com.ruoyi.majorpilot.report.core.ReportTestFixtures;
+import com.ruoyi.majorpilot.report.core.ReportAnalysisFixtures;
+import com.ruoyi.majorpilot.report.ReportAnalysisLiveFixtures;
+import com.ruoyi.majorpilot.report.core.ReportBindingCodec;
+import com.ruoyi.majorpilot.report.core.ReportModels.SafeModelInput;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.mock.env.MockEnvironment;
+
+class P6HarnessBoundaryTest {
+    @TempDir Path temporary;
+    private MockEnvironment valid() {
+        var env=new MockEnvironment();env.setActiveProfiles("local","p6-harness");
+        env.getPropertySources().addFirst(new MapPropertySource("fixed",P6HarnessApplication.properties()));
+        return env.withProperty("MP_DB_URL","jdbc:mysql://127.0.0.1:13306/majorpilot_test?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC")
+            .withProperty("MP_DB_USERNAME","majorpilot_p6_test").withProperty("MP_DB_PASSWORD","1".repeat(64))
+            .withProperty("MP_ADMIN_TOKEN_SECRET","2".repeat(64)).withProperty("MP_CSRF_SECRET","3".repeat(64))
+            .withProperty("token.secret","${MP_ADMIN_TOKEN_SECRET}").withProperty("MP_P6_RUN_TAG","0123456789abcdef");
+    }
+    @Test void validBoundaryPassesBeforeOrdinaryBeanInstantiation() {
+        try(var context=new GenericApplicationContext()) {
+            var env=valid();context.setEnvironment(env);
+            context.addBeanFactoryPostProcessor(P6HarnessApplication.validateTestBoundary(env));
+            var instantiated=new AtomicBoolean();context.registerBean("dataSource",Object.class,()->{instantiated.set(true);return new Object();});
+            context.refresh();assertTrue(instantiated.get());
+        }
+    }
+    @Test void wrongDatabaseAdditionalJdbcOptionsProviderKeyAndExtraProfileFailBeforeAnyConnection() {
+        for(String fault:List.of("database","jdbcOption","provider","profile","secret")) {
+            var env=valid();switch(fault){
+                case "database"->env.setProperty("MP_DB_URL","jdbc:mysql://127.0.0.1:13306/majorpilot?x=1");
+                case "jdbcOption"->env.setProperty("MP_DB_URL",env.getProperty("MP_DB_URL")+"&allowLoadLocalInfile=true");
+                case "provider"->env.setProperty("BAILIAN_API_KEY","SECRET_SENTINEL");
+                case "profile"->env.setActiveProfiles("local","p6-harness","p0");
+                default->env.setProperty("MP_CSRF_SECRET",env.getProperty("MP_ADMIN_TOKEN_SECRET"));
+            }
+            var instantiated=new AtomicBoolean();
+            try(var context=new GenericApplicationContext()) {
+                context.setEnvironment(env);context.addBeanFactoryPostProcessor(P6HarnessApplication.validateTestBoundary(env));
+                context.registerBean("dataSource",Object.class,()->{instantiated.set(true);return new Object();});
+                var failure=assertThrows(RuntimeException.class,context::refresh);assertFalse(instantiated.get());
+                assertFalse(failure.getMessage().contains("SECRET_SENTINEL"));
+            }
+        }
+    }
+    @Test void replayUsesRealCoreAndSimulatedOneAttemptWithBoundedFaultModes() throws Exception {
+        var dir=temporary.resolve("data/p6-harness");Files.createDirectories(dir);
+        var mapper=ReportTestFixtures.JSON;var core=new ReportCore(mapper);
+        var gateway=new P6HarnessGateway(mapper,core,new MockEnvironment().withProperty("MP_P6_HARNESS_DIR",dir.toString()));
+        var input=ReportTestFixtures.experience("AI",true);var catalog=core.compile(input);var safe=core.modelInput(catalog);
+        var initial=new ReportGateway.Attempt("test-invocation",ReportGateway.Stage.INITIAL,safe,List.of(),5000);
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"PASS\"}");
+        var result=gateway.attempt(initial);assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());
+        assertEquals("TEST_REPLAY",result.telemetry().provider());assertEquals(1,result.telemetry().httpAttempts());
+        assertEquals(core.hash(safe.content()),result.telemetry().inputSha256());assertTrue(core.validate(catalog,result.proposal(),GenerationMode.AI).valid());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"INVALID_INITIAL\"}");
+        assertEquals(ReportGateway.Status.INVALID_OUTPUT,gateway.attempt(initial).status());
+        assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,gateway.attempt(new ReportGateway.Attempt("repair",ReportGateway.Stage.REPAIR,safe,List.of(),5000)).status());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"UPSTREAM_429\"}");
+        assertEquals("AI_RATE_LIMITED",gateway.attempt(initial).safeErrorCode());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"HOLD_REPAIR\"}");
+        assertEquals(ReportGateway.Status.INVALID_OUTPUT,gateway.attempt(initial).status());
+        assertEquals("AI_TIMEOUT",gateway.attempt(new ReportGateway.Attempt("repair",ReportGateway.Stage.REPAIR,safe,List.of(),1)).safeErrorCode());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"AI_OFF\"}");assertFalse(gateway.available());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"PASS\",\"payload\":\"SECRET_SENTINEL\"}");
+        var failure=assertThrows(IllegalStateException.class,()->gateway.attempt(initial));assertFalse(failure.getMessage().contains("SECRET_SENTINEL"));
+    }
+    @Test void operatorNamesFitRealRuoyiLoginContractAndCannotBecomeAdmin() {
+        for(String level:List.of("full","limited")){String name=P6HarnessOperators.username(level,"0123456789abcdef");assertTrue(name.length()<=20);assertTrue(name.startsWith("p6-"));assertNotEquals("admin",name);}
+        assertThrows(IllegalStateException.class,()->P6HarnessOperators.username("admin","0123456789abcdef"));
+    }
+    @Test void reviewReplaysOriginalAnalysisContextWithoutChangingExistingFaultModes() throws Exception {
+        var dir=temporary.resolve("data/p6-harness");Files.createDirectories(dir);var mapper=ReportTestFixtures.JSON;var core=new ReportCore(mapper);
+        var gateway=new P6HarnessGateway(mapper,core,new MockEnvironment().withProperty("MP_P6_HARNESS_DIR",dir.toString()));
+        var catalog=core.compile(ReportAnalysisFixtures.v2(ReportTestFixtures.experience("BUSINESS_ANALYTICS",false),ReportAnalysisFixtures.SOUND));
+        var safe=core.modelInput(catalog);var initial=new ReportGateway.Attempt("analysis",ReportGateway.Stage.INITIAL,safe,List.of(),5000);
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"PASS\"}");
+        var draft=gateway.attempt(initial);assertTrue(core.validate(catalog,draft.proposal(),GenerationMode.AI).valid());
+        var reviewInput=core.reviewInput(catalog,draft.proposal());var review=new ReportGateway.Attempt("review",ReportGateway.Stage.REVIEW,reviewInput,List.of(),5000);
+        var reviewed=gateway.attempt(review);assertTrue(core.validate(catalog,reviewed.proposal(),GenerationMode.AI).valid());
+        assertEquals(gateway.identity(),new ReportGateway.Identity(draft.telemetry().provider(),draft.telemetry().model()));assertEquals(gateway.identity(),new ReportGateway.Identity(reviewed.telemetry().provider(),reviewed.telemetry().model()));
+        assertEquals("report-model-review-input-v1",reviewed.telemetry().inputSchemaVersion());assertEquals(List.of("originalInput","untrustedDraft"),reviewed.telemetry().inputFieldKeys());
+        assertEquals(core.hash(reviewInput.content()),reviewed.telemetry().inputSha256());assertEquals(1,reviewed.telemetry().httpAttempts());assertEquals("TEST_REPLAY",reviewed.telemetry().provider());
+        assertThrows(IllegalStateException.class,()->gateway.attempt(new ReportGateway.Attempt("bad-stage",ReportGateway.Stage.INITIAL,reviewInput,List.of(),5000)));
+        assertThrows(IllegalStateException.class,()->gateway.attempt(new ReportGateway.Attempt("bad-input",ReportGateway.Stage.REVIEW,safe,List.of(),5000)));
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"INVALID_INITIAL\"}");
+        assertEquals(ReportGateway.Status.INVALID_OUTPUT,gateway.attempt(initial).status());assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,gateway.attempt(review).status());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"INVALID_ALWAYS\"}");assertEquals(ReportGateway.Status.INVALID_OUTPUT,gateway.attempt(review).status());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"UPSTREAM_429\"}");assertEquals("AI_RATE_LIMITED",gateway.attempt(review).safeErrorCode());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"HOLD_REVIEW\"}");
+        assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,gateway.attempt(initial).status());
+        assertEquals("AI_TIMEOUT",gateway.attempt(new ReportGateway.Attempt("held-review",ReportGateway.Stage.REVIEW,reviewInput,List.of(),1)).safeErrorCode());
+        assertEquals("REVIEW",mapper.readTree(Files.readString(dir.resolve("gateway-entered.json"))).path("stage").asText());
+    }
+    @Test void experienceOnlyInvalidModeAllowsThreeMajorComparisonAndMandatoryReview() throws Exception {
+        var dir=temporary.resolve("data/p6-harness");Files.createDirectories(dir);var mapper=ReportTestFixtures.JSON;var core=new ReportCore(mapper);
+        var gateway=new P6HarnessGateway(mapper,core,new MockEnvironment().withProperty("MP_P6_HARNESS_DIR",dir.toString()));
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"INVALID_EXPERIENCE_ALWAYS\"}");
+        assertTrue(gateway.available());
+        for(var source:List.of(ReportTestFixtures.experience("BUSINESS_ANALYTICS",false),ReportAnalysisFixtures.v2(ReportTestFixtures.experience("BUSINESS_ANALYTICS",false),ReportAnalysisFixtures.SOUND))) {
+            var safe=core.modelInput(core.compile(source));
+            for(var stage:List.of(ReportGateway.Stage.INITIAL,ReportGateway.Stage.REPAIR)) {
+                var invalid=gateway.attempt(new ReportGateway.Attempt("experience-"+stage,stage,safe,List.of(),5000));
+                assertEquals(ReportGateway.Status.INVALID_OUTPUT,invalid.status());assertEquals(1,invalid.telemetry().httpAttempts());
+            }
+        }
+        var catalog=core.compile(ReportAnalysisFixtures.v2(ReportTestFixtures.comparison(3,false),ReportAnalysisFixtures.SOUND));
+        var safe=core.modelInput(catalog);
+        for(var stage:List.of(ReportGateway.Stage.INITIAL,ReportGateway.Stage.REPAIR)) {
+            var result=gateway.attempt(new ReportGateway.Attempt("comparison-"+stage,stage,safe,List.of(),5000));
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());assertTrue(core.validate(catalog,result.proposal(),GenerationMode.AI).valid());
+        }
+        var draft=gateway.attempt(new ReportGateway.Attempt("comparison-draft",ReportGateway.Stage.INITIAL,safe,List.of(),5000)).proposal();
+        var review=new ReportGateway.Attempt("comparison-review",ReportGateway.Stage.REVIEW,core.reviewInput(catalog,draft),List.of(),5000);
+        var result=gateway.attempt(review);assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());assertTrue(core.validate(catalog,result.proposal(),GenerationMode.AI).valid());
+        assertEquals(3,result.proposal().analysis().path("crossMajorAnalysis").get(0).path("majorCodes").size());
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"INVALID_ALWAYS\"}");
+        assertEquals(ReportGateway.Status.INVALID_OUTPUT,gateway.attempt(new ReportGateway.Attempt("global-comparison",ReportGateway.Stage.INITIAL,safe,List.of(),5000)).status());
+        assertEquals(ReportGateway.Status.INVALID_OUTPUT,gateway.attempt(review).status());
+    }
+    @Test void currentBoundReplayCoversEveryAnswerAndUsesTheExactInitialAndReviewWire() throws Exception {
+        var dir=temporary.resolve("data/p6-harness");Files.createDirectories(dir);var mapper=ReportTestFixtures.JSON;var core=new ReportCore(mapper);
+        var gateway=new P6HarnessGateway(mapper,core,new MockEnvironment().withProperty("MP_P6_HARNESS_DIR",dir.toString()));
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"PASS\"}");
+        for(String name:List.of("ba-good","ai-metric-error","ds-causal-error")){
+            var catalog=core.compile(ReportAnalysisLiveFixtures.input(name));var safe=core.modelInput(catalog);
+            assertEquals(ReportBindingCodec.INPUT_SCHEMA,safe.schemaVersion());
+            var initial=gateway.attempt(new ReportGateway.Attempt(name,ReportGateway.Stage.INITIAL,safe,List.of(),5000));
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,initial.status());assertTrue(core.validate(catalog,initial.proposal(),GenerationMode.AI).valid());
+            assertEquals(safe.content().at("/bindingCatalog/findings").size(),initial.proposal().analysis().path("findings").size());
+            var keys=new java.util.ArrayList<String>();safe.content().fieldNames().forEachRemaining(keys::add);
+            assertEquals(keys,initial.telemetry().inputFieldKeys());assertTrue(keys.contains("bindingCatalog"));assertEquals(core.hash(safe.content()),initial.telemetry().inputSha256());
+            var review=core.reviewInput(catalog,initial.proposal());assertEquals(ReportBindingCodec.REVIEW_SCHEMA,review.schemaVersion());
+            var wire=review.content().path("untrustedDraft");assertEquals(ReportBindingCodec.WIRE_SCHEMA,wire.path("schemaVersion").asText());assertTrue(wire.at("/analysis/findings").isObject());
+            assertTrue(wire.at("/analysis/findings").has("F001"));for(var finding:wire.at("/analysis/findings"))assertFalse(finding.has("findingKey"));
+            var result=gateway.attempt(new ReportGateway.Attempt(name+"-review",ReportGateway.Stage.REVIEW,review,List.of(),5000));
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());assertTrue(core.validate(catalog,result.proposal(),GenerationMode.AI).valid());
+            assertEquals(initial.proposal(),result.proposal());assertEquals("report-analysis-proposal-v2",result.proposal().schemaVersion());
+            assertEquals(ReportBindingCodec.REVIEW_SCHEMA,result.telemetry().inputSchemaVersion());assertEquals(List.of("originalInput","untrustedDraft"),result.telemetry().inputFieldKeys());assertEquals(core.hash(review.content()),result.telemetry().inputSha256());
+        }
+    }
+    @Test void boundReplayCannotProceedWithMissingSidecarOrChangedFrozenContent() throws Exception {
+        var dir=temporary.resolve("data/p6-harness");Files.createDirectories(dir);var mapper=ReportTestFixtures.JSON;var core=new ReportCore(mapper);
+        var gateway=new P6HarnessGateway(mapper,core,new MockEnvironment().withProperty("MP_P6_HARNESS_DIR",dir.toString()));
+        Files.writeString(dir.resolve("gateway-control.json"),"{\"mode\":\"PASS\"}");
+        var safe=core.modelInput(core.compile(ReportAnalysisLiveFixtures.input("ba-good")));
+        var noSidecar=new SafeModelInput(safe.schemaVersion(),safe.catalogSha256(),safe.content());
+        var changed=(com.fasterxml.jackson.databind.node.ObjectNode)safe.content();changed.remove("bindingCatalog");
+        var altered=new SafeModelInput(safe.schemaVersion(),safe.catalogSha256(),changed,safe.bindingCatalogContext());
+        for(var invalid:List.of(noSidecar,altered))assertThrows(IllegalStateException.class,()->gateway.attempt(new ReportGateway.Attempt("rejected",ReportGateway.Stage.INITIAL,invalid,List.of(),5000)));
+    }
+}

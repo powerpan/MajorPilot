@@ -1,0 +1,61 @@
+package com.ruoyi.majorpilot.report;
+
+import static org.junit.jupiter.api.Assertions.*;
+import com.ruoyi.majorpilot.shared.ApiException;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+/** Rubric wiring and historical compatibility, not a claim that real model semantics are correct. */
+class ReportAnalysisRubricTest {
+    @Test void newGenerationUsesVersionedLocalInferenceBoundaries(){
+        assertEquals("report-assessment-rubric-v2.5",ReportAnalysisContext.RUBRIC);
+        String b4=String.join(" ",ReportAnalysisContext.criteria("b4-segment"));
+        String b5=String.join(" ",ReportAnalysisContext.criteria("b5-hypothesis"));
+        String b6=String.join(" ",ReportAnalysisContext.criteria("b6-action"));
+        assertTrue(b4.contains("比例")&&b4.contains("绝对人数")&&b4.contains("不代表"));
+        assertTrue(b5.contains("干预未奏效不等于机制假设被否定"));
+        assertTrue(b6.contains("时间混杂")&&b6.contains("同期")&&b6.contains("运营目标"));
+    }
+    @Test void originalV2CriteriaRemainExactForHistoricalSourceRebuilds(){
+        var previous=Map.of(
+            "b1-context",List.of("业务问题应可由本数据观察，决策范围须是团队可采取或验证的行动，不是把群体差异命名为原因；收入、满意度与退课原因不在数据内。"),
+            "b2-metric",List.of("解释完成率分子、报名或开始首课分母为何回答该问题；等长不重叠成熟批次不是个人纵向追踪，百分点不等于相对百分比。"),
+            "b3-funnel",List.of("用相邻转化分母、人数及变化说明优先环节，不以最低比例直接推断原因或最大商业价值。"),
+            "b4-segment",List.of("优先群体理由须结合样本量、转化与支持负荷；课程或来源的排序不证明学员素质、渠道因果效果。"),
+            "b5-hypothesis",List.of("清楚分开已观察结果、待验证原因假设与未知信息，假设应有可能证伪的检查。"),
+            "b6-action",List.of("行动与已选群体和问题一致；目标百分点是待检验目标而非模型预测，需基线与可行性依据。","支持护栏单位为次/100名报名者，联系次数可大于人数，先对照同群体基线；计划应含对照或比较方法、成熟观察窗口、判断和停止条件。","每名参与者观察入组后28天；最后一人入组28或42天后复盘，42天复盘不意味着改变指标窗口。"));
+        previous.forEach((step,criteria)->assertEquals(criteria,ReportAnalysisContext.criteria(step,"report-assessment-rubric-v2"),step));
+        for(String step:List.of("a1-task","a2-metrics","a3-errors","a4-configure","a5-evaluate","a6-decision","d1-context","d2-quality","d3-profile","d4-relationship","d5-stratify","d6-conclusion","b2-metric"))
+            assertEquals(ReportAnalysisContext.criteria(step,ReportAnalysisContext.LEGACY_RUBRIC),ReportAnalysisContext.criteria(step,ReportAnalysisContext.RUBRIC),step);
+    }
+    @Test void preservesTheOriginalLegitimateQuestionScopeAndStrategy(){
+        String b1=String.join(" ",ReportAnalysisContext.criteria("b1-context"));
+        String b3=String.join(" ",ReportAnalysisContext.criteria("b3-funnel"));
+        assertTrue(b1.contains("不能要求学生在本题已给出后续步骤的完整试验条件"));
+        assertTrue(b3.contains("学生不必选最大降幅或排序第一"));
+        assertTrue(b3.contains("不能替换成你偏好的环节"));
+    }
+    @Test void correctionsAreGenericNotHardCodedFixtureAnswers(){
+        for(String step:List.of("b1-context","b3-funnel","b4-segment","b5-hypothesis","b6-action")){
+            String text=String.join(" ",ReportAnalysisContext.criteria(step));assertTrue(text.contains("通用校准（不是本题答案）"));
+            for(String fixture:List.of("APPLIED","FOUNDATIONS","81.6","75.4","149.1","114","93/","ba-good"))assertFalse(text.contains(fixture),step+" "+fixture);
+        }
+    }
+    @Test void unrecognizedRubricVersionsCannotSilentlyUseCurrentOrLegacyRules(){
+        for(String invalid:new String[]{null,"","report-assessment-rubric-v1","report-assessment-rubric-v2.6"})
+            assertEquals("REPORT_SOURCE_INVALID",assertThrows(ApiException.class,()->ReportAnalysisContext.criteria("b5-hypothesis",invalid)).code);
+    }
+    @Test void v21AndV22RubricTextRemainByteStableWhenAddingTheV23FactsProjection(){
+        var previous=new java.util.TreeMap<String,List<String>>();
+        for(String step:List.of("b1-context","b3-funnel","b4-segment","b5-hypothesis","b6-action")){
+            previous.put(step,ReportAnalysisContext.criteria(step,ReportAnalysisContext.PREVIOUS_RUBRIC));
+            assertEquals(previous.get(step),ReportAnalysisContext.criteria(step,ReportAnalysisContext.AGGREGATE_RUBRIC));
+            assertEquals(previous.get(step),ReportAnalysisContext.criteria(step,ReportAnalysisContext.FRAME_RUBRIC));
+            assertEquals(previous.get(step),ReportAnalysisContext.criteria(step,ReportAnalysisContext.TARGET_RUBRIC));
+            assertEquals(previous.get(step),ReportAnalysisContext.criteria(step,ReportAnalysisContext.RUBRIC));
+        }
+        var mapper=com.ruoyi.majorpilot.report.core.ReportTestFixtures.JSON;
+        assertEquals("67cfd5376550fc47bac59fbfe2ee94a6f210030cb8a54ab90eeabe0d07a36ecb",com.ruoyi.majorpilot.shared.CanonicalJson.hash(mapper,mapper.valueToTree(previous)));
+    }
+}

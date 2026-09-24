@@ -1,0 +1,88 @@
+package com.ruoyi.majorpilot.integration.ai;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportBindingFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+
+/** Offline HTTP contract tests only. Mock prose never establishes analysis quality. */
+class ReportBoundGatewayTest {
+    final ReportCore core=new ReportCore(JSON);final ReportReasoningGatewayTest helper=new ReportReasoningGatewayTest();
+    Catalog catalog(){return core.compile(experienceInput(ReportAnalysisFixtures.SOUND));}
+    ReportGateway.Attempt attempt(SafeModelInput input,ReportGateway.Stage stage){return new ReportGateway.Attempt("bound-test",stage,input,stage==ReportGateway.Stage.REPAIR?List.of(new Violation("SCHEMA_REQUIRED","/analysis/findings/F001")):List.of(),900000);}
+    ReportHttpGateway gateway(BailianAiGateway.Transport transport){return new ReportHttpGateway(JSON,core,"BAILIAN","synthetic-key",BailianAiGateway.DEFAULT_BASE_URL,ReportHttpGateway.BAILIAN_MODEL,transport);}
+    byte[] envelope(String finalText){try{return JSON.writeValueAsBytes(Map.of("choices",List.of(Map.of("finish_reason","stop","message",Map.of("content",finalText,"reasoning_content","DO_NOT_PERSIST_PRIVATE_THINKING"))),"usage",Map.of("prompt_tokens",20000,"completion_tokens",12000,"completion_tokens_details",Map.of("reasoning_tokens",7000))));}catch(Exception failure){throw new AssertionError(failure);}}
+
+    @Test void initialAndRepairUseSameBoundKeysFullQualityPromptAndExactSchemaWithoutLongIdCopying(){
+        var catalog=catalog();var input=core.modelInput(catalog);var expected=proposal(catalog);var wire=core.modelProposal(catalog,expected);
+        for(var stage:List.of(ReportGateway.Stage.INITIAL,ReportGateway.Stage.REPAIR)){
+            var count=new AtomicInteger();var result=gateway((request,timeout)->{
+                count.incrementAndGet();assertEquals(900000,timeout);var body=helper.body(request);assertTrue(body.path("stream").asBoolean());assertTrue(body.path("enable_thinking").asBoolean());assertEquals(32768,body.path("thinking_budget").asInt());assertEquals(32768,body.path("max_tokens").asInt());
+                assertEquals("json_schema",body.at("/response_format/type").asText());assertEquals("report_analysis_wire_proposal_v3",body.at("/response_format/json_schema/name").asText());assertTrue(body.at("/response_format/json_schema/strict").asBoolean());assertEquals(core.providerProposalSchema(input),body.at("/response_format/json_schema/schema"));
+                String prompt=body.at("/messages/0/content").asText();for(String required:List.of("固定键对象，不是数组","每个给定 F 键必须且只能出现一次","原作答锚点已绑定","完整 answerText","原文连续冻结的片段","PARTIAL 必须","同一回答中的多个问题"))assertTrue(prompt.contains(required),required);
+                assertFalse(prompt.contains("schemaVersion 为 report-analysis-proposal-v2"));assertFalse(prompt.contains("每条 finding 必须引用其对应原始答案：answerQuote"));assertFalse(prompt.contains("对每个已作答步骤至少给一个"));
+                try{assertEquals(input.content(),JSON.readTree(body.at("/messages/1/content").asText()));}catch(Exception failure){throw new AssertionError(failure);}assertFalse(body.at("/messages/1/content").asText().contains("bindingCatalogContext"));
+                return new BailianAiGateway.TransportResponse(200,envelope(wire.toString()));
+            }).attempt(attempt(input,stage));
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());assertEquals(expected,result.proposal());assertEquals(1,count.get());assertEquals(ReportBindingCodec.INPUT_SCHEMA,result.telemetry().inputSchemaVersion());assertEquals(List.of("reportType","sources","analysisContract","nextRecommendation","bindingCatalog"),result.telemetry().inputFieldKeys());assertEquals(core.hash(input.content()),result.telemetry().inputSha256());assertEquals(7000L,result.telemetry().reasoningTokens());assertFalse(result.toString().contains("DO_NOT_PERSIST"));
+        }
+    }
+
+    @Test void reviewUsesFreshBoundDraftAndOriginalRegistryWithoutSwitchingBackToLegacyWire(){
+        var catalog=catalog();var draft=proposal(catalog);var input=core.reviewInput(catalog,draft);var count=new AtomicInteger();
+        var result=gateway((request,timeout)->{count.incrementAndGet();var body=helper.body(request);assertEquals(2,body.path("messages").size());String prompt=body.at("/messages/0/content").asText();assertTrue(prompt.contains("独立审校改写"));assertTrue(prompt.contains("完整最终 report-analysis-wire-proposal-v3 JSON"));assertFalse(prompt.contains("完整最终 report-analysis-proposal-v2 JSON"));assertEquals(core.providerProposalSchema(input),body.at("/response_format/json_schema/schema"));return new BailianAiGateway.TransportResponse(200,envelope(input.content().path("untrustedDraft").toString()));}).attempt(attempt(input,ReportGateway.Stage.REVIEW));
+        assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());assertEquals(draft,result.proposal());assertEquals(1,count.get());assertEquals(ReportBindingCodec.REVIEW_SCHEMA,result.telemetry().inputSchemaVersion());assertEquals(List.of("originalInput","untrustedDraft"),result.telemetry().inputFieldKeys());assertEquals(core.hash(input.content()),result.telemetry().inputSha256());
+    }
+
+    @Test void forgedMissingOrChangedSidecarAndDowngradedStageFailBeforeAnyHttp(){
+        var catalog=catalog();var input=core.modelInput(catalog);var review=core.reviewInput(catalog,proposal(catalog));var invalid=new ArrayList<ReportGateway.Attempt>();
+        invalid.add(attempt(new SafeModelInput(input.schemaVersion(),input.catalogSha256(),input.content()),ReportGateway.Stage.INITIAL));
+        invalid.add(attempt(new SafeModelInput(input.schemaVersion(),"a".repeat(64),input.content(),catalog),ReportGateway.Stage.INITIAL));
+        ObjectNode changed=input.content().deepCopy();((ObjectNode)changed.at("/bindingCatalog/findings/0")).put("answerText","FORGED_ORIGINAL_PRIVATE_SENTINEL");invalid.add(attempt(new SafeModelInput(input.schemaVersion(),input.catalogSha256(),changed,catalog),ReportGateway.Stage.INITIAL));
+        invalid.add(attempt(input,ReportGateway.Stage.REVIEW));invalid.add(attempt(review,ReportGateway.Stage.INITIAL));invalid.add(attempt(review,ReportGateway.Stage.REPAIR));
+        invalid.add(attempt(new SafeModelInput("report-model-input-v2",catalog.catalogSha256(),catalog.analysisContext()),ReportGateway.Stage.INITIAL));
+        var count=new AtomicInteger();var adapter=gateway((request,timeout)->{count.incrementAndGet();throw new AssertionError("Invalid input must never reach supplier");});
+        for(var request:invalid){var outcome=adapter.attempt(request);assertEquals("INVALID_INPUT",outcome.safeErrorCode());assertEquals(0,outcome.telemetry().httpAttempts());assertFalse(outcome.toString().contains("PRIVATE_SENTINEL"));}assertEquals(0,count.get());
+    }
+
+    @Test void everyBoundRubricAndMixedSourceIsRejectedUnderOldInitialRepairAndReviewSchemas(){
+        for(String rubric:List.of(ReportBindingCodec.RUBRIC,"report-assessment-rubric-v2.5","MIXED")){
+            var old=core.compile(pin(rubric.equals("MIXED")?comparisonInput():experienceInput(ReportAnalysisFixtures.SOUND),"report-assessment-rubric-v2.3"));
+            ObjectNode original=old.analysisContext().deepCopy();
+            ((ObjectNode)original.at("/sources/0/context/task")).put("assessmentRubricVersion",rubric.equals("MIXED")?"report-assessment-rubric-v2.5":rubric);
+            var initial=new SafeModelInput("report-model-input-v2",old.catalogSha256(),original);
+            var reviewContent=JSON.createObjectNode();reviewContent.set("originalInput",original);reviewContent.set("untrustedDraft",ReportAnalysisFixtures.raw(proposal(old)));
+            var review=new SafeModelInput("report-model-review-input-v1",old.catalogSha256(),reviewContent);
+            for(var format:List.of(ReportModelSettings.OutputFormat.JSON_SCHEMA,ReportModelSettings.OutputFormat.JSON_OBJECT))for(var stage:ReportGateway.Stage.values()){
+                var count=new AtomicInteger();var defaults=ReportModelSettings.defaults("BAILIAN");var settings=new ReportModelSettings(defaults.requestTimeoutMs(),defaults.maxOutputTokens(),defaults.thinkingBudgetTokens(),defaults.maxResponseBytes(),format);
+                var adapter=new ReportHttpGateway(JSON,core,"BAILIAN","synthetic-key",BailianAiGateway.DEFAULT_BASE_URL,ReportHttpGateway.BAILIAN_MODEL,settings,(request,timeout)->{count.incrementAndGet();return new BailianAiGateway.TransportResponse(400,new byte[0]);});
+                var result=adapter.attempt(attempt(stage==ReportGateway.Stage.REVIEW?review:initial,stage));String label=rubric+" "+format+" "+stage;
+                assertEquals(0,count.get(),label+" must fail before HTTP");assertEquals(0,result.telemetry().httpAttempts(),label);assertEquals("INVALID_INPUT",result.safeErrorCode(),label);
+            }
+        }
+    }
+
+    @Test void invalidNewWireAndLegacyWrongReferencesAreNotRepairedRetriedOrReturnedAsSuccess(){
+        var catalog=catalog();var input=core.modelInput(catalog);
+        for(String kind:List.of("OLD_WIRE","UNKNOWN_KEY","MISSING_KEY","BODY_ERROR")){
+            var count=new AtomicInteger();var wire=(ObjectNode)core.modelProposal(catalog,proposal(catalog));ObjectNode findings=(ObjectNode)wire.at("/analysis/findings");String first=findings.fieldNames().next();
+            if(kind.equals("UNKNOWN_KEY"))findings.set("F999",findings.path(first).deepCopy());if(kind.equals("MISSING_KEY"))findings.remove(first);
+            String output=kind.equals("OLD_WIRE")?ReportAnalysisFixtures.raw(proposal(catalog)).toString():wire.toString();
+            var result=gateway((request,timeout)->{count.incrementAndGet();return new BailianAiGateway.TransportResponse(kind.equals("BODY_ERROR")?400:200,kind.equals("BODY_ERROR")?"PRIVATE_UPSTREAM_ERROR".getBytes(StandardCharsets.UTF_8):envelope(output));}).attempt(attempt(input,ReportGateway.Stage.INITIAL));
+            assertNotEquals(ReportGateway.Status.PROPOSAL_RECEIVED,result.status());assertNull(result.proposal());assertEquals(1,count.get());assertEquals(1,result.telemetry().httpAttempts());assertFalse(result.toString().contains("PRIVATE_UPSTREAM_ERROR"));
+        }
+    }
+
+    @Test void explicitJsonObjectStillUsesNewBoundContractAndNeverFallsBackAutomatically(){
+        var catalog=catalog();var input=core.modelInput(catalog);var defaults=ReportModelSettings.defaults("BAILIAN");var settings=new ReportModelSettings(defaults.requestTimeoutMs(),defaults.maxOutputTokens(),defaults.thinkingBudgetTokens(),defaults.maxResponseBytes(),ReportModelSettings.OutputFormat.JSON_OBJECT);
+        var count=new AtomicInteger();var adapter=new ReportHttpGateway(JSON,core,"BAILIAN","synthetic-key",BailianAiGateway.DEFAULT_BASE_URL,ReportHttpGateway.BAILIAN_MODEL,settings,(request,timeout)->{count.incrementAndGet();var body=helper.body(request);assertEquals("json_object",body.at("/response_format/type").asText());assertTrue(body.at("/messages/0/content").asText().contains(ReportBindingCodec.WIRE_SCHEMA));assertTrue(body.path("enable_thinking").asBoolean());return new BailianAiGateway.TransportResponse(200,envelope(core.modelProposal(catalog,proposal(catalog)).toString()));});
+        assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED,adapter.attempt(attempt(input,ReportGateway.Stage.INITIAL)).status());assertEquals(1,count.get());
+    }
+}

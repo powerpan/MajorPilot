@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {parse,compileScript} from '@vue/compiler-sfc';
+import * as Vue from 'vue';
+import {renderToString} from '@vue/server-renderer';
+import ts from 'typescript';
+
+const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
+const {descriptor}=parse(read('../src/components/reports/ReportAnalysis.vue'));
+const source=ts.transpileModule(compileScript(descriptor,{id:'analysis-test',inlineTemplate:true}).content,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const module={exports:{}};
+vm.runInNewContext(source,{module,exports:module.exports,require:id=>id==='vue'?Vue:id==='../../data/majors'?{major:code=>({name:{AI:'人工智能',BUSINESS_ANALYTICS:'商业分析',DATA_SCIENCE:'数据科学'}[code]})}:(()=>{throw Error(id);})()});
+const Component=module.exports.default;
+const analysis=()=>({status:'COMPLETE',summary:'目标与现有证据之间还需要建立联系。',majorAnalyses:[{majorCode:'BUSINESS_ANALYTICS',preparation:'能提出问题，但指标单位还需澄清。',taskReasoning:'将目标与观察结果分开。',nextPractice:'重新写出对照方案。'}],findings:[{majorCode:'BUSINESS_ANALYTICS',stepKey:'b6-action',stepTitle:'形成行动与验证计划',answerField:'testPlan',answerLabel:'验证计划',answerQuote:'只要增加活动就一定成功 <script>alert(1)</script>',assessment:'NEEDS_REVISION',reasoning:'这段回答把未经检验的假设写成了确定结果。',improvement:'写明对照、观察窗口和护栏指标。',example:'将符合条件的参与者随机分组，保持相同观察窗口。'}],crossMajorAnalysis:[]});
+const render=(value,printing=false)=>renderToString(Vue.createSSRApp(Component,{analysis:value,printing}));
+test('actual Vue analysis component presents quote, diagnosis, improvement and example',async()=>{
+ const html=await render(analysis());
+ for(const text of ['你的作答分析','你的原话（原文摘录）','这里需要修正','形成行动与验证计划','验证计划','这段回答把未经检验','写明对照','看一个改写示例'])assert.ok(html.includes(text),text);
+ assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>'));
+ assert.ok(!html.includes('evidenceRefs'));assert.ok(html.includes('section-ANSWER_ANALYSIS'));
+});
+test('different assessments are textual rather than color-only judgments',async()=>{
+ for(const [assessment,label] of Object.entries({SUPPORTED:'有依据的判断',PARTIAL:'思路有基础，仍需补充',NEEDS_REVISION:'这里需要修正',INSUFFICIENT:'还不足以判断'})){
+  const value=analysis();value.findings[0].assessment=assessment;assert.ok((await render(value)).includes(label));
+ }
+});
+test('unavailable analysis does not display unvalidated synthetic findings or pretend it analyzed answers',async()=>{
+ const value=analysis();value.status='UNAVAILABLE';const html=await render(value);
+ assert.ok(html.includes('本次深入作答分析尚未完成'));assert.ok(!html.includes('这段回答把未经检验'));
+});
+test('private printing exposes examples without collapsed details',async()=>{
+ const html=await render(analysis(),true);
+ assert.ok(!html.includes('<details'));assert.ok(html.includes('一个改写示例'));assert.ok(html.includes('将符合条件的参与者随机分组'));
+});
+test('comparison analysis preserves each major attribution and verification suggestion',async()=>{
+ const value=analysis();value.majorAnalyses.push({...value.majorAnalyses[0],majorCode:'DATA_SCIENCE'});
+ value.crossMajorAnalysis=[{majorCodes:['BUSINESS_ANALYTICS','DATA_SCIENCE'],observation:'两次都提出了待验证的假设。',interpretation:'这反映的是本次推理过程，不是专业排名。',nextExperiment:'各选一份资料检验假设。'}];
+ const html=await render(value);for(const text of ['商业分析','数据科学','不是专业排名','各选一份资料'])assert.ok(html.includes(text));
+});
+const displayModule={exports:{}};
+vm.runInNewContext(ts.transpileModule(read('../src/lib/report-display.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:displayModule,exports:displayModule.exports});
+test('reader accepts v1/v2 and shares analysis chapter navigation without changing old reports',()=>{
+ const {isReport,reportChapters}=displayModule.exports;
+ assert.ok(isReport({schemaVersion:'report-v1'}));assert.ok(isReport({schemaVersion:'report-v2'}));assert.ok(!isReport({schemaVersion:'report-v3'}));
+ const sections=[{sectionKey:'OVERVIEW',title:'本次体验概览'}];
+ assert.equal(reportChapters({sections}).length,1);
+ assert.equal(reportChapters({sections,analysis:analysis()})[0].sectionKey,'ANSWER_ANALYSIS');
+ assert.equal(reportChapters(null).length,0);
+});
+test('review progress explains actual stage without promising factual correctness or exposing a draft',()=>{
+ const {reportProgress}=displayModule.exports;
+ for(const phase of ['DRAFT_READY','REVIEW_REQUESTED']){
+  assert.match(reportProgress(phase),/审校分析/);
+  assert.doesNotMatch(reportProgress(phase),/已保证|事实证明|绝对正确/);
+ }
+ assert.match(reportProgress('VALIDATED'),/完成校验/);
+ assert.match(reportProgress('PREPARED'),/准备报告/);
+ assert.equal(reportProgress('unknown'),reportProgress());
+});

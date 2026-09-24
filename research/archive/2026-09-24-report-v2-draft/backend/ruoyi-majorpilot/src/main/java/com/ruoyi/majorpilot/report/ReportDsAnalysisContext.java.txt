@@ -1,0 +1,147 @@
+package com.ruoyi.majorpilot.report;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.content.TaskContentRepository;
+import com.ruoyi.majorpilot.datascience.DsSemantics;
+import com.ruoyi.majorpilot.shared.ApiException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+/** A reading frame for verified DS results, not a grader or a new statistical calculation. */
+final class ReportDsAnalysisContext {
+    private static final List<String> OPERATIONS=List.of("ds-quality-clean","ds-profile","ds-relationship","ds-stratify");
+    private ReportDsAnalysisContext(){}
+
+    static void enrich(ObjectMapper mapper,ObjectNode context,JsonNode manifest){
+        require("DATA_SCIENCE".equals(manifest.path("majorCode").asText())&&"task-manifest-v3".equals(manifest.path("schemaVersion").asText()));
+        var task=context.path("task");require(task.isObject());
+        for(String key:List.of("schemaVersion","majorCode","versionCode"))require(task.path(key).equals(manifest.path(key)));
+        var dictionary=unique(task.path("materials"),"assetKey","data-dictionary").path("content");
+        require("ds-dictionary-v1".equals(dictionary.path("schemaVersion").asText())&&"LEARNER".equals(dictionary.path("observationUnit").asText()));
+        String datasetSha=unique(manifest.path("assets"),"assetKey","learner-activity").path("sha256").asText();require(datasetSha.matches("[a-f0-9]{64}"));
+        var cleaning=mapper.createObjectNode();var d2=response(context,"d2-quality");
+        DsSemantics.CLEAN.stream().sorted().forEach(key->cleaning.set(key,d2.path(key)));
+        parameters("ds-quality-clean",cleaning);
+        String cleaningSha=TaskContentRepository.hash(cleaning.toString().getBytes(StandardCharsets.UTF_8));
+        var frame=mapper.createObjectNode().put("schemaVersion","ds-analysis-frame-v1").put("datasetSha256",datasetSha).put("cleaningConfigSha256",cleaningSha);
+        frame.set("cleaningChoices",cleaning.deepCopy());
+        frame.put("denominatorUnit","CLEANED_RECORDS");
+        frame.put("recordBoundary","清洗后记录数与独立学员数分开列出；保留完全重复时不能把记录数当作独立学员数。");
+        frame.set("targetDefinition",dictionary.path("targetDefinition").deepCopy());
+        frame.set("dictionaryNotes",dictionary.path("notes").deepCopy());
+        var fields=frame.putArray("publicFields");var seen=new HashSet<String>();
+        for(var field:dictionary.path("fields")){require(seen.add(field.path("fieldKey").asText()));fields.add(select(mapper,field,"fieldKey","label","unit","description"));}
+        require(!fields.isEmpty());
+        frame.put("fieldInventoryBoundary","公开字典中的字段是可见变量，不因本次未选为分层变量就变成未观测；这里只列本任务公开字段，不声称其他信息不存在，也不把字段可见等同于已控制混杂。");
+        var analyses=frame.putArray("analyses");JsonNode reference=null,relationship=null;
+        for(String operation:OPERATIONS){
+            var definition=unique(manifest.path("operations"),"operationKey",operation);
+            require("DATA_ANALYSIS".equals(definition.path("engineType").asText())&&"ds-stats-v1".equals(definition.path("engineVersion").asText())&&"learner-activity".equals(definition.path("datasetAssetKey").asText()));
+            var choices=cleaning.deepCopy();
+            if(operation.equals("ds-profile"))choices.set("distributionField",response(context,"d3-profile").path("distributionField"));
+            if(Set.of("ds-relationship","ds-stratify").contains(operation)){
+                var d4=response(context,"d4-relationship");for(String key:DsSemantics.RELATION)if(d4.has(key))choices.set(key,d4.path(key));
+            }
+            if(operation.equals("ds-stratify"))choices.set("stratifyBy",response(context,"d5-stratify").path("stratifyBy"));
+            parameters(operation,choices);
+            var refs=mapper.createArrayNode();var result=execution(context,operation,refs);
+            require("ds-result-v1".equals(result.path("schemaVersion").asText())&&datasetSha.equals(result.path("datasetSha256").asText())&&cleaningSha.equals(result.path("cleaningConfigSha256").asText()));
+            if(reference==null)reference=result;
+            else for(String key:List.of("inputRows","retainedRows","uniqueLearners","quality"))require(sameNumbers(reference.path(key),result.path(key)));
+            var out=analyses.addObject().put("operationKey",operation).put("stepKey",definition.path("stepKey").asText());out.set("evidenceRefs",refs);out.set("selection",choices);
+            for(String key:List.of("inputRows","retainedRows","uniqueLearners")){count(result,key);out.set(key,result.path(key));}
+            require(count(result,"uniqueLearners")<=count(result,"retainedRows")&&count(result,"retainedRows")<=count(result,"inputRows"));
+            long retained=count(result,"retainedRows");denominator(result,retained);
+            if(operation.equals("ds-quality-clean")){
+                require(count(result,"analysisRows")==retained);
+                out.set("quality",select(mapper,result.path("quality"),"removedDuplicateRows","removedMissingRows","before","after","imputations","cappedRows","capValue"));
+            }else if(operation.equals("ds-profile")){
+                var profile=result.path("profile");String field=choices.path("distributionField").asText();
+                require(field.equals(profile.path("distributionField").asText())&&count(profile,"validCount")==count(result,"analysisRows"));
+                require(count(profile,"validCount")+count(profile,"missingCount")+count(profile,"notApplicableCount")==retained);
+                var quality=unique(result.at("/quality/after"),"fieldKey",field);
+                for(String key:List.of("validCount","missingCount","notApplicableCount"))require(quality.path(key).equals(profile.path(key)));
+                out.set("distributionVariable",field(mapper,dictionary,field));
+                out.set("distribution",select(mapper,profile,"validCount","missingCount","notApplicableCount","mean","minimum","q25","median","q75","maximum","histogram"));
+                out.set("eligibility",eligibility(mapper,List.of(field)));out.set("exclusions",result.path("exclusions").deepCopy());
+                var completion=completion(mapper,profile.path("completion"));require(count(completion,"n")==retained);
+                out.set("completionVariable",field(mapper,dictionary,"completed"));out.set("completion",completion);
+                out.put("completionIntervalMeaning","Wilson区间仅属于这里的 completed 比例，不是均值、Pearson相关或干预效果区间。");
+            }else if(operation.equals("ds-relationship")){
+                relationship=result.path("relationship");require(count(relationship,"analysisRows")==count(result,"analysisRows"));
+                out.set("relationship",relationship(mapper,dictionary,relationship,choices,retained));
+            }else{
+                var stratified=result.path("stratified");String by=choices.path("stratifyBy").asText();require(by.equals(stratified.path("stratifyBy").asText()));
+                out.set("stratificationVariable",field(mapper,dictionary,by));
+                var overall=relationship(mapper,dictionary,stratified.path("overall"),choices,retained);
+                require(relationship!=null&&sameNumbers(overall,relationship(mapper,dictionary,relationship,choices,retained)));
+                out.set("overall",overall);var strata=out.putArray("strata");var keys=new HashSet<String>();long sumRetained=0,sumEffective=0;
+                for(var stratum:stratified.path("strata")){
+                    String key=stratum.path("key").asText();require(DsSemantics.GROUPS.get(by).contains(key)&&keys.add(key));long n=count(stratum,"retainedRows");
+                    var item=strata.addObject().put("key",key).put("retainedRows",n);var summary=relationship(mapper,dictionary,stratum.path("summary"),choices,n);item.set("relationship",summary);
+                    sumRetained+=n;sumEffective+=count(summary,"analysisRows");
+                }
+                require(keys.size()==DsSemantics.GROUPS.get(by).size()&&sumRetained==retained&&sumEffective==count(overall,"analysisRows"));
+                out.put("stratificationBoundary","这里只按列出的分层变量形成层内描述；其他公开字段没有因此被自动控制，分层也不能自动排除全部混杂或估计政策收益。");
+            }
+        }
+        ((ObjectNode)task).set("analysisFrame",frame);
+    }
+
+    private static ObjectNode relationship(ObjectMapper mapper,JsonNode dictionary,JsonNode value,JsonNode choices,long retained){
+        String mode=choices.path("relationshipMode").asText();require(mode.equals(value.path("relationshipMode").asText()));denominator(value,retained);
+        var out=select(mapper,value,"relationshipMode","analysisRows","exclusions");
+        if(mode.equals("SCATTER")){
+            String x=choices.path("xField").asText(),y=choices.path("yField").asText();require(x.equals(value.path("xField").asText())&&y.equals(value.path("yField").asText()));
+            var scatter=value.path("scatter");require(count(scatter,"n")==count(value,"analysisRows"));
+            out.set("xVariable",field(mapper,dictionary,x));out.set("yVariable",field(mapper,dictionary,y));out.set("statistics",select(mapper,scatter,"n","meanX","meanY","r"));
+            out.set("eligibility",eligibility(mapper,List.of(x,y)));out.put("statisticalScope","Pearson仅描述所列x/y配对记录的线性关系。当前执行未提供相关系数的p值或区间；不能借用完成率Wilson区间判断相关显著性，也不能把相关系数换算为干预收益。");
+        }else{
+            String by=choices.path("groupBy").asText();require(by.equals(value.path("groupBy").asText()));
+            out.set("groupingVariable",field(mapper,dictionary,by));out.set("outcomeVariable",field(mapper,dictionary,"completed"));
+            out.set("eligibility",eligibility(mapper,by.equals("days_to_first_lesson_band")?List.of("days_to_first_lesson"):List.of()));
+            var groups=out.putArray("groups");var keys=new HashSet<String>();long sum=0;
+            for(var group:value.path("groups")){String key=group.path("key").asText();require(DsSemantics.GROUPS.get(by).contains(key)&&keys.add(key));var item=completion(mapper,group).put("key",key);groups.add(item);sum+=count(item,"n");}
+            require(keys.size()==DsSemantics.GROUPS.get(by).size()&&sum==count(value,"analysisRows"));
+            out.put("statisticalScope","各组以本组纳入记录为完成率分母，Wilson区间属于completed比例；分组差异不是因果效果。");
+        }
+        return out;
+    }
+    private static ObjectNode eligibility(ObjectMapper mapper,List<String> fields){
+        var out=mapper.createObjectNode();out.set("requiredValidFields",mapper.valueToTree(fields));
+        boolean started=fields.stream().anyMatch(f->Set.of("avg_session_minutes","days_to_first_lesson").contains(f));out.put("requiresStartedLearning",started);
+        out.put("rule",fields.isEmpty()?"纳入该层清洗后全部记录；completed无记录缺失。":"仅纳入清洗后所列字段同时有效的记录；记录缺失与不适用排除数分别列出，填补与截尾策略另见cleaningChoices和quality。");
+        if(started)out.put("startedLearningBoundary","所选字段对未开始者不适用，未开始者不进入此分析；是否开始不能解释此纳入集内部的组间变化，但选择已开始者会限制外推人群。");
+        return out;
+    }
+    private static ObjectNode field(ObjectMapper mapper,JsonNode dictionary,String key){
+        if(Set.of("cohort_period","days_to_first_lesson_band").contains(key)){
+            String base=key.equals("cohort_period")?"cohort_week":"days_to_first_lesson";
+            var result=mapper.createObjectNode().put("fieldKey",key).put("label",key.equals("cohort_period")?"加入批次时期":"首次学习等待时间分组").put("unit","category");
+            result.set("derivedFrom",field(mapper,dictionary,base));result.set("categories",mapper.valueToTree(DsSemantics.GROUPS.get(key)));
+            result.put("description",key.equals("cohort_period")?"由cohort_week派生：1至6为EARLY，7至12为LATE；观察成熟度沿用原字段定义。":"由有效days_to_first_lesson派生：小于1天、1至小于3天、3至小于7天、7天及以上；缺失和不适用值不分组。");return result;
+        }
+        return select(mapper,unique(dictionary.path("fields"),"fieldKey",key),"fieldKey","label","unit","description");
+    }
+    private static ObjectNode completion(ObjectMapper mapper,JsonNode value){require(count(value,"completedCount")<=count(value,"n"));return select(mapper,value,"n","completedCount","completionRate","ciLower","ciUpper");}
+    private static void denominator(JsonNode value,long retained){var excluded=value.path("exclusions");long total=count(excluded,"total");require(total==count(excluded,"missingOnly")+count(excluded,"notApplicableOnly")+count(excluded,"both")&&count(value,"analysisRows")+total==retained);}
+    private static JsonNode execution(JsonNode context,String operation,ArrayNode refs){
+        JsonNode found=null;var ids=new HashSet<String>();
+        for(var evidence:context.path("verifiedExecutions"))if(operation.equals(evidence.at("/value/operationKey").asText())){
+            require("VERIFIED_EXECUTION".equals(evidence.path("type").asText())&&evidence.path("evidenceId").isTextual()&&!evidence.path("evidenceId").asText().isBlank());
+            if(found!=null)require(sameNumbers(found,evidence.path("value")));else found=evidence.path("value");
+            require(ids.add(evidence.path("evidenceId").asText()));refs.add(evidence.path("evidenceId"));
+        }
+        require(found!=null);return found;
+    }
+    private static JsonNode response(JsonNode context,String step){return unique(context.path("steps"),"stepKey",step).path("submittedResponse");}
+    private static JsonNode unique(JsonNode array,String key,String value){require(array.isArray());JsonNode result=null;for(var item:array)if(value.equals(item.path(key).asText())){require(result==null);result=item;}require(result!=null);return result;}
+    private static ObjectNode select(ObjectMapper mapper,JsonNode value,String... fields){var out=mapper.createObjectNode();for(String key:fields){require(value.has(key));out.set(key,value.path(key).deepCopy());}return out;}
+    private static long count(JsonNode value,String key){var n=value.path(key);require(n.isIntegralNumber()&&n.canConvertToLong()&&n.asLong()>=0);return n.asLong();}
+    private static boolean sameNumbers(JsonNode a,JsonNode b){return a.equals((l,r)->l.isNumber()&&r.isNumber()?l.decimalValue().compareTo(r.decimalValue()):l.equals(r)?0:1,b);}
+    private static void parameters(String operation,JsonNode choices){try{DsSemantics.validate(operation,choices);}catch(RuntimeException invalid){throw new ApiException(409,"REPORT_SOURCE_INVALID");}}
+    private static void require(boolean valid){if(!valid)throw new ApiException(409,"REPORT_SOURCE_INVALID");}
+}

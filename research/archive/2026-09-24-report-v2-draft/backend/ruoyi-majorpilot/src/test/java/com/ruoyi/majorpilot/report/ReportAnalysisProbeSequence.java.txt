@@ -1,0 +1,32 @@
+package com.ruoyi.majorpilot.report;
+
+import com.ruoyi.majorpilot.integration.ai.ReportGateway;
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import java.util.*;
+
+/** Test-runner sequencing only. No HTTP, database, secrets, or claim of semantic correctness. */
+final class ReportAnalysisProbeSequence {
+    private final ReportCore core;private final Catalog catalog;
+    private ReportGateway.Stage stage=ReportGateway.Stage.INITIAL;
+    private Proposal draft,finalProposal;private List<Violation> issues=List.of();private boolean done;private int attempts;
+    ReportAnalysisProbeSequence(ReportCore core,Catalog catalog){this.core=core;this.catalog=catalog;}
+    boolean hasNext(){return !done;}
+    ReportGateway.Stage stage(){requireActive();return stage;}
+    SafeModelInput input(){requireActive();return stage==ReportGateway.Stage.REVIEW?core.reviewInput(catalog,draft):core.modelInput(catalog);}
+    Proposal draft(){return draft;}
+    Proposal finalProposal(){return finalProposal;}
+    List<Violation> issues(){return issues;}
+    int attempts(){return attempts;}
+    void accept(ReportGateway.Outcome outcome){
+        requireActive();attempts++;
+        boolean valid=false;
+        if(outcome.status()==ReportGateway.Status.PROPOSAL_RECEIVED){var validation=core.validate(catalog,outcome.proposal(),GenerationMode.AI);issues=validation.issues();valid=validation.valid();}
+        else issues=outcome.violations();
+        if(stage==ReportGateway.Stage.REVIEW){if(valid)finalProposal=outcome.proposal();done=true;return;}
+        if(valid){draft=outcome.proposal();stage=ReportGateway.Stage.REVIEW;issues=List.of();return;}
+        if(stage==ReportGateway.Stage.INITIAL&&outcome.status()!=ReportGateway.Status.UPSTREAM_FAILURE)stage=ReportGateway.Stage.REPAIR;
+        else done=true;
+    }
+    private void requireActive(){if(done||attempts>=3)throw new IllegalStateException("Synthetic report probe sequence is complete");}
+}

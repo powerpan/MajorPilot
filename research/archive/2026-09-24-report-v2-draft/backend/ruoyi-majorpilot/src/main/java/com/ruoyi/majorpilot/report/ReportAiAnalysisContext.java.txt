@@ -1,0 +1,89 @@
+package com.ruoyi.majorpilot.report;
+
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.*;
+import com.ruoyi.majorpilot.classifier.FrozenClassifier;
+import com.ruoyi.majorpilot.classifier.ClassifierAssets;
+import com.ruoyi.majorpilot.content.TaskContentRepository;
+import com.ruoyi.majorpilot.shared.ApiException;
+import com.ruoyi.majorpilot.shared.CanonicalJson;
+import java.util.*;
+
+/** Recomputable public-practice facts, not assessments or new execution evidence. */
+final class ReportAiAnalysisContext {
+    static final List<String> ASSETS=List.of("classifier-model","practice-public","baseline-summary");
+    static final List<String> CONFIG=List.of("definitionVariantIds","exampleIds","confidenceThreshold","lowConfidencePolicy");
+    private ReportAiAnalysisContext(){}
+
+    static void enrich(ObjectMapper mapper,ObjectNode context,JsonNode manifest,Map<String,byte[]> bytes){
+        require("AI".equals(manifest.path("majorCode").asText())&&"task-manifest-v2".equals(manifest.path("schemaVersion").asText()));
+        require("report-assessment-rubric-v2.5".equals(context.at("/task/assessmentRubricVersion").asText()));
+        var task=context.path("task");for(String key:List.of("schemaVersion","majorCode","versionCode"))require(task.path(key).equals(manifest.path(key)));
+        var model=asset(mapper,manifest,bytes,"classifier-model");var practice=asset(mapper,manifest,bytes,"practice-public");var baselineSummary=asset(mapper,manifest,bytes,"baseline-summary");
+        require("classifier-model-v1".equals(model.path("schemaVersion").asText())&&practice.isArray()&&!practice.isEmpty());
+        require(same(select(mapper,model,"schemaVersion","labelOrder","definitionVariants","examples","baselineConfig"),material(task,"classifier-model"))&&same(practice,material(task,"practice-public"))&&same(baselineSummary,material(task,"baseline-summary")));
+        var operation=unique(manifest.path("operations"),"operationKey","ai-evaluate");
+        require("FROZEN_CLASSIFIER".equals(operation.path("engineType").asText())&&"classifier-v1".equals(operation.path("engineVersion").asText())&&"classifier-model".equals(operation.path("modelAssetKey").asText())&&"evaluation-private".equals(operation.path("datasetAssetKey").asText()));
+        var baseline=normalize(model,model.path("baselineConfig"));var saved=normalize(model,select(mapper,response(context,"a4-configure"),CONFIG.toArray(String[]::new)));
+        var byId=new LinkedHashMap<String,JsonNode>();for(var sample:practice){
+            require(sample.path("sampleId").isTextual()&&FrozenClassifier.LABELS.contains(sample.path("goldLabel").asText())&&byId.put(sample.path("sampleId").asText(),sample)==null);
+            require(same(FrozenClassifier.predict(model,baseline,sample.path("messageText").asText()),sample.path("baseline")));
+        }
+        var frame=mapper.createObjectNode().put("schemaVersion","ai-analysis-frame-v1");
+        var lineage=frame.putObject("publicMaterialSource").put("kind","PINNED_PUBLIC_ASSETS");
+        for(String key:ASSETS)lineage.put(key+"Sha256",unique(manifest.path("assets"),"assetKey",key).path("sha256").asText());
+        frame.putObject("executionSemantics").put("engineVersion","classifier-v1").put("learnsFromEvaluationOnRerun",false).put("rule","每次用固定词频、已保存定义/示例和路由配置重新计算；不会把评价集作为训练数据，不会因运行次数自动更新模型。同一配置与同一固定数据结果应相同。候选示例只属于显式配置，不等于从评价结果在线学习。");
+        var metric=frame.putObject("metricScopes");metric.put("selectedPriorityMetric",response(context,"a2-metrics").path("priorityMetric").asText());
+        require(Set.of("AUTO_ACCURACY","COVERAGE","RECALL").contains(metric.path("selectedPriorityMetric").asText()));
+        metric.put("instructionExample","A2原题中的教学小算例、公开练习集与正式固定评价集是不同总体，计数与比率不能互换。以下各块明确注明自己的总体。");
+        metric.put("coverage","自动路由数 / 该总体全部样本数").put("autoAccuracy","正确自动路由数 / 自动路由数；自动路由为零时不可计算").put("totalCorrectAutoRate","正确自动路由数 / 该总体全部样本数");
+        metric.put("recall","该真实类别正确自动路由数 / 该类别真实样本数；转人工不算正确自动路由");
+        var selected=response(context,"a3-errors");var inspected=new HashSet<String>();for(var id:selected.path("inspectedSampleIds"))require(byId.containsKey(id.asText())&&inspected.add(id.asText()));
+        require(!inspected.isEmpty()&&selected.path("errorPatterns").isArray()&&!selected.path("errorPatterns").isEmpty());
+        var patterns=frame.putArray("selectedPatterns");int index=0;
+        for(var pattern:selected.path("errorPatterns")){
+            var out=patterns.addObject().put("answerField","errorPatterns/"+index+++"/explanation");out.set("selectedPatternCode",pattern.path("patternCode"));
+            var samples=out.putArray("samples");var seen=new HashSet<String>();require(pattern.path("sampleIds").isArray()&&!pattern.path("sampleIds").isEmpty());
+            for(var id:pattern.path("sampleIds")){
+                String key=id.asText();require(inspected.contains(key)&&seen.add(key));var sample=byId.get(key);var prediction=sample.path("baseline");
+                var item=samples.addObject().put("sampleId",key).put("publicGoldLabel",sample.path("goldLabel").asText());
+                for(String field:List.of("predictedLabel","routedLabel","confidence"))item.set(field,prediction.path(field));
+                item.put("belowBaselineThreshold",prediction.path("confidence").asDouble()<baseline.path("confidenceThreshold").asDouble());
+                item.put("predictionMatchesPublicLabel",prediction.path("predictedLabel").equals(sample.path("goldLabel")));
+                if(FrozenClassifier.MANUAL.equals(prediction.path("routedLabel").asText()))item.putNull("automaticRouteIsCorrect");else item.put("automaticRouteIsCorrect",prediction.path("routedLabel").equals(sample.path("goldLabel")));
+            }
+        }
+        var configuration=frame.putObject("configurationComparison");configuration.set("baseline",baseline);configuration.set("saved",saved);configuration.put("isBaselineConfiguration",same(baseline,saved));
+        var changed=configuration.putArray("changedFields");for(String field:CONFIG)if(!same(baseline.path(field),saved.path(field)))changed.add(field);
+        var sensitivity=frame.putObject("publicThresholdSensitivity").put("kind","SERVER_DERIVED_PUBLIC_PRACTICE_NOT_EXECUTION").put("sampleCount",practice.size()).put("population","PUBLIC_PRACTICE_ONLY");
+        sensitivity.put("configurationSha256",CanonicalJson.hash(mapper,saved)).put("fixedParameters","保留学生已保存的定义、示例和低置信策略，仅改变允许的置信阈值；不是隐藏评价集执行或效果保证。");
+        var reference=routes(model,saved,practice);var cases=sensitivity.putArray("cases");
+        var thresholds=unique(context.path("steps"),"stepKey","a4-configure").at("/inputSchema/properties/confidenceThreshold/enum");require(thresholds.isArray()&&!thresholds.isEmpty());
+        for(var threshold:thresholds){
+            var config=(ObjectNode)saved.deepCopy();config.set("confidenceThreshold",threshold);normalize(model,config);var routes=routes(model,config,practice);var entry=cases.addObject();entry.set("confidenceThreshold",threshold);
+            var metrics=compactMetrics(mapper,FrozenClassifier.evaluate(model,config,practice));entry.set("metrics",metrics);var changedIds=entry.putArray("changedSampleIds");
+            for(int i=0;i<routes.size();i++)if(!routes.get(i).equals(reference.get(i)))changedIds.add(practice.get(i).path("sampleId"));entry.put("changedRouteCountFromSavedConfiguration",changedIds.size());
+        }
+        sensitivity.put("boundary","提高阈值是否改变路由、正确自动数或错误自动数取决于置信度分布及路由策略；高置信错误不因阈值小幅提高而自动消失。公开练习变化不能代替固定评价集结果。");
+        var evaluation=frame.putObject("fixedEvaluation").put("population","FIXED_EVALUATION_AGGREGATES_ONLY");var refs=evaluation.putArray("evidenceRefs");JsonNode result=null;
+        for(var execution:context.path("verifiedExecutions")){
+            require("VERIFIED_EXECUTION".equals(execution.path("type").asText())&&execution.path("evidenceId").asText().matches("[0-7][0-9A-HJKMNP-TV-Z]{25}"));
+            var value=execution.path("value");require("classifier-result-v1".equals(value.path("schemaVersion").asText())&&same(value.path("baseline"),baselineSummary));
+            if(result==null)result=value;else require(same(result,value));refs.add(execution.path("evidenceId"));
+        }
+        require(result!=null&&!refs.isEmpty());if(same(saved,baseline))require(same(result.path("baseline"),result.path("candidate")));
+        evaluation.put("resultCanonicalSha256",CanonicalJson.hash(mapper,result));evaluation.set("baseline",compactMetrics(mapper,result.path("baseline")));evaluation.set("candidate",compactMetrics(mapper,result.path("candidate")));evaluation.set("delta",result.path("delta").deepCopy());
+        evaluation.put("boundary","本块仅引用原闭包绑定的服务端验证聚合结果，不提供或推断任何隐藏评价样本的审核标签；不把公开练习阈值试算伪称为正式执行。");
+        ((ObjectNode)task).set("analysisFrame",frame);
+    }
+    private static List<String> routes(JsonNode model,JsonNode config,JsonNode samples){var result=new ArrayList<String>();for(var sample:samples)result.add(FrozenClassifier.predict(model,config,sample.path("messageText").asText()).path("routedLabel").asText());return result;}
+    private static ObjectNode compactMetrics(ObjectMapper mapper,JsonNode value){var out=select(mapper,value,"sampleCount","autoRoutedCount","correctAutoRoutedCount","manualReviewCount","coverage","autoAccuracy","totalCorrectAutoRate");out.put("wrongAutoRoutedCount",value.path("autoRoutedCount").asLong()-value.path("correctAutoRoutedCount").asLong());return out;}
+    private static JsonNode asset(ObjectMapper mapper,JsonNode manifest,Map<String,byte[]> assets,String key){var definition=unique(manifest.path("assets"),"assetKey",key);byte[] bytes=assets.get(key);require(bytes!=null&&"PUBLIC".equals(definition.path("visibility").asText())&&TaskContentRepository.hash(bytes).equals(definition.path("sha256").asText()));try{return mapper.readTree(bytes);}catch(Exception bad){throw new ApiException(409,"REPORT_SOURCE_INVALID");}}
+    private static JsonNode normalize(JsonNode model,JsonNode value){try{return FrozenClassifier.normalize(model,value);}catch(RuntimeException bad){throw new ApiException(409,"REPORT_SOURCE_INVALID");}}
+    private static JsonNode material(JsonNode task,String key){return unique(task.path("materials"),"assetKey",key).path("content");}
+    private static JsonNode response(JsonNode context,String key){return unique(context.path("steps"),"stepKey",key).path("submittedResponse");}
+    private static JsonNode unique(JsonNode values,String key,String expected){require(values.isArray());JsonNode found=null;for(var item:values)if(expected.equals(item.path(key).asText())){require(found==null);found=item;}require(found!=null);return found;}
+    private static ObjectNode select(ObjectMapper mapper,JsonNode value,String... keys){var out=mapper.createObjectNode();for(String key:keys){require(value.has(key));out.set(key,value.path(key).deepCopy());}return out;}
+    private static boolean same(JsonNode a,JsonNode b){return ClassifierAssets.equivalent(a,b);}
+    private static void require(boolean ok){if(!ok)throw new ApiException(409,"REPORT_SOURCE_INVALID");}
+}

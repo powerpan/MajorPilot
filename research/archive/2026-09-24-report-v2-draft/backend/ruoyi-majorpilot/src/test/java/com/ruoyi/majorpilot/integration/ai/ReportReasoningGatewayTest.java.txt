@@ -1,0 +1,319 @@
+package com.ruoyi.majorpilot.integration.ai;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.io.ByteArrayOutputStream;
+import java.net.http.HttpRequest;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.test.util.ReflectionTestUtils;
+
+class ReportReasoningGatewayTest {
+    final ReportCore core = new ReportCore(JSON);
+    ReportGateway.Attempt legacyAttempt() {
+        var input = core.modelInput(core.compile(experience("AI", true)));
+        return new ReportGateway.Attempt("reasoning-test", ReportGateway.Stage.INITIAL, input, List.of(), 45_000);
+    }
+    JsonNode body(HttpRequest request) {
+        var bytes = new ByteArrayOutputStream();
+        var ready = new CompletableFuture<JsonNode>();
+        request.bodyPublisher().orElseThrow().subscribe(new Flow.Subscriber<ByteBuffer>() {
+            public void onSubscribe(Flow.Subscription value) { value.request(Long.MAX_VALUE); }
+            public void onNext(ByteBuffer buffer) { byte[] chunk = new byte[buffer.remaining()]; buffer.get(chunk); bytes.writeBytes(chunk); }
+            public void onError(Throwable error) { ready.completeExceptionally(error); }
+            public void onComplete() { try { ready.complete(JSON.readTree(bytes.toByteArray())); } catch (Exception error) { ready.completeExceptionally(error); } }
+        });
+        try { return ready.get(2, TimeUnit.SECONDS); } catch (Exception error) { throw new AssertionError(error); }
+    }
+    byte[] envelope(ReportGateway.Attempt attempt, String reasoning) {
+        try {
+            return JSON.writeValueAsBytes(Map.of("choices", List.of(Map.of("finish_reason", "stop", "message", Map.of(
+                    "content", attempt.input().content().path("completeValidProposal").toString(), "reasoning_content", reasoning))),
+                    "usage", Map.of("prompt_tokens", 5000, "completion_tokens", 6200, "completion_tokens_details", Map.of("reasoning_tokens", 5000))));
+        } catch (Exception error) { throw new AssertionError(error); }
+    }
+
+    @Test void bothProvidersKeepLegacyWireFormatAnd45SecondJobBudget() {
+        for (String provider : List.of("BAILIAN", "DEEPSEEK")) {
+            var input = legacyAttempt();
+            var gateway = new ReportHttpGateway(JSON, core, provider, "synthetic-key",
+                    provider.equals("BAILIAN") ? BailianAiGateway.DEFAULT_BASE_URL : ReportHttpGateway.DEEPSEEK_BASE_URL,
+                    provider.equals("BAILIAN") ? ReportHttpGateway.BAILIAN_MODEL : ReportHttpGateway.DEEPSEEK_MODEL,
+                    (request, timeout) -> {
+                        assertEquals(45_000, timeout);
+                        assertEquals(timeout, request.timeout().orElseThrow().toMillis());
+                        var sent = body(request);
+                        assertFalse(sent.path("stream").asBoolean(), "Historical v1 remains non-streaming");
+                        assertFalse(sent.has("stream_options"));
+                        assertTrue(request.headers().firstValue("Accept").isEmpty());
+                        assertEquals("json_object", sent.at("/response_format/type").asText());
+                        assertFalse(sent.has("temperature"));
+                        if (provider.equals("BAILIAN")) {
+                            assertTrue(sent.path("enable_thinking").asBoolean());
+                            assertEquals(32_768, sent.path("thinking_budget").asInt());
+                            assertFalse(sent.has("reasoning_effort"), "Bailian forbids sending both effort and thinking budget");
+                            assertEquals(32_768, sent.path("max_tokens").asInt());
+                        } else {
+                            assertEquals("enabled", sent.at("/thinking/type").asText());
+                            assertEquals("max", sent.path("reasoning_effort").asText());
+                            assertEquals(65_536, sent.path("max_tokens").asInt());
+                        }
+                        return new BailianAiGateway.TransportResponse(200, envelope(input, "PRIVATE_REASONING_".repeat(5000)));
+                    });
+            var result = gateway.attempt(input);
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED, result.status());
+            assertTrue(result.telemetry().thinkingEnabled());
+            assertEquals(5000L, result.telemetry().reasoningTokens());
+            assertFalse(result.toString().contains("PRIVATE_REASONING"));
+            assertEquals("report-model-input-v1", result.telemetry().inputSchemaVersion());
+        }
+    }
+
+    @Test void reportModelNeverInheritsHintModelOrSilentlyFallsBackToAnotherProvider() {
+        var env = new MockEnvironment().withProperty("MP_REPORT_AI_ENABLED", "true")
+                .withProperty("BAILIAN_API_KEY", "synthetic-key").withProperty("BAILIAN_MODEL", "qwen-flash");
+        var configured = new ReportConfiguredGateway(JSON, core, env);
+        var delegate = ReflectionTestUtils.getField(configured, "delegate");
+        assertEquals("qwen3.8-max-0902", ReflectionTestUtils.getField(delegate, "model"));
+        assertEquals(ReportModelSettings.OutputFormat.JSON_SCHEMA,
+                ((ReportModelSettings) ReflectionTestUtils.getField(delegate, "settings")).outputFormat());
+        env.withProperty("MP_REPORT_AI_MODEL", "qwen3.7-max");
+        assertEquals("qwen3.7-max", ReflectionTestUtils.getField(ReflectionTestUtils.getField(new ReportConfiguredGateway(JSON, core, env), "delegate"), "model"));
+        env.withProperty("MP_REPORT_AI_TIMEOUT_MS", "bad-value").withProperty("DEEPSEEK_API_KEY", "synthetic-key");
+        assertFalse(new ReportConfiguredGateway(JSON, core, env).available());
+        assertFalse(new ReportConfiguredGateway(JSON, core, env.withProperty("MP_REPORT_AI_TIMEOUT_MS", "999999")).available());
+    }
+
+    @Test void textJsonModeIsExplicitAndNeverDisablesThinking() {
+        var settings = new ReportModelSettings(150_000, 32_768, 16_384, 1_048_576, ReportModelSettings.OutputFormat.TEXT_JSON);
+        var input = legacyAttempt();
+        var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                ReportHttpGateway.BAILIAN_MODEL, settings, (request, timeout) -> {
+                    assertEquals(45_000, timeout);
+                    assertEquals("text", body(request).at("/response_format/type").asText());
+                    assertTrue(body(request).path("enable_thinking").asBoolean());
+                    return new BailianAiGateway.TransportResponse(200, envelope(input, ""));
+                }
+
+    @Test void invalidBailianOutputOverrideFailsClosedWithoutAffectingOtherProviders() {
+        var invalid = new ReportModelSettings(600_000, 32_769, 16_384, 1_048_576, ReportModelSettings.OutputFormat.JSON_OBJECT);
+        var failure = assertThrows(AiFailure.class, () -> new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL, ReportHttpGateway.BAILIAN_MODEL, invalid));
+        assertEquals(AiFailure.Code.CONFIG_INVALID, failure.code());
+        assertDoesNotThrow(() -> new ReportHttpGateway(JSON, core, "DEEPSEEK", "synthetic-key", ReportHttpGateway.DEEPSEEK_BASE_URL, ReportHttpGateway.DEEPSEEK_MODEL, invalid));
+        var env = new MockEnvironment().withProperty("MP_REPORT_AI_ENABLED", "true").withProperty("BAILIAN_API_KEY", "synthetic-key")
+                .withProperty("MP_REPORT_AI_MAX_OUTPUT_TOKENS", "32769");
+        var configured = assertDoesNotThrow(() -> new ReportConfiguredGateway(JSON, core, env));
+        assertFalse(configured.available());
+        assertTrue(new ReportConfiguredGateway(JSON, core, env.withProperty("MP_REPORT_AI_MAX_OUTPUT_TOKENS", "32768")).available());
+    });
+        assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED, gateway.attempt(input).status());
+    }
+
+    @Test void overLimitAndTruncatedOutputHaveExplicitSafeCodesAndNoRetry() {
+        for (boolean oversized : List.of(true, false)) {
+            var calls = new AtomicInteger();
+            var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                    ReportHttpGateway.BAILIAN_MODEL, (request, timeout) -> {
+                        calls.incrementAndGet();
+                        byte[] response = oversized ? new byte[1_048_577] : "{\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"PRIVATE_PROVIDER_BODY\"}}]}".getBytes(StandardCharsets.UTF_8);
+                        return new BailianAiGateway.TransportResponse(200, response);
+                    });
+            var result = gateway.attempt(legacyAttempt());
+            assertEquals("OUTPUT_LIMIT", result.safeErrorCode());
+            assertEquals(1, calls.get());
+            assertFalse(result.toString().contains("PRIVATE_PROVIDER_BODY"));
+        }
+    }
+
+    @Test void boundedSubscriberAllowsLongReasoningButCancelsPastConfiguredCap() throws Exception {
+        var requests = new AtomicInteger(); var cancellations = new AtomicInteger();
+        Flow.Subscription subscription = new Flow.Subscription() {
+            public void request(long count) { requests.incrementAndGet(); }
+            public void cancel() { cancellations.incrementAndGet(); }
+        };
+        var allowed = new ReportHttpTransport.LimitedBody(1_048_576);
+        allowed.onSubscribe(subscription); allowed.onNext(List.of(ByteBuffer.wrap(new byte[80_000]))); allowed.onComplete();
+        assertEquals(80_000, allowed.getBody().toCompletableFuture().get().length);
+        assertEquals(0, cancellations.get());
+        var rejected = new ReportHttpTransport.LimitedBody(262_144);
+        rejected.onSubscribe(subscription); rejected.onNext(List.of(ByteBuffer.wrap(new byte[262_145])));
+        var failure = assertThrows(java.util.concurrent.ExecutionException.class, () -> rejected.getBody().toCompletableFuture().get());
+        assertEquals("OUTPUT_LIMIT", failure.getCause().getMessage());
+        assertEquals(1, cancellations.get());
+    }
+
+    @Test void analysisV2SendsRealAnswersAsDataAndParsesEvidenceBoundNarrative() {
+        for (String major : List.of("AI", "DATA_SCIENCE", "BUSINESS_ANALYTICS")) {
+            var source = ReportAnalysisFixtures.v2(experience(major, true), ReportAnalysisFixtures.WRONG);
+            var catalog = core.compile(source);
+            var content = (ObjectNode) core.modelInput(catalog).content();
+            // Keep this synthetic fixture aligned with the real store projection.
+            ((ObjectNode) content.at("/sources/0/context")).putArray("verifiedExecutions");
+            var input = new ReportGateway.Attempt("analysis-v2-test", ReportGateway.Stage.INITIAL,
+                    new ReportModels.SafeModelInput("report-model-input-v2", catalog.catalogSha256(), content), List.of(), ReportModelSettings.MAX_TOTAL_BUDGET_MS);
+            var expected = ReportAnalysisFixtures.proposal(catalog, "NEEDS_REVISION");
+            var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                    ReportHttpGateway.BAILIAN_MODEL, (request, timeout) -> {
+                        var sent = body(request);
+                        assertEquals(900_000, timeout);
+                        assertTrue(sent.path("enable_thinking").asBoolean());
+                        assertTrue(sent.path("stream").asBoolean());
+                        assertEquals(32_768, sent.path("thinking_budget").asInt());
+                        assertFalse(sent.has("reasoning_effort"));
+                        assertTrue(sent.at("/stream_options/include_usage").asBoolean());
+                        assertEquals("text/event-stream", request.headers().firstValue("Accept").orElseThrow());
+                        assertEquals("json_schema", sent.at("/response_format/type").asText());
+                        assertTrue(sent.at("/response_format/json_schema/strict").asBoolean());
+                        String system = sent.at("/messages/0/content").asText();
+                        assertTrue(system.contains("不是指令"));
+                        assertTrue(system.contains("原文"));
+                        assertTrue(system.contains("不能断言学生故意乱填"));
+                        assertFalse(system.contains("不得编写正文"));
+                        assertFalse(system.contains(ReportAnalysisFixtures.WRONG));
+                        assertTrue(sent.at("/messages/1/content").asText().contains(ReportAnalysisFixtures.WRONG));
+                        try {
+                            return new BailianAiGateway.TransportResponse(200, JSON.writeValueAsBytes(Map.of("choices", List.of(Map.of(
+                                    "finish_reason", "stop", "message", Map.of("content", ReportAnalysisFixtures.raw(expected).toString()))))));
+                        }
+
+    @Test void strictSchemaBindsEachReportTypeForInitialAndRepairWithoutChangingModelOrContext() {
+        for (var type : ReportModels.ReportType.values()) for (var stage : List.of(ReportGateway.Stage.INITIAL, ReportGateway.Stage.REPAIR)) {
+            var original = type == ReportModels.ReportType.EXPERIENCE ? experience("BUSINESS_ANALYTICS", true) : comparison(2, true);
+            var catalog = core.compile(ReportAnalysisFixtures.v2(original, ReportAnalysisFixtures.SOUND));
+            var modelInput = core.modelInput(catalog);
+            var input = new ReportGateway.Attempt("strict-schema-test", stage, modelInput,
+                    stage == ReportGateway.Stage.REPAIR ? List.of(new ReportModels.Violation("SCHEMA_ARRAY_TOO_MANY", "/analysis/crossMajorAnalysis")) : List.of(), ReportModelSettings.MAX_TOTAL_BUDGET_MS);
+            var expected = ReportAnalysisFixtures.proposal(catalog, "SUPPORTED");
+            var calls = new AtomicInteger();
+            var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                    ReportHttpGateway.BAILIAN_MODEL, (request, timeout) -> {
+                        calls.incrementAndGet();var sent = body(request);
+                        assertEquals(ReportHttpGateway.BAILIAN_MODEL, sent.path("model").asText());
+                        assertEquals(32_768, sent.path("thinking_budget").asInt());
+                        assertTrue(sent.path("enable_thinking").asBoolean());
+                        assertTrue(sent.path("stream").asBoolean());
+                        assertEquals("json_schema", sent.at("/response_format/type").asText());
+                        assertEquals("report_analysis_proposal_v2", sent.at("/response_format/json_schema/name").asText());
+                        assertTrue(sent.at("/response_format/json_schema/strict").asBoolean());
+                        assertEquals(core.providerProposalSchema(modelInput), sent.at("/response_format/json_schema/schema"));
+                        var cross = sent.at("/response_format/json_schema/schema/properties/analysis/properties/crossMajorAnalysis");
+                        if (type == ReportModels.ReportType.EXPERIENCE) {
+                            assertEquals(0, cross.path("maxItems").asInt(-1));
+                            assertTrue(sent.at("/messages/0/content").asText().contains("绝不能虚构第二个专业"));
+                        } else {
+                            assertEquals(1, cross.path("minItems").asInt(-1));
+                            assertTrue(sent.at("/messages/0/content").asText().contains("至少包含两个实际输入的不同专业"));
+                        }
+                        try {
+                            assertEquals(modelInput.content(), JSON.readTree(sent.at("/messages/1/content").asText()));
+                            return new BailianAiGateway.TransportResponse(200, JSON.writeValueAsBytes(Map.of("choices", List.of(Map.of(
+                                    "finish_reason", "stop", "message", Map.of("content", ReportAnalysisFixtures.raw(expected).toString()))))));
+                        } catch (Exception error) { throw new AssertionError(error); }
+                    });
+            var outcome = gateway.attempt(input);
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED, outcome.status());
+            assertEquals(type, outcome.proposal().reportType());
+            assertEquals(1, calls.get());
+        }
+    }
+
+    @Test void v2OtherOutputModesAreExplicitAndSupplierRejectionNeverTriggersFallback() {
+        var catalog = core.compile(ReportAnalysisFixtures.v2(experience("BUSINESS_ANALYTICS", true), ReportAnalysisFixtures.SOUND));
+        var input = new ReportGateway.Attempt("format-no-fallback", ReportGateway.Stage.INITIAL, core.modelInput(catalog), List.of(), ReportModelSettings.MAX_TOTAL_BUDGET_MS);
+        for (var format : ReportModelSettings.OutputFormat.values()) {
+            var calls = new AtomicInteger();
+            var settings = new ReportModelSettings(600_000, 32_768, 32_768, 1_048_576, format);
+            var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                    ReportHttpGateway.BAILIAN_MODEL, settings, (request, timeout) -> {
+                        calls.incrementAndGet();var sent = body(request);
+                        assertEquals(switch (format) {case JSON_SCHEMA -> "json_schema";case JSON_OBJECT -> "json_object";case TEXT_JSON -> "text";}, sent.at("/response_format/type").asText());
+                        assertEquals(format == ReportModelSettings.OutputFormat.JSON_SCHEMA, sent.path("response_format").has("json_schema"));
+                        assertTrue(sent.path("enable_thinking").asBoolean());
+                        assertEquals(32_768, sent.path("thinking_budget").asInt());
+                        return new BailianAiGateway.TransportResponse(400, "PRIVATE_PROVIDER_REJECTION".getBytes(StandardCharsets.UTF_8));
+                    });
+            var output = gateway.attempt(input);
+            assertEquals(ReportGateway.Status.UPSTREAM_FAILURE, output.status());
+            assertEquals("UPSTREAM_REJECTED", output.safeErrorCode());
+            assertEquals(1, calls.get());
+            assertFalse(output.toString().contains("PRIVATE_PROVIDER_REJECTION"));
+        }
+    }
+
+    @Test void formatDefaultsAreProviderSpecificAndUnverifiedStrictProviderFailsClosed() {
+        assertEquals(ReportModelSettings.OutputFormat.JSON_SCHEMA, ReportModelSettings.from(new MockEnvironment(), "BAILIAN").outputFormat());
+        assertEquals(ReportModelSettings.OutputFormat.JSON_OBJECT, ReportModelSettings.from(new MockEnvironment(), "DEEPSEEK").outputFormat());
+        for (String format : List.of("JSON_SCHEMA", "JSON_OBJECT", "TEXT_JSON"))
+            assertEquals(ReportModelSettings.OutputFormat.valueOf(format), ReportModelSettings.from(new MockEnvironment().withProperty("MP_REPORT_AI_OUTPUT_FORMAT", format), "BAILIAN").outputFormat());
+        var env = new MockEnvironment().withProperty("MP_REPORT_AI_ENABLED", "true").withProperty("MP_REPORT_AI_PROVIDER", "DEEPSEEK")
+                .withProperty("DEEPSEEK_API_KEY", "synthetic-key").withProperty("MP_REPORT_AI_OUTPUT_FORMAT", "JSON_SCHEMA");
+        assertFalse(assertDoesNotThrow(() -> new ReportConfiguredGateway(JSON, core, env)).available());
+        assertTrue(new ReportConfiguredGateway(JSON, core, env.withProperty("MP_REPORT_AI_OUTPUT_FORMAT", "JSON_OBJECT")).available());
+        assertTrue(new ReportConfiguredGateway(JSON, core, env.withProperty("MP_REPORT_AI_OUTPUT_FORMAT", "TEXT_JSON")).available());
+    }
+
+    @Test void localReportTypeValidationRemainsAuthoritativeAfterStrictProviderOutput() {
+        var catalog = core.compile(ReportAnalysisFixtures.v2(experience("BUSINESS_ANALYTICS", true), ReportAnalysisFixtures.SOUND));
+        var input = new ReportGateway.Attempt("strict-local-check", ReportGateway.Stage.INITIAL, core.modelInput(catalog), List.of(), ReportModelSettings.MAX_TOTAL_BUDGET_MS);
+        for (String kind : List.of("WRONG_TYPE", "SAME_MAJOR_COMPARISON")) {
+            var proposal = ReportAnalysisFixtures.raw(ReportAnalysisFixtures.proposal(catalog, "SUPPORTED"));
+            if (kind.equals("WRONG_TYPE")) proposal.put("reportType", "COMPARISON");
+            else ((ObjectNode) proposal.path("analysis")).putArray("crossMajorAnalysis").addObject().putArray("majorCodes").add("BUSINESS_ANALYTICS");
+            var calls = new AtomicInteger();
+            var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                    ReportHttpGateway.BAILIAN_MODEL, (request, timeout) -> {
+                        calls.incrementAndGet();
+                        try { return new BailianAiGateway.TransportResponse(200, JSON.writeValueAsBytes(Map.of("choices", List.of(Map.of(
+                                "finish_reason", "stop", "message", Map.of("content", proposal.toString())))))); }
+                        catch (Exception error) { throw new AssertionError(error); }
+                    });
+            var outcome = gateway.attempt(input);
+            assertEquals(ReportGateway.Status.INVALID_OUTPUT, outcome.status());
+            assertEquals("REPORT_PROPOSAL_INVALID", outcome.safeErrorCode());
+            assertEquals(List.of(new ReportModels.Violation(kind.equals("WRONG_TYPE") ? "REPORT_TYPE_MISMATCH" : "EXPERIENCE_COMPARISON_MUST_BE_EMPTY",
+                    kind.equals("WRONG_TYPE") ? "/reportType" : "/analysis/crossMajorAnalysis")), outcome.violations());
+            assertEquals(1, calls.get());
+        }
+    } catch (Exception error) { throw new AssertionError(error); }
+                    });
+            var result = gateway.attempt(input);
+            assertEquals(ReportGateway.Status.PROPOSAL_RECEIVED, result.status());
+            assertEquals("report-analysis-proposal-v2", result.proposal().schemaVersion());
+            assertEquals(expected.analysis(), result.proposal().analysis());
+            assertEquals("report-model-input-v2", result.telemetry().inputSchemaVersion());
+            assertEquals(List.of("reportType", "sources", "analysisContract", "nextRecommendation"), result.telemetry().inputFieldKeys());
+            assertTrue(core.validate(catalog, result.proposal(), ReportModels.GenerationMode.AI).valid());
+        }
+    }
+
+    @Test void v2UnknownRootOrContextFieldsAndOversizeInputNeverReachProvider() {
+        var catalog = core.compile(ReportAnalysisFixtures.v2(experience("BUSINESS_ANALYTICS", true), ReportAnalysisFixtures.SOUND));
+        for (String kind : List.of("ROOT", "CONTEXT", "SIZE")) {
+            var content = (ObjectNode) core.modelInput(catalog).content();
+            var context = (ObjectNode) content.at("/sources/0/context");
+            context.putArray("verifiedExecutions");
+            if (kind.equals("ROOT")) content.put("password", "PRIVATE_SENTINEL");
+            else if (kind.equals("CONTEXT")) context.put("credentials", "PRIVATE_SENTINEL");
+            else ((ObjectNode) context.path("task")).put("title", "x".repeat(1_048_577));
+            var input = new ReportGateway.Attempt("invalid-analysis", ReportGateway.Stage.INITIAL,
+                    new ReportModels.SafeModelInput("report-model-input-v2", catalog.catalogSha256(), content), List.of(), ReportModelSettings.MAX_TOTAL_BUDGET_MS);
+            var calls = new AtomicInteger();
+            var gateway = new ReportHttpGateway(JSON, core, "BAILIAN", "synthetic-key", BailianAiGateway.DEFAULT_BASE_URL,
+                    ReportHttpGateway.BAILIAN_MODEL, (request, timeout) -> { calls.incrementAndGet(); throw new AssertionError("Invalid input reached supplier"); });
+            var result = gateway.attempt(input);
+            assertEquals("INVALID_INPUT", result.safeErrorCode());
+            assertEquals(0, calls.get());
+            assertFalse(result.toString().contains("PRIVATE_SENTINEL"));
+        }
+    }
+}

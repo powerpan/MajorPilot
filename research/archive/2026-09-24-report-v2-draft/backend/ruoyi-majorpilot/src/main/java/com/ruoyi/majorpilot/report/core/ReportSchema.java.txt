@@ -1,0 +1,120 @@
+package com.ruoyi.majorpilot.report.core;
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.OffsetDateTime;
+import java.util.*;
+import com.ruoyi.majorpilot.report.core.ReportModels.Violation;
+import com.ruoyi.majorpilot.report.core.ReportModels.ReportType;
+
+/** Closed, local-only schema vocabulary used by the two report contracts. No remote refs. */
+public final class ReportSchema {
+    private final JsonNode output,proposal,outputV2,proposalV2,boundWire;
+    public ReportSchema(ObjectMapper mapper){try{output=read(mapper,"report-v1");proposal=read(mapper,"report-proposal-v1");outputV2=read(mapper,"report-v2");proposalV2=read(mapper,"report-analysis-proposal-v2");boundWire=read(mapper,"report-analysis-wire-proposal-v3");}catch(Exception invalid){throw new ReportInputException("REPORT_CATALOG_INVALID");}}
+    private JsonNode read(ObjectMapper mapper,String name)throws Exception{var value=mapper.readTree(ReportSchema.class.getResourceAsStream("/report-schemas/"+name+".json"));if(value==null)throw new IllegalArgumentException();return value;}
+    public boolean output(JsonNode value){return matches(value!=null&&value.path("schemaVersion").asText().equals("report-v2")?outputV2:output,value,0);}
+    public boolean proposal(JsonNode value){return matches(value!=null&&value.path("schemaVersion").asText().equals("report-analysis-proposal-v2")?proposalV2:proposal,value,0);}
+    public boolean analysisProposal(JsonNode value){return matches(proposalV2,value,0);}
+    public ObjectNode boundWireSchemaTemplate(ReportType type){
+        if(type==null)throw new ReportInputException("REPORT_CATALOG_INVALID");ObjectNode result=boundWire.deepCopy();
+        ((ObjectNode)result.at("/properties/reportType")).putArray("enum").add(type.name());
+        ((ObjectNode)result.at("/properties/analysis/properties/crossMajorAnalysis")).put("minItems",type==ReportType.COMPARISON?1:0).put("maxItems",type==ReportType.EXPERIENCE?0:8);return result;
+    }
+    public void providerOnlyVocabulary(ObjectNode value){providerVocabulary(value);}
+    public List<Violation> boundWireProposalViolations(JsonNode value,ReportType type,JsonNode expandedSchema){
+        var typeIssues=reportTypeViolations(value,type);if(!typeIssues.isEmpty())return typeIssues;
+        var issues=new ArrayList<Violation>();diagnose(expandedSchema,value,"/",0,issues);return List.copyOf(issues);
+    }
+    /** Provider-supported wire subset, not the full acceptance contract; local/source checks remain authoritative. */
+    public JsonNode analysisProviderSchema(ReportType type){
+        if(type==null)throw new ReportInputException("REPORT_CATALOG_INVALID");
+        ObjectNode selected=proposalV2.deepCopy();providerVocabulary(selected);
+        ObjectNode reportType=(ObjectNode)selected.at("/properties/reportType");
+        reportType.put("type","string");reportType.putArray("enum").add(type.name());
+        ObjectNode comparison=(ObjectNode)selected.at("/properties/analysis/properties/crossMajorAnalysis");
+        comparison.put("minItems",type==ReportType.COMPARISON?1:0);
+        comparison.put("maxItems",type==ReportType.EXPERIENCE?0:8);
+        if(type==ReportType.EXPERIENCE){
+            ObjectNode majors=(ObjectNode)selected.at("/properties/analysis/properties/majorAnalyses");
+            majors.put("minItems",1).put("maxItems",1);
+        }
+        return selected;
+    }
+    private void providerVocabulary(JsonNode node){
+        if(node.isObject()){
+            ObjectNode object=(ObjectNode)node;
+            if(object.has("$ref")||object.has("$dynamicRef"))throw new ReportInputException("REPORT_CATALOG_INVALID");
+            object.remove(List.of("$schema","$id","$comment"));
+            // Bailian strict mode rejects uniqueItems on arrays. Keep it in the local contract;
+            // only this detached wire projection omits the unsupported keyword.
+            if(object.path("type").asText().equals("array"))object.remove("uniqueItems");
+            // Explicit primitive types improve strict-provider compatibility without changing constraints.
+            if(!object.has("type")&&(object.path("const").isTextual()||object.path("enum").isArray()&&!object.path("enum").isEmpty()&&allStrings(object.path("enum"))))object.put("type","string");
+            object.elements().forEachRemaining(this::providerVocabulary);
+        }else if(node.isArray())node.elements().forEachRemaining(this::providerVocabulary);
+    }
+    private boolean allStrings(JsonNode values){for(var value:values)if(!value.isTextual())return false;return true;}
+    /** Report-type failures precede nested cardinality errors so repairs cannot invent another major. */
+    public List<Violation> reportTypeViolations(JsonNode value,ReportType expectedType){
+        if(value==null||!value.isObject()||!value.path("schemaVersion").asText().equals("report-analysis-proposal-v2")&&!value.has("analysis"))return List.of();
+        String declared=value.path("reportType").asText();
+        if(expectedType!=null&&value.has("reportType")&&!expectedType.name().equals(declared))return List.of(new Violation("REPORT_TYPE_MISMATCH","/reportType"));
+        String selected=expectedType==null?declared:expectedType.name();
+        JsonNode comparison=value.at("/analysis/crossMajorAnalysis");
+        if(comparison.isArray()){
+            if(selected.equals("EXPERIENCE")&&!comparison.isEmpty())return List.of(new Violation("EXPERIENCE_COMPARISON_MUST_BE_EMPTY","/analysis/crossMajorAnalysis"));
+            if(selected.equals("COMPARISON")&&comparison.isEmpty())return List.of(new Violation("COMPARISON_ANALYSIS_REQUIRED","/analysis/crossMajorAnalysis"));
+        }
+        return List.of();
+    }
+    /** Safe repair diagnostics: paths contain only schema-owned keys and numeric array indexes. */
+    public List<Violation> proposalViolations(JsonNode value){
+        var typeIssues=reportTypeViolations(value,null);if(!typeIssues.isEmpty())return typeIssues;
+        JsonNode selected=value!=null&&(value.path("schemaVersion").asText().equals("report-analysis-proposal-v2")||value.has("analysis"))?proposalV2:proposal;
+        var issues=new ArrayList<Violation>();diagnose(selected,value,"/",0,issues);return List.copyOf(issues);
+    }
+    public List<Violation> analysisProposalViolations(JsonNode value){var typeIssues=reportTypeViolations(value,null);if(!typeIssues.isEmpty())return typeIssues;var issues=new ArrayList<Violation>();diagnose(proposalV2,value,"/",0,issues);return List.copyOf(issues);}
+    private void diagnose(JsonNode schema,JsonNode value,String path,int depth,List<Violation> issues){
+        if(issues.size()>=20)return;
+        if(depth>20){add(issues,"SCHEMA_DEPTH_INVALID",path);return;}
+        if(value==null){add(issues,"SCHEMA_REQUIRED",path);return;}
+        if(schema.has("anyOf")){if(matches(schema,value,depth))return;add(issues,"SCHEMA_VARIANT_INVALID",path);return;}
+        if(schema.has("const")&&!schema.get("const").equals(value)){add(issues,"SCHEMA_CONST_INVALID",path);return;}
+        if(schema.has("enum")){boolean found=false;for(var option:schema.path("enum"))if(option.equals(value))found=true;if(!found){add(issues,"SCHEMA_ENUM_INVALID",path);return;}}
+        switch(schema.path("type").asText("")){
+            case "object"->{
+                if(!value.isObject()){add(issues,"SCHEMA_TYPE_INVALID",path);return;}
+                for(var required:schema.path("required"))if(!value.has(required.asText()))add(issues,"SCHEMA_REQUIRED",child(path,required.asText()));
+                var known=schema.path("properties");var fields=known.fields();while(fields.hasNext()&&issues.size()<20){var field=fields.next();if(value.has(field.getKey()))diagnose(field.getValue(),value.get(field.getKey()),child(path,field.getKey()),depth+1,issues);}
+                // Never return an unknown model-owned key, even if it looks like a path or secret.
+                for(var keys=value.fieldNames();keys.hasNext();)if(!known.has(keys.next())){add(issues,"SCHEMA_UNKNOWN_FIELD",path);break;}
+            }
+            case "array"->{
+                if(!value.isArray()){add(issues,"SCHEMA_TYPE_INVALID",path);return;}
+                if(value.size()<schema.path("minItems").asInt(0)){add(issues,"SCHEMA_ARRAY_TOO_FEW",path);return;}
+                if(value.size()>schema.path("maxItems").asInt(10000)){add(issues,"SCHEMA_ARRAY_TOO_MANY",path);return;}
+                var seen=new HashSet<JsonNode>();for(int i=0;i<value.size()&&issues.size()<20;i++){var item=value.get(i);String itemPath=child(path,Integer.toString(i));diagnose(schema.path("items"),item,itemPath,depth+1,issues);if(schema.path("uniqueItems").asBoolean()&&!seen.add(item))add(issues,"SCHEMA_DUPLICATE_ITEM",itemPath);}
+            }
+            case "string"->{
+                if(!value.isTextual()){add(issues,"SCHEMA_TYPE_INVALID",path);return;}
+                String s=value.asText();int length=s.codePointCount(0,s.length());
+                if(length<schema.path("minLength").asInt(0))add(issues,"SCHEMA_STRING_TOO_SHORT",path);
+                if(length>schema.path("maxLength").asInt(10000))add(issues,"SCHEMA_STRING_TOO_LONG",path);
+                if(schema.has("pattern")&&!s.matches(schema.path("pattern").asText()))add(issues,"SCHEMA_PATTERN_INVALID",path);
+                if(schema.path("format").asText().equals("date-time"))try{OffsetDateTime.parse(s);}catch(Exception invalid){add(issues,"SCHEMA_FORMAT_INVALID",path);}
+            }
+            case "integer"->{if(!value.isIntegralNumber()||!value.canConvertToLong())add(issues,"SCHEMA_TYPE_INVALID",path);else if(schema.has("minimum")&&value.decimalValue().compareTo(schema.get("minimum").decimalValue())<0||schema.has("maximum")&&value.decimalValue().compareTo(schema.get("maximum").decimalValue())>0)add(issues,"SCHEMA_NUMBER_OUT_OF_RANGE",path);}
+            case "null"->{if(!value.isNull())add(issues,"SCHEMA_TYPE_INVALID",path);}
+            default->{if(!schema.has("const")&&!schema.has("enum"))add(issues,"SCHEMA_TYPE_INVALID",path);}
+        }
+    }
+    private static String child(String parent,String schemaKey){return (parent.equals("/")?"/":parent+"/")+schemaKey;}
+    private static void add(List<Violation> issues,String code,String path){if(issues.size()<20)issues.add(new Violation(code,path));}
+    private boolean matches(JsonNode schema,JsonNode value,int depth){if(depth>20||value==null)return false;if(schema.has("anyOf")){for(var branch:schema.path("anyOf"))if(matches(branch,value,depth+1))return true;return false;}if(schema.has("const")&&!schema.get("const").equals(value))return false;if(schema.has("enum")){boolean found=false;for(var option:schema.get("enum"))if(option.equals(value))found=true;if(!found)return false;}String type=schema.path("type").asText("");
+        if(type.equals("null"))return value.isNull();
+        if(type.equals("object")){if(!value.isObject())return false;for(var required:schema.path("required"))if(!value.has(required.asText()))return false;for(var it=value.fieldNames();it.hasNext();){String key=it.next();if(!schema.path("properties").has(key)||!matches(schema.path("properties").get(key),value.get(key),depth+1))return false;}return true;}
+        if(type.equals("array")){if(!value.isArray()||value.size()<schema.path("minItems").asInt(0)||value.size()>schema.path("maxItems").asInt(10000))return false;var seen=new HashSet<JsonNode>();for(var item:value){if(!matches(schema.path("items"),item,depth+1)||schema.path("uniqueItems").asBoolean()&&!seen.add(item))return false;}return true;}
+        if(type.equals("string")){if(!value.isTextual())return false;String s=value.asText();int length=s.codePointCount(0,s.length());if(length<schema.path("minLength").asInt(0)||length>schema.path("maxLength").asInt(10000)||schema.has("pattern")&&!s.matches(schema.path("pattern").asText()))return false;if(schema.path("format").asText().equals("date-time"))try{OffsetDateTime.parse(s);}catch(Exception invalid){return false;}return true;}
+        if(type.equals("integer"))return value.isIntegralNumber()&&value.canConvertToLong()&&(!schema.has("minimum")||value.decimalValue().compareTo(schema.get("minimum").decimalValue())>=0)&&(!schema.has("maximum")||value.decimalValue().compareTo(schema.get("maximum").decimalValue())<=0);
+        return type.isEmpty()&&(schema.has("enum")||schema.has("const"));
+    }
+}

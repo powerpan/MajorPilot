@@ -1,0 +1,96 @@
+package com.ruoyi.majorpilot.report;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.*;
+import com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.MAJORS;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import java.nio.file.*;
+import java.util.*;
+
+/** Real frozen task materials with synthetic responses. No database or real Student is read. */
+public final class ReportAnalysisLiveFixtures {
+    public static final List<String> CASES=List.of("ba-good","ba-concept-errors","ba-unrelated","ba-alternative","ai-metric-error","ds-causal-error");
+    private ReportAnalysisLiveFixtures(){}
+    public static ReportInput input(String testCase)throws Exception{
+        if(!CASES.contains(testCase))throw new IllegalArgumentException("Unknown synthetic case");
+        String major=testCase.startsWith("ba-")?"BUSINESS_ANALYTICS":testCase.startsWith("ai-")?"AI":"DATA_SCIENCE";
+        String fixture=major.equals("AI")?"p3-ai-run.json":major.equals("DATA_SCIENCE")?"p4-ds-run.json":"p5-ba-run.json";
+        var sample=JSON.readTree(Files.readString(repo().resolve("contracts/examples/"+fixture)));var responses=(ObjectNode)sample.path("responses").deepCopy();
+        if(major.equals("BUSINESS_ANALYTICS"))baVariant(responses,testCase);
+        if(testCase.equals("ai-metric-error")){
+            ((ObjectNode)responses.path("a2-metrics")).put("errorCostReason","81.25%的覆盖率说明模型自动判断有81.25%是正确的，所以覆盖率就是准确率，不必单独检查错误路由。");
+            ((ObjectNode)responses.path("a5-evaluate")).put("comparisonNotes","我完全没有改baseline参数，但模型准确率肯定提升了，因为运行第二次就会自动学习这48条评价样本。");
+        }
+        if(testCase.equals("ds-causal-error")){
+            ((ObjectNode)responses.path("d4-relationship")).put("observation","等待时间与作业提交率有相关关系，这就证明让所有人更早开始首课一定会提高提交率，是已经成立的因果关系。");
+            ((ObjectNode)responses.path("d5-stratify")).put("uncertaintyComment","按课程分层就已经排除了所有混杂，所以不需要随机试验，分层后的相关系数能直接当作政策收益预测。");
+        }
+        var base=experience(major,false);var original=base.sources().getFirst();var manifest=asset(major,"manifest");
+        var items=new ArrayList<>(original.items().stream().filter(e->!Set.of("STUDENT_ANALYSIS","SELF_REPORT","VERIFIED_EXECUTION").contains(e.type())).toList());
+        var context=JSON.createObjectNode().put("schemaVersion","report-analysis-context-v2");var task=context.putObject("task");
+        for(String field:List.of("schemaVersion","majorCode","versionCode","title","scenario","goals"))if(manifest.has(field))task.set(field,manifest.get(field));
+        task.put("assessmentRubricVersion",ReportAnalysisContext.RUBRIC).put("assessmentBoundary","仅分析本次作答；不判断长期能力或专业适配度。").put("professionalReviewClaimed",false);
+        var materials=task.putArray("materials");var materialKeys=major.equals("BUSINESS_ANALYTICS")?List.of("business-brief","data-dictionary","weekly-funnel"):major.equals("DATA_SCIENCE")?List.of("data-dictionary"):List.of("classifier-model","example-pool","practice-public","evaluation-public","baseline-summary");
+        for(String key:materialKeys){var material=asset(major,key);if(key.equals("classifier-model")){var safe=JSON.createObjectNode();for(String field:List.of("schemaVersion","labelOrder","definitionVariants","examples","baselineConfig"))if(material.has(field))safe.set(field,material.get(field));material=safe;}var n=materials.addObject().put("assetKey",key);n.set("content",material);}
+        var frozen=context.putArray("frozenSources");var steps=context.putArray("steps");int next=50000+MAJORS.indexOf(major)*100;
+        for(var definition:manifest.path("steps")){
+            String key=definition.path("stepKey").asText();var response=responses.path(key);var step=steps.addObject().put("stepKey",key).put("title",definition.path("title").asText());step.set("instructions",definition.path("instructions"));step.set("inputSchema",definition.path("inputSchema"));
+            var rubric=step.putObject("rubric").put("version",ReportAnalysisContext.RUBRIC).put("source","TASK_INSTRUCTIONS_AND_PUBLIC_MATERIALS");rubric.set("criteria",JSON.valueToTree(ReportAnalysisContext.criteria(key)));step.set("submittedResponse",response);var answers=step.putArray("answers");
+            String evidenceId=id(++next);flatten(response,definition.path("inputSchema"),"",evidenceId,answers);
+            if(!answers.isEmpty()){
+                if(key.equals("a2-metrics"))for(var answer:answers){var a=(ObjectNode)answer;String ref="frozen-response:AI/"+key+":"+a.path("answerField").asText(),sha=com.ruoyi.majorpilot.shared.CanonicalJson.hash(JSON,response);a.remove("evidenceId");a.put("sourceRef",ref).put("sourceSha256",sha);frozen.addObject().put("sourceRef",ref).put("sourceType","STEP_RESPONSE").put("stepKey",key).put("answerField",a.path("answerField").asText()).put("revision",1).put("sourceSha256",sha).set("value",a.path("value"));}
+                else{var value=JSON.createObjectNode().put("verificationStatus","UNVERIFIED");value.set("answers",response);items.add(new EvidenceValue(evidenceId,"analysis:"+key,"STUDENT_ANALYSIS",value,"Synthetic actual-field response",List.of(),NOW));}
+            }
+            step.putArray("responseEvidence");
+        }
+        var executions=context.putArray("verifiedExecutions");
+        if(major.equals("AI")){var value=asset(major,"golden-private").path("baseline");var e=new EvidenceValue(id(++next),"execution:baseline","VERIFIED_EXECUTION",value,"Synthetic matched baseline",List.of("OBSERVED_FACT"),NOW);items.add(e);executions.add(evidence(e));}
+        else{
+            var names=major.equals("DATA_SCIENCE")?List.of("quality-keep","profile-session","scatter","stratify-scatter"):List.of("metric-overall","funnel-default","segments-1");
+            for(String name:names){JsonNode selected=null;for(var candidate:asset(major,"golden-private").path("cases"))if(candidate.path("name").asText().equals(name))selected=candidate;if(selected==null)throw new IllegalArgumentException("Missing matching golden");var e=new EvidenceValue(id(++next),"execution:"+name,"VERIFIED_EXECUTION",selected.path("result"),"Synthetic matched verified result",List.of("OBSERVED_FACT"),NOW);items.add(e);executions.add(evidence(e));}
+        }
+        var reflection=context.putObject("reflection").put("attribution","STUDENT_SELF_REPORT");reflection.set("answers",sample.at("/reflection/answers"));reflection.set("inputSchema",manifest.at("/reflection/inputSchema"));reflection.putArray("frozenAnswerReferences");
+        for(String field:List.of("interestingStepKeys","difficultySources","continueSimilarWork"))items.add(new EvidenceValue(id(++next),"reflection:"+field,"SELF_REPORT",sample.at("/reflection/answers/"+field),"Synthetic reflection",List.of("STUDENT_SELF_REPORT"),NOW));
+        var support=context.putObject("supportContext").put("interpretationBoundary","没有提示记录不能证明独立完成或已有学科知识。");support.putArray("hints");var background=context.putObject("background").put("attribution","SELF_REPORTED_INTAKE_NOT_VERIFIED_ABILITY");background.putObject("majorFamiliarity").put("AI","LOW").put("BUSINESS_ANALYTICS","LOW").put("DATA_SCIENCE","LOW");
+        ReportAnalysisContext.enrichAggregateLineage(JSON,context,manifest,ReportAnalysisContext.RUBRIC);
+        if(major.equals("AI"))ReportAiAnalysisContext.enrich(JSON,context,manifest,aiPublicAssets());
+        var source=new Source(major,original.studentPublicId(),original.pins(),original.snapshot(),items,null,context);return new ReportInput(base.header(),VersionPins.v2(),List.of(source),base.nextRecommendation());
+    }
+
+    public static List<String> qualitySignals(String testCase,JsonNode report){
+        var signals=new ArrayList<String>();var analysis=report.path("analysis");
+        for(var finding:analysis.path("findings")){String step=finding.path("stepKey").asText(),assessment=finding.path("assessment").asText();boolean critical=Set.of("NEEDS_REVISION","INSUFFICIENT","PARTIAL").contains(assessment);String reason=finding.path("reasoning").asText();
+            if(testCase.equals("ba-concept-errors")&&critical&&Set.of("b1-context","b2-metric","b4-segment","b5-hypothesis","b6-action").contains(step))signals.add("CONCEPT_ERROR_NOTICED:"+step);
+            if(testCase.equals("ba-unrelated")&&critical)signals.add("UNRELATED_NOTICED:"+step);
+            if(testCase.equals("ai-metric-error")&&step.equals("a2-metrics")&&critical&&reason.contains("覆盖")&&reason.contains("准确"))signals.add("COVERAGE_ACCURACY_DISTINGUISHED");
+            if(testCase.equals("ds-causal-error")&&critical&&Set.of("d4-relationship","d5-stratify").contains(step)&&reason.contains("因果"))signals.add("CAUSAL_OVERCLAIM_NOTICED:"+step);
+            if(Set.of("ba-good","ba-alternative").contains(testCase)&&assessment.equals("SUPPORTED"))signals.add("SUPPORTED_REASONING_RECOGNIZED:"+step);
+        }
+        return signals;
+    }
+
+    private static void baVariant(ObjectNode responses,String name){
+        ((ObjectNode)responses.path("b1-context")).put("decisionScope","支持团队可先在应用课程试行小范围首课提醒，验证报名到首课的转化和支持负荷，再决定是否扩大。");
+        ((ObjectNode)responses.path("b5-hypothesis")).put("observation","基准期100/180人完成，对比期58/179人完成；完成率下降约23.15个百分点。下降本身还不能证明原因。");
+        if(name.equals("ba-concept-errors")){
+            ((ObjectNode)responses.path("b1-context")).put("decisionScope","不同来源学员素质差异就是我们可以直接决定的经营行动。");
+            ((ObjectNode)responses.path("b2-metric")).put("metricReason","完成率下降23个百分点就是相对减少23%，两个概念完全相同；分母选报名还是首课人数也不会影响含义。");
+            ((ObjectNode)responses.path("b4-segment")).put("priorityReason","应用课程完成率低肯定因为这组学员素质差；无需调查就能确定支持服务没有问题。");
+            ((ObjectNode)responses.path("b5-hypothesis")).put("hypothesis","固定数据已经证明首课提醒不足是唯一原因，其他解释都可以排除。");
+            ((ObjectNode)responses.path("b6-action")).put("actionReason","提醒必定带来目标中的2个百分点提升，不需要对照组或者确认参与者障碍。").put("testPlan","只看提醒后全体平均值，若变高就证明是提醒效果；支持联系180次/100人表示180%的学生被联系，因此此指标不可能超过100。");
+        }else if(name.equals("ba-alternative")){
+            ((ObjectNode)responses.path("b1-context")).put("decisionScope","先界定应用课程报名后未开始首课的可干预障碍，团队只决定是否试行提醒，不直接决定退课原因。");
+            ((ObjectNode)responses.path("b4-segment")).put("priorityReason","应用课程可以作为先行验证群体，但不是断定它最差；先按批次查看人数和支持负荷，再比较相同课程的可比群体。");
+            ((ObjectNode)responses.path("b5-hypothesis")).put("hypothesis","首课入口或时间安排的摩擦可能阻碍启动；另一种解释是批次构成变化，先访谈未启动者并检查同课程同批次记录。");
+            ((ObjectNode)responses.path("b6-action")).put("actionDescription","先对部分未启动者访谈确认障碍，再随机分批发送首课入口和时间安排提醒，保留同期未提醒组。").put("testPlan","随机分组后分别报告基线构成与报名到首课比例，每人观察前28天；最后一人满28天再复盘，比较变化与支持联系护栏，若无改善或负荷超限就不扩大。");
+        }else if(name.equals("ba-unrelated")){
+            var manifest=asset("BUSINESS_ANALYTICS","manifest");for(var step:manifest.path("steps"))replaceOpenText(responses.path(step.path("stepKey").asText()),step.path("inputSchema"));
+        }
+    }
+    private static void replaceOpenText(JsonNode value,JsonNode schema){if(value.isObject())value.fields().forEachRemaining(e->{var spec=schema.path("properties").path(e.getKey());if(e.getValue().isTextual()&&!spec.has("enum")&&!spec.has("const"))((ObjectNode)value).put(e.getKey(),"今天想吃火锅，音乐挺好听，随便写一下，我没有针对这个问题提供分析。");else replaceOpenText(e.getValue(),spec);});else if(value.isArray())for(var item:value)replaceOpenText(item,schema.path("items"));}
+    private static void flatten(JsonNode value,JsonNode schema,String path,String id,ArrayNode output){if(value.isObject()){value.fields().forEachRemaining(e->{var spec=schema.path("properties").path(e.getKey());if(!spec.isMissingNode())flatten(e.getValue(),spec,path.isEmpty()?e.getKey():path+"/"+e.getKey(),id,output);});return;}if(value.isArray()){for(int i=0;i<value.size();i++)flatten(value.get(i),schema.path("items"),path+"/"+i,id,output);return;}if(value.isTextual()&&!schema.has("enum")&&!schema.has("const")&&!value.asText().isBlank())output.addObject().put("answerField",path).put("value",value.asText()).put("evidenceId",id);}
+    private static ObjectNode evidence(EvidenceValue item){var n=JSON.createObjectNode().put("evidenceId",item.publicId()).put("key",item.key()).put("type",item.type());n.set("value",item.value());return n;}
+    private static Path repo(){Path p=Path.of("").toAbsolutePath();for(int i=0;i<5;i++,p=p.getParent())if(Files.isDirectory(p.resolve("contracts/examples")))return p;throw new IllegalStateException("Repository not found");}
+    static Map<String,byte[]> aiPublicAssets() throws Exception {var result=new LinkedHashMap<String,byte[]>();for(String key:ReportAiAnalysisContext.ASSETS)try(var stream=ReportAnalysisLiveFixtures.class.getResourceAsStream("/task-content/ai-support/1.0.0/"+key+".json")){result.put(key,stream.readAllBytes());}return result;}
+}

@@ -1,0 +1,101 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportAnalysisFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+/** Offline request-contract checks. Provider schema acceptance still requires an explicit live gate. */
+class ReportProviderSchemaTest {
+    private final ReportCore core=new ReportCore(JSON);
+    private Catalog experienceCatalog(){return core.compile(v2(experience("BUSINESS_ANALYTICS",false),SOUND));}
+    private ObjectNode experienceProposal(){return raw(proposal(experienceCatalog(),"SUPPORTED"));}
+
+    @Test void experienceSchemaFixesTypeAndProhibitsAnyCrossMajorItem(){
+        var schema=core.providerProposalSchema(core.modelInput(experienceCatalog()));
+        assertEquals(JSON.valueToTree(List.of("EXPERIENCE")),schema.at("/properties/reportType/enum"));
+        assertEquals("string",schema.at("/properties/reportType/type").asText());
+        assertEquals(0,schema.at("/properties/analysis/properties/crossMajorAnalysis/maxItems").asInt(-1));
+        assertEquals(0,schema.at("/properties/analysis/properties/crossMajorAnalysis/minItems").asInt(-1));
+        assertEquals(2,schema.at("/properties/analysis/properties/crossMajorAnalysis/items/properties/majorCodes/minItems").asInt());
+        assertEquals(30,schema.at("/properties/analysis/properties/findings/items/properties/reasoning/minLength").asInt());
+        assertTrue(schema.at("/properties/analysis/properties/findings/items/properties/evidenceRefs/uniqueItems").isMissingNode());
+        assertFalse(schema.path("additionalProperties").asBoolean(true));
+    }
+    @Test void comparisonSchemaRequiresRealCrossMajorStructureWithoutWeakeningItsCardinality(){
+        var catalog=core.compile(v2(comparison(2,false),SOUND));var schema=core.providerProposalSchema(core.modelInput(catalog));
+        assertEquals(JSON.valueToTree(List.of("COMPARISON")),schema.at("/properties/reportType/enum"));
+        assertEquals(1,schema.at("/properties/analysis/properties/crossMajorAnalysis/minItems").asInt());
+        assertEquals(8,schema.at("/properties/analysis/properties/crossMajorAnalysis/maxItems").asInt());
+        assertEquals(2,schema.at("/properties/analysis/properties/crossMajorAnalysis/items/properties/majorCodes/minItems").asInt());
+        var expected=proposal(catalog,"SUPPORTED");assertTrue(core.validate(catalog,expected,GenerationMode.AI).valid());
+    }
+    @Test void experienceWireAllowsExactlyOneMajorForInitialAndReviewWithoutChangingComparison(){
+        var catalog=experienceCatalog();
+        for(var input:List.of(core.modelInput(catalog),core.reviewInput(catalog,proposal(catalog,"SUPPORTED")))){
+            var majors=core.providerProposalSchema(input).at("/properties/analysis/properties/majorAnalyses");
+            assertEquals(1,majors.path("minItems").asInt(-1));assertEquals(1,majors.path("maxItems").asInt(-1));
+        }
+        var comparison=core.compile(v2(comparison(3,false),SOUND));
+        var majors=core.providerProposalSchema(core.modelInput(comparison)).at("/properties/analysis/properties/majorAnalyses");
+        assertEquals(1,majors.path("minItems").asInt(-1));assertEquals(3,majors.path("maxItems").asInt(-1));
+        assertTrue(core.validate(comparison,proposal(comparison,"SUPPORTED"),GenerationMode.AI).valid());
+    }
+    @Test void providerProjectionIsIndependentWithoutMetadataRemoteRefsOrFixtureAnswers(){
+        var input=core.modelInput(experienceCatalog());var before=core.providerProposalSchema(input);assertClosedSchema(before);
+        ((ObjectNode)before.at("/properties/analysis/properties/crossMajorAnalysis")).put("maxItems",99);
+        assertEquals(0,core.providerProposalSchema(input).at("/properties/analysis/properties/crossMajorAnalysis/maxItems").asInt());
+        assertFalse(core.providerProposalSchema(input).toString().contains(SOUND));
+        assertTrue(new ReportSchema(JSON).analysisProposal(experienceProposal()));
+        assertThrows(ReportInputException.class,()->core.providerProposalSchema(core.modelInput(core.compile(experience("AI",false)))));
+    }
+    @Test void singleMajorComparisonReportsTheTypeFixBeforeMisleadingNestedMinItems(){
+        var value=experienceProposal();var cross=((ArrayNode)value.at("/analysis/crossMajorAnalysis")).addObject();
+        cross.putArray("majorCodes").add("BUSINESS_ANALYTICS");cross.put("observation","UNTRUSTED_SENTINEL");
+        var failure=assertThrows(ProposalException.class,()->core.parseProposal(bytes(value),ReportType.EXPERIENCE));
+        assertEquals(List.of(new Violation("EXPERIENCE_COMPARISON_MUST_BE_EMPTY","/analysis/crossMajorAnalysis")),failure.issues);
+        assertFalse(failure.issues.toString().contains("UNTRUSTED_SENTINEL"));
+        var local=core.validate(experienceCatalog(),new Proposal("report-analysis-proposal-v2",ReportType.EXPERIENCE,List.of(),value.path("analysis")),GenerationMode.AI);
+        assertFalse(local.valid());assertEquals(failure.issues,local.issues());
+    }
+    @Test void expectedInputTypeCannotBeChangedToInventAComparison(){
+        var value=experienceProposal().put("reportType","COMPARISON");
+        var failure=assertThrows(ProposalException.class,()->core.parseProposal(bytes(value),ReportType.EXPERIENCE));
+        assertEquals(List.of(new Violation("REPORT_TYPE_MISMATCH","/reportType")),failure.issues);
+        var missingComparison=assertThrows(ProposalException.class,()->core.parseProposal(bytes(value),ReportType.COMPARISON));
+        assertEquals(List.of(new Violation("COMPARISON_ANALYSIS_REQUIRED","/analysis/crossMajorAnalysis")),missingComparison.issues);
+    }
+    @Test void validV1AndV2ParsingAndOriginalStrictValidationRemainInForce(){
+        var value=experienceProposal();assertEquals(ReportType.EXPERIENCE,core.parseProposal(bytes(value),ReportType.EXPERIENCE).reportType());
+        ((ObjectNode)value.at("/analysis/findings/0")).put("reasoning","short");
+        assertTrue(assertThrows(ProposalException.class,()->core.parseProposal(bytes(value),ReportType.EXPERIENCE)).issues.stream().anyMatch(i->i.code().equals("SCHEMA_STRING_TOO_SHORT")));
+        var legacy=core.defaultProposal(core.compile(experience("AI",false)),true);
+        assertEquals(legacy,core.parseProposal(bytes(JSON.valueToTree(legacy))));
+    }
+    @Test void unsupportedWireUniquenessDoesNotRelaxLocalRepeatedEvidenceOrMajorRejection(){
+        var schema=core.providerProposalSchema(core.modelInput(experienceCatalog()));assertClosedSchema(schema);
+        var value=experienceProposal();var refs=(ArrayNode)value.at("/analysis/findings/0/evidenceRefs");refs.add(refs.get(0));
+        var localSchema=new ReportSchema(JSON);assertFalse(localSchema.analysisProposal(value));
+        var duplicateRef=assertThrows(ProposalException.class,()->core.parseProposal(bytes(value),ReportType.EXPERIENCE));
+        assertTrue(duplicateRef.issues.stream().anyMatch(i->i.code().equals("SCHEMA_DUPLICATE_ITEM")&&i.path().equals("/analysis/findings/0/evidenceRefs/1")));
+        var catalog=core.compile(v2(comparison(2,false),SOUND));var comparison=raw(proposal(catalog,"SUPPORTED"));
+        var majors=(ArrayNode)comparison.at("/analysis/crossMajorAnalysis/0/majorCodes");majors.set(1,majors.get(0));
+        assertFalse(localSchema.analysisProposal(comparison));
+        var duplicateMajor=assertThrows(ProposalException.class,()->core.parseProposal(bytes(comparison),ReportType.COMPARISON));
+        assertTrue(duplicateMajor.issues.stream().anyMatch(i->i.code().equals("SCHEMA_DUPLICATE_ITEM")&&i.path().equals("/analysis/crossMajorAnalysis/0/majorCodes/1")));
+        assertFalse(core.validate(catalog,new Proposal("report-analysis-proposal-v2",ReportType.COMPARISON,List.of(),comparison.path("analysis")),GenerationMode.AI).valid());
+    }
+    private void assertClosedSchema(JsonNode node){
+        if(node.isObject()){
+            for(String key:List.of("$schema","$id","$ref","$dynamicRef","uniqueItems"))assertFalse(node.has(key),key);
+            if(node.has("enum")||node.has("const"))assertEquals("string",node.path("type").asText());
+            node.elements().forEachRemaining(this::assertClosedSchema);
+        }else if(node.isArray())node.elements().forEachRemaining(this::assertClosedSchema);
+    }
+    private byte[] bytes(JsonNode value){return value.toString().getBytes(StandardCharsets.UTF_8);}
+}

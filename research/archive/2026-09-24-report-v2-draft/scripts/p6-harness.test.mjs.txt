@@ -1,0 +1,66 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync,writeFileSync,readFileSync,symlinkSync,unlinkSync,rmdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { acquireTestLock,releaseTestLock,readTestLock } from './integration.mjs';
+import { fixtureManifest,validateTestSecrets,exactHarnessGrants } from './p6-harness.mjs';
+import { validateP6FixtureRecovery } from './lib/p6-student-fixture.mjs';
+
+test('interrupted fixture recovery accepts only exact tag/nonce/accounts and captured IDs',()=>{
+  const tag='0123456789abcdef', nonce='0123456789ab';
+  const valid={nonce,emails:[`p6-http-${tag}-${nonce}-0@example.invalid`],studentIds:[3200]};
+  assert.deepEqual(validateP6FixtureRecovery(valid,tag),valid);
+  assert.throws(()=>validateP6FixtureRecovery({...valid,emails:['ordinary@example.invalid']},tag));
+  assert.throws(()=>validateP6FixtureRecovery(valid,'fedcba9876543210'));
+  assert.throws(()=>validateP6FixtureRecovery({...valid,nonce:'abcdefabcdef'},tag));
+  assert.throws(()=>validateP6FixtureRecovery({...valid,nonce:'*'},tag));
+  assert.throws(()=>validateP6FixtureRecovery({...valid,emails:[...valid.emails,`p6-http-${tag}-${nonce}-1@example.invalid`,`p6-http-${tag}-${nonce}-2@example.invalid`],studentIds:[3200,3201,3202]},tag));
+  assert.throws(()=>validateP6FixtureRecovery({...valid,studentIds:[]},tag));
+  assert.throws(()=>validateP6FixtureRecovery({...valid,studentIds:[0]},tag));
+});
+
+test('harness grant treats the database underscore literally, not as a wildcard',()=>{
+  const usage='GRANT USAGE ON *.* TO `majorpilot_p6_test`@`127.0.0.1`';
+  const exact='GRANT ALL PRIVILEGES ON `'+String.raw`majorpilot\\_test`+'`.* TO `majorpilot_p6_test`@`127.0.0.1`';
+  assert.equal(exactHarnessGrants([usage,exact]),true);
+  assert.equal(exactHarnessGrants([usage,exact.replace(/\\/g,'')]),false);
+  assert.equal(exactHarnessGrants([usage,exact,'GRANT SELECT ON *.* TO `majorpilot_p6_test`@`127.0.0.1`']),false);
+});
+
+test('exclusive test database lock refuses another owner and supports exact harness restart',()=>{
+  const dir=mkdtempSync(path.join(tmpdir(),'p6-lock-test-')),file=path.join(dir,'lock.json');
+  const owner={scope:'p6-harness',tag:'0123456789abcdef'};
+  try{
+    acquireTestLock(owner,{file});assert.deepEqual(readTestLock(file),owner);
+    assert.throws(()=>acquireTestLock({scope:'integration'},{file}));
+    assert.deepEqual(acquireTestLock(owner,{file,resume:true}),owner);
+    assert.throws(()=>releaseTestLock({scope:'integration'},{file}));
+    assert.deepEqual(readTestLock(file),owner);releaseTestLock(owner,{file});
+  }finally{try{unlinkSync(file);}catch{}rmdirSync(dir);}
+});
+test('lock finalizer never removes a replacement owner or follows a symlink',()=>{
+  const dir=mkdtempSync(path.join(tmpdir(),'p6-lock-test-')),file=path.join(dir,'lock.json'),target=path.join(dir,'sentinel');
+  try{
+    acquireTestLock({scope:'one'},{file});writeFileSync(file,'{"scope":"two"}');
+    assert.throws(()=>releaseTestLock({scope:'one'},{file}));assert.equal(readFileSync(file,'utf8'),'{"scope":"two"}');
+    unlinkSync(file);writeFileSync(target,'unchanged',{mode:0o600});symlinkSync(target,file);
+    assert.throws(()=>acquireTestLock({scope:'one'},{file,resume:true}));assert.throws(()=>releaseTestLock({scope:'one'},{file}));
+    assert.equal(readFileSync(target,'utf8'),'unchanged');
+  }finally{unlinkSync(file);unlinkSync(target);rmdirSync(dir);}
+});
+test('fixture transformation preserves frozen algorithms/assets and does not mutate production manifest',()=>{
+  const source={contentKind:'MAJOR',majorCode:'AI',taskVersionId:'production',versionCode:'1.0.0',title:'任务',assets:[{sha256:'frozen'}],operations:[{engineVersion:'v1'}],review:{checkKeys:['TIMING_45_60']}};
+  const fixture=fixtureManifest(source,{id:'01JF1000000000000000000001'});
+  assert.equal(source.taskVersionId,'production');assert.equal(fixture.versionCode,'9.6.0');assert.match(fixture.title,/^TEST_FIXTURE/);
+  assert.deepEqual(fixture.assets,source.assets);assert.deepEqual(fixture.operations,source.operations);assert.deepEqual(fixture.review,source.review);
+  assert.throws(()=>fixtureManifest({...source,contentKind:'DEMO'},{id:'wrong'}));
+});
+test('secret validation rejects extra provider keys without printing their values',()=>{
+  const values=Object.fromEntries(['MP_DB_PASSWORD','MP_ADMIN_TOKEN_SECRET','MP_CSRF_SECRET','MP_P0_STUDENT_PASSWORD','MP_P0_ADMIN_PASSWORD'].map((key,i)=>[key,String(i+1).repeat(64)]));values.MP_P6_RUN_TAG='0123456789abcdef';
+  assert.equal(validateTestSecrets(values),values);
+  const secret='sentinel-do-not-print';
+  assert.throws(()=>validateTestSecrets({...values,MP_DB_PASSWORD:secret}),error=>!error.message.includes(secret));
+  assert.throws(()=>validateTestSecrets({...values,BAILIAN_API_KEY:secret}),error=>!error.message.includes(secret));
+  assert.throws(()=>validateTestSecrets({...values,MP_CSRF_SECRET:values.MP_ADMIN_TOKEN_SECRET}));
+});

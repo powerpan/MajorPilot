@@ -1,0 +1,17 @@
+import { defineConfig } from '../../student-web/node_modules/vite/dist/node/index.js';
+import vue from '../../student-web/node_modules/@vitejs/plugin-vue/dist/index.mjs';
+import { fileURLToPath } from 'node:url';
+
+// Test-only frontend. The normal student site and its cookies remain on localhost.
+export default defineConfig({
+  root: fileURLToPath(new URL('../../student-web', import.meta.url)),
+  // This server shares source files, not optimized dependency cache, with the normal student site.
+  cacheDir: fileURLToPath(new URL('../../.local/vite-cache/p6-harness', import.meta.url)),
+  plugins: [vue()],
+  // Do not load even VITE_* values from the product's local environment files.
+  envDir: false,
+  server: {
+    host: '127.0.0.1', port: 15176, strictPort: true,
+    proxy: { '/api': { target: 'http://127.0.0.1:18081', changeOrigin: false } },
+  },
+});

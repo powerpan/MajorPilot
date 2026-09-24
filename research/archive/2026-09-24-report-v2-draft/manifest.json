@@ -1,0 +1,421 @@
+{
+  "schemaVersion": "source-archive-v1",
+  "baseCommit": "084d987bc0d0597d87836dfc1c2eed013397e592",
+  "files": [
+    {
+      "path": "backend/ruoyi-majorpilot/pom.xml.txt",
+      "bytes": 2912,
+      "sha256": "309e62c9e7656ba922f559e960af7dc9f2544da264389c51f6fe25835a7055c3"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/integration/ai/ReportConfiguredGateway.java.txt",
+      "bytes": 2265,
+      "sha256": "8014eba74d8de74d38ed08a52ee40fe342e307240339122993bbaa4c61e1fe39"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/integration/ai/ReportGateway.java.txt",
+      "bytes": 2019,
+      "sha256": "abb238c5bd0f5c0e1b6b85b100fb0d9c39560a2da27a187767942f9a51285716"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/integration/ai/ReportHttpGateway.java.txt",
+      "bytes": 38905,
+      "sha256": "fc28a9f53e28bf079b2cecef4ba516a720661b856c5ec95dbad7c5e8df947f96"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/privacy/PersonalExportWriter.java.txt",
+      "bytes": 27432,
+      "sha256": "92c60c12aad3d4a194fcdb78cc49988202fc41e0a32203de808ac3d0fdaed5a4"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/analysis/ReportAnalysis.java.txt",
+      "bytes": 20534,
+      "sha256": "ffad8c0526960e155f0e401379befdff6fbb93f0024ba2840857750e440fe471"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/core/ReportBindingCodec.java.txt",
+      "bytes": 16955,
+      "sha256": "ad1663cda435463befe14945bb5e08dee5e1c900af208981e07759b2e9f7dcd6"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/core/ReportCore.java.txt",
+      "bytes": 33230,
+      "sha256": "44470380c83c285aa171f9cac5c9de564f68e4ad38f62eac0bb00b6297d875f8"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/core/ReportInputException.java.txt",
+      "bytes": 569,
+      "sha256": "054a2026e38c2c867c398133fadc40ce0a14b52c85d001a7ea1d79ae8c24ba9f"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/core/ReportModels.java.txt",
+      "bytes": 9395,
+      "sha256": "dfd6b73b4edb2c27ffb3b9c02d36a4120c829352a59a14215d5c006ba778c6b9"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/core/ReportSchema.java.txt",
+      "bytes": 12385,
+      "sha256": "a42a93407004cf51703616cc006c1518ad2719de1b6ecc104b4a7ff94960d444"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportAiAnalysisContext.java.txt",
+      "bytes": 11908,
+      "sha256": "ad2df7a5a1bb3d455cc457c91a32ebd0efa1df65ec319e8f94e51eb62bf82336"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportAnalysisContext.java.txt",
+      "bytes": 38995,
+      "sha256": "c73a6ba89fac79add0a337041812df1fda7e60cc6965aa71f43e8bbc49d3507c"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportBaActionTargetContext.java.txt",
+      "bytes": 6636,
+      "sha256": "f91d1460568f4885a27e19f42605a704b0d06938687a5702d84c34b3d736d673"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportCoordinator.java.txt",
+      "bytes": 13782,
+      "sha256": "ae8b9552051c509feefc043946d00327ac5343ffa868162bd6c0454b785156dc"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportDsAnalysisContext.java.txt",
+      "bytes": 15401,
+      "sha256": "92639f5049dcff66403c5c211ceea47043e305f6c3a7c347aef8306377ab8d2d"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportJobs.java.txt",
+      "bytes": 29226,
+      "sha256": "913eee969c0ada4d41d7d1f34bab5cdfd1582c7f2f8537394a72f3c0a19d5c09"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportService.java.txt",
+      "bytes": 13664,
+      "sha256": "2053baeea8adda75a067e44cbde2778583ad232815779ef3fac7042e8155fc4b"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/main/java/com/ruoyi/majorpilot/report/ReportStore.java.txt",
+      "bytes": 13480,
+      "sha256": "91792ecce2a4436ccebb4426a3bacbb8a802a4eb8c0b17c15f45681c32ad20dc"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/experience/PersonalExportMySqlTest.java.txt",
+      "bytes": 7793,
+      "sha256": "3bccffe2d6056380cb939a92bf9bbc3523ccd1354f5826e9fad336c119b6aa1e"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/experience/ReportMySqlTest.java.txt",
+      "bytes": 105859,
+      "sha256": "4ce59604b8e81c9d800dad542032a0f624af7a9b4ec496463b17d21bd154d6b7"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportAnalysisPromptContractTest.java.txt",
+      "bytes": 8194,
+      "sha256": "8fadfd9e26c0d978abca3299cb736d73a8f74f2be35796ed270402e3adacfbb5"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportBoundGatewayTest.java.txt",
+      "bytes": 11926,
+      "sha256": "5775bbc3b93cb9bf2c11102e76dea8e6a632de5fd72859c90ba2b17ea9f9f487"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportGatewayTest.java.txt",
+      "bytes": 5647,
+      "sha256": "f3c36c7d4f846533611c3ae0c76d2b7ba94716095df703c7b1bd1a91fe2ff0c3"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportModelSettingsTest.java.txt",
+      "bytes": 3883,
+      "sha256": "4d150b16ff3fcc904fab2611cdbaa6e692efcab069896b3a0057d980ba132b34"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportReasoningGatewayTest.java.txt",
+      "bytes": 24429,
+      "sha256": "6791c7c23f5e3dd7a5ad507172ff25da9156a86059646f0533e8163cfa0e552a"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportReviewGatewayTest.java.txt",
+      "bytes": 7563,
+      "sha256": "a24d03deb031395342d86629635a8c608acb3de4510b98d4c535faa15f08aaef"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/ReportSseTransportTest.java.txt",
+      "bytes": 11987,
+      "sha256": "28235d7b5493ea4b9f5f69fa069436f27fb641cf71a89bf8d12d87fc33f9b01e"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/SyntheticReportFinalCapture.java.txt",
+      "bytes": 5894,
+      "sha256": "f48db8daba0c5da61227235027a5b74a4fb6f5648a6c38a9f231a72cb65c7cda"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/integration/ai/SyntheticReportFinalCaptureTest.java.txt",
+      "bytes": 8476,
+      "sha256": "c2eac193d0f743310652cf02e5ba8b10fb0d91253cd9e4883dac0f2b910c94ed"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/privacy/PersonalExportWriterTest.java.txt",
+      "bytes": 11402,
+      "sha256": "656c26345639cb39d0a55abb04db111f472fc917fc0f76112d840d700e15c88a"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportAnalysisFixtures.java.txt",
+      "bytes": 7491,
+      "sha256": "ed7a935fb44e160b7a3f6bc62e7299646b5870c2185234466bfe8e8c497810c2"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportAnalysisTest.java.txt",
+      "bytes": 16392,
+      "sha256": "bc3307888e781f4225f43508178bf795276ffabb3f40ffa58bc9aa5809a5b61e"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportBindingCodecTest.java.txt",
+      "bytes": 16453,
+      "sha256": "f832678b990f0226da88acac1f17e0d8711377dd4c38bfc14d3dfe5eb5ec48cd"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportBindingFixtures.java.txt",
+      "bytes": 5412,
+      "sha256": "5d6bfac549422e5ad00252729a52ebd6ef75132681aabeabb0cfb4b777b9eb36"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportProviderSchemaTest.java.txt",
+      "bytes": 8666,
+      "sha256": "34c9b08aa5c0bfff9d340f4dc450cc169cd757fa07596d83ade06ebfac167440"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportProviderSourceEnumTest.java.txt",
+      "bytes": 7718,
+      "sha256": "14f86fd5225564851e9534ebbe548f10fd583986e1f8d7a5a8e7c6857e87b90a"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportReviewInputTest.java.txt",
+      "bytes": 7163,
+      "sha256": "c157fb28cdbe383ffe5d9ce6e1061f911eddc62c7b4bd04490e74159dc8cd187"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/core/ReportSchemaDiagnosticsTest.java.txt",
+      "bytes": 3278,
+      "sha256": "ced3eb619e051c926b1b0ac8beb7c6edd0965ce7a5c458b6464cf9ec1d1ef855"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAiAnalysisContextTest.java.txt",
+      "bytes": 10690,
+      "sha256": "d7f8d3cd6a8c390b4f413e346c3f6722bcac1579d41767d2b792bcc4f9a1b111"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisAggregateLineageTest.java.txt",
+      "bytes": 19064,
+      "sha256": "4b9c25c0ddba96e3bab9b778a5b972c67dcb4ef17bc7e4201243f88274ea70bb"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisLiveFixtures.java.txt",
+      "bytes": 14281,
+      "sha256": "5fa87ae11aceb079acf94bd42313c7d22d36ce5bcc5a1ada69a8940b2d0b7220"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisLiveTest.java.txt",
+      "bytes": 8386,
+      "sha256": "0acfb013ffe1ae8c63dcf341aea09f223649310e4c02632e940444a4267739c9"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisProbeSequence.java.txt",
+      "bytes": 2002,
+      "sha256": "1bad929289e88970c961662018a708a4ac948b5134caab8328c19b240eee3839"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisProbeSequenceTest.java.txt",
+      "bytes": 4878,
+      "sha256": "50c20f96c4ae390efad975fdfd513a4709fa87a4068183a069c6ba46e7a85249"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisQualityFixturesTest.java.txt",
+      "bytes": 1694,
+      "sha256": "fb08c2bdbf624441bf8f4afda8b69adeaf3cd9144400269093cb81e3684564d7"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisRubricTest.java.txt",
+      "bytes": 5469,
+      "sha256": "316ebbbcb744528358c585f1d7028adfc2ecca928527fe22c974b0809af3897b"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisV24CompatibilityTest.java.txt",
+      "bytes": 6273,
+      "sha256": "523deca3d0ab25791ab52a197404bc5760e2378bb3679b5a11ec6427ef378d33"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportAnalysisVersionCompatibilityTest.java.txt",
+      "bytes": 7277,
+      "sha256": "a1c8987ddd0fc4e484b4f0a54b7a7a09ea3a1b956a220cec1d51e63e8f249380"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportBaActionTargetContextTest.java.txt",
+      "bytes": 11410,
+      "sha256": "a8ef50563978ce648d0bdb38e6c582cb6a6518dbdafb06dbc645496d7a3ab905"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/com/ruoyi/majorpilot/report/ReportDsAnalysisContextTest.java.txt",
+      "bytes": 11778,
+      "sha256": "b47a7ebc7814ab99a3200ffdf83f6636f481ddcf8653dab3cf787e7e132970d9"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/majorpilot/harness/P6HarnessBoundaryTest.java.txt",
+      "bytes": 16059,
+      "sha256": "1d1af9b7c081f4f765dc6c713a690183839908e3f8b5392808b0d8638365500a"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/majorpilot/harness/P6HarnessGateway.java.txt",
+      "bytes": 9825,
+      "sha256": "0efb2dda35ae217522d0ff241d695c6c488e24cd7c9403424bf2e1158bc1a065"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/majorpilot/harness/P6HarnessReportJobs.java.txt",
+      "bytes": 6459,
+      "sha256": "d627e79fd35d6d20e74f10a1b82e4bb6772d100f7d40c45a6dd65759c2a4c48d"
+    },
+    {
+      "path": "backend/ruoyi-majorpilot/src/test/java/majorpilot/harness/P6HarnessReportJobsTest.java.txt",
+      "bytes": 6590,
+      "sha256": "536e4d11bfff32f7d6def95658103fde3961f03f7268267813156f44c2c6df94"
+    },
+    {
+      "path": "contracts/openapi-p6.json.txt",
+      "bytes": 176173,
+      "sha256": "e2c6008127735dbb9d75c0dff862ea8cc6b68504efbe59ff3f4de8a31c1df12f"
+    },
+    {
+      "path": "contracts/openapi-p7.json.txt",
+      "bytes": 294846,
+      "sha256": "aef8ddb411ec9f7d27d5380f71fe967e135423da4f1681d658472804c44f5154"
+    },
+    {
+      "path": "contracts/schemas/report-analysis-proposal-v2.json.txt",
+      "bytes": 6293,
+      "sha256": "40586fd66a8ee95979d5300f3e79b8e983cb1a5b08f0fefbf3ae064337f445a6"
+    },
+    {
+      "path": "contracts/schemas/report-analysis-wire-proposal-v3.json.txt",
+      "bytes": 3570,
+      "sha256": "44bcda1d40b030b3adac0d0bd74b2554e64a16d2226b0d106f14a00a5fde161d"
+    },
+    {
+      "path": "contracts/schemas/report-v2.json.txt",
+      "bytes": 28838,
+      "sha256": "aca7de9ee7e2f5840ad9a68e001ab32ddf8e94ec33ed6db121583314d191a0ea"
+    },
+    {
+      "path": "contracts/sync-p6.mjs.txt",
+      "bytes": 12302,
+      "sha256": "184ae0cab81fd93e3c372d275f9593fec80059564f487cde54474b5fda95c74a"
+    },
+    {
+      "path": "contracts/tests/report-analysis-contracts.test.mjs.txt",
+      "bytes": 2952,
+      "sha256": "52422d2d99b2967ef6b5bc50d7ce59485fc4cc95ea349486b69b9b0848056219"
+    },
+    {
+      "path": "scripts/fresh-migrations.test.mjs.txt",
+      "bytes": 6367,
+      "sha256": "ec3c203cfed80027c59f1b9a9f072ae123d6fb9639b831283c2e2f833acf53b3"
+    },
+    {
+      "path": "scripts/integration.mjs.txt",
+      "bytes": 2489,
+      "sha256": "b287260760dda3d1b04874d3206f3f5cbfbbc68cf9708d767578700daea22863"
+    },
+    {
+      "path": "scripts/java/FreshMigrationCheck.java.txt",
+      "bytes": 30409,
+      "sha256": "e1e0b6a6983429b356ce21314264a243ca002758ef87dedf995eecc6a592e776"
+    },
+    {
+      "path": "scripts/lib/p6-student-fixture.mjs.txt",
+      "bytes": 23210,
+      "sha256": "7d9033af6ccf38a6dc4077908e3fa5e9a047a44468ce1ee5764e4af0148b3d87"
+    },
+    {
+      "path": "scripts/p6-harness.test.mjs.txt",
+      "bytes": 4991,
+      "sha256": "c9aa9552947ff7c68258d535f64828df9caee2759d766fcf7ec3a48fc639b893"
+    },
+    {
+      "path": "scripts/report-analysis-spike.mjs.txt",
+      "bytes": 5066,
+      "sha256": "06da7ea833bac03e515bcd9fd30646613edfd6a72f4878470bac63fd28afbb80"
+    },
+    {
+      "path": "scripts/report-analysis-spike.test.mjs.txt",
+      "bytes": 6595,
+      "sha256": "68764dd93cc795008724443421d2eda7884e9ee1508adbce68db2d3f376fdc61"
+    },
+    {
+      "path": "scripts/test-fresh-migrations.mjs.txt",
+      "bytes": 7889,
+      "sha256": "8af4fc5ff7eaa0ad5265385808379d2b331951768c30b933de316e238205a294"
+    },
+    {
+      "path": "scripts/test-p6-api.mjs.txt",
+      "bytes": 32264,
+      "sha256": "609cffa24ce6cbcf96b38efa170ab70c6b44a5a43fdb15c6a5dcbccbfa13df0b"
+    },
+    {
+      "path": "scripts/test-p6-restart.mjs.txt",
+      "bytes": 17178,
+      "sha256": "ee27de56693e3be9217cd5bb24436c4196a23086bead492bbd68d5824735c006"
+    },
+    {
+      "path": "scripts/test-unit.txt",
+      "bytes": 2652,
+      "sha256": "61d8be165d86000002aa4f0ef7c76582bd53a641c4b4345217dcc83e244f195c"
+    },
+    {
+      "path": "student-web/src/components/reports/ReportAnalysis.vue.txt",
+      "bytes": 3463,
+      "sha256": "f0454dda92da30d8c8e25f34ba3a3bcd989359d99a97768aed13c691cbb9eaf1"
+    },
+    {
+      "path": "student-web/src/components/reports/ReportBody.vue.txt",
+      "bytes": 2267,
+      "sha256": "b611b3c02f855fbf1b2017284244fe17e8ea248afc44be2cc805a6879d371fd2"
+    },
+    {
+      "path": "student-web/src/lib/report-display.ts.txt",
+      "bytes": 2520,
+      "sha256": "bcacde3ca11c5894619921ab2dc60c59ca57ab71d7bd8d3c86e14be9e8a0ce77"
+    },
+    {
+      "path": "student-web/src/styles/reports.css.txt",
+      "bytes": 16956,
+      "sha256": "9b4585d82218628bd68ee69747f3414a3d06f03075d63df83d79a4c542c3fb87"
+    },
+    {
+      "path": "student-web/src/types/reports.ts.txt",
+      "bytes": 5136,
+      "sha256": "b68a2bed02ffc5971a25a5099687ebb8c604829efd062551a2c8e6c0b3e16fb5"
+    },
+    {
+      "path": "student-web/src/views/ReportReaderView.vue.txt",
+      "bytes": 13655,
+      "sha256": "fe24e7a6e1877a85ca6f9354846c9c8ca83bc23037fb03434453ca3a279ceb42"
+    },
+    {
+      "path": "student-web/test/report-analysis.test.mjs.txt",
+      "bytes": 5441,
+      "sha256": "fa6696e339763687a3934fe9c0e5cf06f02ac72e6a872a54b6498731b8970faa"
+    },
+    {
+      "path": "student-web/test/report-state.test.mjs.txt",
+      "bytes": 10604,
+      "sha256": "bb9e53f9d6824361cc37407a262ff8139cc22b6331fc10b99711ae2d6bfc9886"
+    },
+    {
+      "path": "tests/e2e/p6-vite.config.mjs.txt",
+      "bytes": 863,
+      "sha256": "18b94296e93d7f28321ccc80edabd0c956574e39cfd947d76c34a6b1596d3186"
+    },
+    {
+      "path": "tests/e2e/p6.mjs.txt",
+      "bytes": 35740,
+      "sha256": "9cda793f44074be031f3d0d4f38a8ee2ba34a9885c81c75d94c5af44bb6585ba"
+    }
+  ]
+}

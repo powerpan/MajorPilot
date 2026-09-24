@@ -1,0 +1,24 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.node.*;
+import static com.ruoyi.majorpilot.report.core.ReportAnalysisFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.Test;
+
+class ReportSchemaDiagnosticsTest {
+    private final ReportCore core=new ReportCore(JSON);
+    private ObjectNode valid(){return raw(proposal(core.compile(v2(experience("BUSINESS_ANALYTICS",false),SOUND)),"SUPPORTED"));}
+    private ProposalException reject(ObjectNode value){return assertThrows(ProposalException.class,()->core.parseProposal(value.toString().getBytes(StandardCharsets.UTF_8)));}
+
+    @Test void shortTextReportsExactTrustedPathWithoutEchoingValue(){var value=valid();((ObjectNode)value.at("/analysis/findings/0")).put("improvement","SENSITIVE");var issues=reject(value).issues;assertTrue(issues.stream().anyMatch(i->i.code().equals("SCHEMA_STRING_TOO_SHORT")&&i.path().equals("/analysis/findings/0/improvement")));assertFalse(issues.toString().contains("SENSITIVE"));}
+    @Test void enumTypeMissingPatternAndDuplicateErrorsAreSpecific(){
+        var value=valid();var finding=(ObjectNode)value.at("/analysis/findings/0");finding.put("assessment","SECRET_ENUM");finding.put("reasoning",42);finding.remove("example");finding.put("stepKey","private invalid step");var refs=(ArrayNode)finding.path("evidenceRefs");refs.add(refs.get(0));var issues=reject(value).issues;
+        for(String code:new String[]{"SCHEMA_ENUM_INVALID","SCHEMA_TYPE_INVALID","SCHEMA_REQUIRED","SCHEMA_PATTERN_INVALID","SCHEMA_DUPLICATE_ITEM"})assertTrue(issues.stream().anyMatch(i->i.code().equals(code)),code);
+        assertFalse(issues.toString().contains("SECRET_ENUM"));assertFalse(issues.toString().contains("private invalid step"));assertTrue(issues.stream().allMatch(i->i.path().matches("/[A-Za-z0-9/]*")));
+    }
+    @Test void hostileUnknownKeyOnlyProducesItsKnownParentPath(){var value=valid();((ObjectNode)value.at("/analysis/findings/0")).put("secret/../../prompt:key\n", "DO_NOT_ECHO");var issues=reject(value).issues;assertTrue(issues.stream().anyMatch(i->i.code().equals("SCHEMA_UNKNOWN_FIELD")&&i.path().equals("/analysis/findings/0")));assertFalse(issues.toString().contains("secret"));assertFalse(issues.toString().contains("DO_NOT_ECHO"));}
+    @Test void diagnosticsAreBoundedAndDoNotAcceptPreviouslyRejectedShapes(){var value=valid();var findings=(ArrayNode)value.at("/analysis/findings");var first=findings.get(0).deepCopy();findings.removeAll();for(int i=0;i<30;i++){var item=(ObjectNode)first.deepCopy();item.put("reasoning","x");item.put("example","x");findings.add(item);}assertEquals(20,reject(value).issues.size());assertFalse(new ReportSchema(JSON).proposal(value));assertTrue(new ReportSchema(JSON).proposal(valid()));}
+    @Test void syntaxFailuresNeverExposeTheParserExceptionOrInput(){var failure=assertThrows(ProposalException.class,()->core.parseProposal("{\"SECRET_VALUE\":".getBytes(StandardCharsets.UTF_8)));assertEquals("JSON_SYNTAX_INVALID",failure.issues.getFirst().code());assertEquals("/",failure.issues.getFirst().path());assertFalse(failure.toString().contains("SECRET_VALUE"));}
+}

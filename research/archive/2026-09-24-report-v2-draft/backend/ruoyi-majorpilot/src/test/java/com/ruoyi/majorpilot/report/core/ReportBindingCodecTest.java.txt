@@ -1,0 +1,140 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportBindingFixtures.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+
+class ReportBindingCodecTest {
+    final ReportCore core=new ReportCore(JSON);
+    @Test void hardInputFailuresOnlyAcceptExplicitlyRegisteredCodes(){
+        for(String code:List.of("REPORT_SOURCE_INVALID","REPORT_CATALOG_INVALID","EVIDENCE_RULE_UNSUPPORTED","REPORT_BINDING_VERSION_MIXED","REPORT_BINDING_CAPACITY_INVALID","REPORT_BOUND_QUOTE_INVALID")){
+            var failure=new ReportInputException(code);assertEquals(code,failure.code);assertEquals(code,failure.getMessage());
+        }
+        assertEquals("Unknown report failure",assertThrows(IllegalArgumentException.class,()->new ReportInputException("REPORT_UNKNOWN_UNREGISTERED")).getMessage());
+    }
+    Catalog catalog(){return core.compile(experienceInput(ReportAnalysisFixtures.SOUND));}
+    byte[] bytes(JsonNode value){return value.toString().getBytes(StandardCharsets.UTF_8);}
+    ObjectNode wire(Catalog catalog){return (ObjectNode)core.modelProposal(catalog,proposal(catalog));}
+    JsonNode firstBinding(SafeModelInput input){return input.content().at("/bindingCatalog/findings/0");}
+    String firstKey(SafeModelInput input){return firstBinding(input).path("findingKey").asText();}
+    ReportInput extraAnswers(ReportInput input,int count){
+        var source=input.sources().getFirst();ObjectNode context=source.analysisContext().deepCopy();var step=context.path("steps").get(0);var answers=(ArrayNode)step.path("answers");String evidenceId=answers.get(0).path("evidenceId").asText();var items=new ArrayList<EvidenceValue>();
+        for(var evidence:source.items()){
+            if(!evidence.publicId().equals(evidenceId)){items.add(evidence);continue;}
+            ObjectNode value=evidence.value().deepCopy();for(int n=1;n<=count;n++){String field="extra"+n;((ObjectNode)value.path("answers")).put(field,ReportAnalysisFixtures.SOUND);answers.addObject().put("answerField",field).put("value",ReportAnalysisFixtures.SOUND).put("evidenceId",evidenceId);}
+            items.add(new EvidenceValue(evidence.publicId(),evidence.key(),evidence.type(),value,evidence.summary(),evidence.allowedClaimTypes(),evidence.observedAt()));
+        }
+        var changed=new Source(source.majorCode(),source.studentPublicId(),source.pins(),source.snapshot(),items,source.experienceVersion(),context);return new ReportInput(input.header(),input.versions(),List.of(changed),input.nextRecommendation());
+    }
+
+    @Test void fixedFieldsAndSourcesAreBoundBeforeRequestAndAllRoundTripToOldInternalContract(){
+        var catalog=catalog();var before=JSON.valueToTree(catalog).toString();var input=core.modelInput(catalog);
+        assertEquals(ReportBindingCodec.INPUT_SCHEMA,input.schemaVersion());assertSame(catalog,input.bindingCatalogContext());assertEquals(catalog.catalogSha256(),input.catalogSha256());
+        assertEquals("EXACTLY_ONE_FINDING_PER_ANSWERED_FIELD",input.content().at("/analysisContract/coverage").asText());
+        assertFalse(JSON.valueToTree(input).has("bindingCatalogContext"));assertFalse(input.toString().contains(ReportAnalysisFixtures.SOUND));
+        var projected=core.providerProposalSchema(input);var fixed=projected.at("/properties/analysis/properties/findings");assertEquals("object",fixed.path("type").asText());assertFalse(fixed.path("additionalProperties").asBoolean());
+        assertEquals(input.content().at("/bindingCatalog/findings").size(),fixed.path("required").size());assertEquals(fixed.path("required").size(),fixed.path("properties").size());assertFalse(projected.has("$defs"));assertFalse(projected.toString().contains("uniqueItems"));
+        var proposal=core.parseModelProposal(bytes(wire(catalog)),input);assertEquals("report-analysis-proposal-v2",proposal.schemaVersion());assertTrue(core.validate(catalog,proposal,GenerationMode.AI).valid());
+        assertEquals(input.content().at("/bindingCatalog/findings").size(),proposal.analysis().path("findings").size());
+        assertEquals(before,JSON.valueToTree(catalog).toString());
+    }
+
+    @Test void projectionReplacesOnlyMetadataAndKeepsOriginalSubmittedValues(){
+        var input=core.modelInput(catalog());var context=input.content().at("/sources/0/context");
+        assertFalse(context.at("/steps/0/answers/0").has("evidenceId"));assertTrue(context.at("/steps/0/answers/0/sourceKey").asText().startsWith("E"));
+        assertEquals(ReportAnalysisFixtures.SOUND,context.at("/steps/0/answers/0/value").asText());
+        assertFalse(input.content().at("/sources/0/evidence/0").has("evidenceId"));assertTrue(input.content().at("/sources/0/evidence/0/sourceKey").isTextual());
+        assertEquals(core.hash(input.content()),core.hash(core.modelInput(input.bindingCatalogContext()).content()));
+        ObjectNode changed=input.content().deepCopy();((ObjectNode)changed.path("bindingCatalog")).put("injected","do not trust");
+        assertThrows(ReportInputException.class,()->core.validateModelBinding(new SafeModelInput(input.schemaVersion(),input.catalogSha256(),changed,input.bindingCatalogContext())));
+        assertThrows(ReportInputException.class,()->core.validateModelBinding(new SafeModelInput(input.schemaVersion(),input.catalogSha256(),input.content())));
+        var copy=input.content();((ObjectNode)copy).remove("bindingCatalog");assertTrue(input.content().has("bindingCatalog"));
+    }
+
+    @Test void reviewIsSamePreboundProtocolAndDoesNotLeakLongReferencesOrQuotesIntoDraft(){
+        var catalog=catalog();var proposal=proposal(catalog);var initial=core.modelInput(catalog);var review=core.reviewInput(catalog,proposal);
+        assertEquals(ReportBindingCodec.REVIEW_SCHEMA,review.schemaVersion());assertSame(catalog,review.bindingCatalogContext());assertEquals(initial.content(),review.content().path("originalInput"));
+        var draft=review.content().path("untrustedDraft");assertEquals(ReportBindingCodec.WIRE_SCHEMA,draft.path("schemaVersion").asText());assertTrue(draft.at("/analysis/findings").isObject());
+        assertFalse(draft.toString().contains("answerQuote"));assertFalse(draft.toString().contains("evidenceRefs"));assertFalse(draft.toString().contains("000000000000000000000"));
+        assertEquals(core.providerProposalSchema(initial),core.providerProposalSchema(review));
+        assertEquals(proposal,core.parseModelProposal(bytes(draft),review));assertNotEquals(core.hash(initial.content()),core.hash(review.content()));
+    }
+
+    @Test void frozenSourceIsBoundDirectlyWithoutInventingPatternBasedReferences(){
+        var input=experienceInput(ReportAnalysisFixtures.SOUND);var source=input.sources().getFirst();ObjectNode context=source.analysisContext().deepCopy();var step=context.path("steps").get(0);var answer=(ObjectNode)step.path("answers").get(0);
+        String ref="frozen-response:AI/"+step.path("stepKey").asText()+":reason";answer.remove("evidenceId");answer.put("sourceRef",ref).put("sourceSha256","a".repeat(64));
+        context.withArray("frozenSources").addObject().put("sourceRef",ref).put("sourceType","STEP_RESPONSE").put("stepKey",step.path("stepKey").asText()).put("answerField","reason").put("revision",1).put("sourceSha256","a".repeat(64)).put("value",ReportAnalysisFixtures.SOUND);
+        var changed=new Source(source.majorCode(),source.studentPublicId(),source.pins(),source.snapshot(),source.items(),source.experienceVersion(),context);var catalog=core.compile(new ReportInput(input.header(),input.versions(),List.of(changed),input.nextRecommendation()));
+        var restored=core.parseModelProposal(bytes(wire(catalog)),core.modelInput(catalog));assertTrue(restored.analysis().path("findings").toString().contains(ref));
+        assertFalse(core.modelInput(catalog).content().path("bindingCatalog").toString().contains(ref));
+    }
+
+    @Test void unknownMissingDuplicateKeysWrongSegmentAndOldWireAreRejectedNotRepaired(){
+        var catalog=catalog();var input=core.modelInput(catalog());String key=firstKey(input);
+        for(String mutation:List.of("UNKNOWN","MISSING","SEGMENT","ARRAY","OLD_WIRE","ANCHOR","UNKNOWN_SUPPORT")){
+            ObjectNode value=wire(catalog);ObjectNode findings=(ObjectNode)value.at("/analysis/findings");ObjectNode item=(ObjectNode)findings.path(key);
+            switch(mutation){
+                case "UNKNOWN"->findings.set("F999",item.deepCopy());
+                case "MISSING"->findings.remove(key);
+                case "SEGMENT"->item.put("quoteSegmentKey","S999");
+                case "ARRAY"->((ObjectNode)value.path("analysis")).set("findings",JSON.createArrayNode().add(item));
+                case "OLD_WIRE"->value=ReportAnalysisFixtures.raw(proposal(catalog));
+                case "ANCHOR"->item.putArray("supportKeys").add(firstBinding(input).path("answerSourceKey").asText());
+                default->item.putArray("supportKeys").add("E99999");
+            }
+            final ObjectNode rejected=value;assertThrows(ProposalException.class,()->core.parseModelProposal(bytes(rejected),input),mutation);
+        }
+        String text=wire(catalog).toString(),needle="\""+key+"\":";String duplicated=text.replace(needle,needle+wire(catalog).at("/analysis/findings/"+key)+","+needle);
+        assertThrows(ProposalException.class,()->core.parseModelProposal(duplicated.getBytes(StandardCharsets.UTF_8),input));
+    }
+
+    @Test void additionalSupportDuplicatesAndCrossOwnerAreRejectedWhileValidSupportSurvives(){
+        var catalog=core.compile(comparisonInput());var input=core.modelInput(catalog);String key=firstKey(input),owner=firstBinding(input).path("majorCode").asText(),anchor=firstBinding(input).path("answerSourceKey").asText();String own=null,foreign=null;
+        for(var ref:input.content().at("/bindingCatalog/sources")){String candidate=ref.path("sourceKey").asText();if(!candidate.equals(anchor)&&ref.path("majorCode").asText().equals(owner))own=candidate;if(!ref.path("majorCode").asText().equals(owner))foreign=candidate;}
+        assertNotNull(own);assertNotNull(foreign);ObjectNode good=wire(catalog);((ObjectNode)good.at("/analysis/findings/"+key)).putArray("supportKeys").add(own);
+        assertEquals(2,core.parseModelProposal(bytes(good),input).analysis().path("findings").get(0).path("evidenceRefs").size());
+        ObjectNode duplicated=good.deepCopy();((ArrayNode)duplicated.at("/analysis/findings/"+key+"/supportKeys")).add(own);assertThrows(ProposalException.class,()->core.parseModelProposal(bytes(duplicated),input));
+        ObjectNode crossed=wire(catalog);((ObjectNode)crossed.at("/analysis/findings/"+key)).putArray("supportKeys").add(foreign);assertThrows(ProposalException.class,()->core.parseModelProposal(bytes(crossed),input));
+    }
+
+    @Test void longAnswersAreFullyPreservedAndUnicodeSegmentsRemainContinuousWithoutSplitSurrogates(){
+        String original="甲".repeat(1199)+"😀"+"乙".repeat(1200)+"末";var catalog=core.compile(experienceInput(original));var input=core.modelInput(catalog);var first=firstBinding(input);assertEquals(original,first.path("answerText").asText());
+        var segments=first.path("quoteSegments");assertEquals(3,segments.size());StringBuilder joined=new StringBuilder();for(var segment:segments){String quote=segment.path("quote").asText();assertTrue(quote.codePointCount(0,quote.length())<=1200);assertFalse(Character.isLowSurrogate(quote.charAt(0)));assertFalse(Character.isHighSurrogate(quote.charAt(quote.length()-1)));joined.append(quote);assertFalse(segment.path("isFullAnswer").asBoolean());}assertEquals(original,joined.toString());assertTrue(segments.get(0).path("quote").asText().endsWith("😀"));
+        var value=wire(catalog);((ObjectNode)value.at("/analysis/findings/"+firstKey(input))).put("quoteSegmentKey","S002");var decoded=core.parseModelProposal(bytes(value),input);assertEquals("乙".repeat(1200),decoded.analysis().at("/findings/0/answerQuote").asText());
+        assertEquals(value,core.modelProposal(catalog,decoded));
+    }
+
+    @Test void aliasesAreForbiddenInGeneratedProseButUnchangedOriginalQuotedTextMayContainThem(){
+        var catalog=catalog();var input=core.modelInput(catalog);
+        for(String alias:List.of(firstKey(input),firstBinding(input).path("answerSourceKey").asText(),"S001")){
+            var value=wire(catalog);((ObjectNode)value.path("analysis")).put("summary","本次分析仅针对已保存的原始回答，不能据此判断长期能力；内部来源标记为 "+alias+"，仍应核查具体上下文与限制。");
+            var failure=assertThrows(ProposalException.class,()->core.parseModelProposal(bytes(value),input));assertTrue(failure.issues.stream().anyMatch(i->i.code().equals("ANALYSIS_INTERNAL_REFERENCE_EXPOSED")));
+        }
+        String original="学生原文明确写有 F001、E00001 和 S001，这些文字必须保留，不能因为碰巧与内部别名相同而修改原回答。";var withText=core.compile(experienceInput(original));var decoded=core.parseModelProposal(bytes(wire(withText)),core.modelInput(withText));assertEquals(original,decoded.analysis().at("/findings/0/answerQuote").asText());
+    }
+
+    @Test void v24RequiresEveryFieldButAllOlderRubricsAndV1KeepHistoricalProtocols(){
+        for(String old:List.of("report-assessment-rubric-v2","report-assessment-rubric-v2.1","report-assessment-rubric-v2.2","report-assessment-rubric-v2.3")){
+            var catalog=core.compile(pin(experienceInput(ReportAnalysisFixtures.SOUND),old));var input=core.modelInput(catalog);assertEquals("report-model-input-v2",input.schemaVersion());assertNull(input.bindingCatalogContext());assertEquals("report-model-review-input-v1",core.reviewInput(catalog,proposal(catalog)).schemaVersion());assertEquals("report-analysis-proposal-v2",core.modelProposal(catalog,proposal(catalog)).path("schemaVersion").asText());
+        }
+        var legacy=core.compile(experience("AI",false));var input=core.modelInput(legacy);assertEquals("report-model-input-v1",input.schemaVersion());assertEquals(core.defaultProposal(legacy,true),core.parseModelProposal(bytes(input.content().path("completeValidProposal")),input));
+        var comparison=comparisonInput();var old=pin(comparison,"report-assessment-rubric-v2.3");var mixed=new ReportInput(comparison.header(),comparison.versions(),List.of(comparison.sources().get(0),old.sources().get(1)),comparison.nextRecommendation());assertEquals("REPORT_BINDING_VERSION_MIXED",assertThrows(ReportInputException.class,()->core.compile(mixed)).code);
+    }
+
+    @Test void providerSchemaIsDetachedAndDoesNotWeakenLocalUniqueness(){
+        var catalog=catalog();var input=core.modelInput(catalog);var initial=core.providerProposalSchema(input);var changed=core.providerProposalSchema(input);((ObjectNode)changed.at("/properties/analysis/properties/findings/properties")).remove(firstKey(input));assertEquals(initial,core.providerProposalSchema(input));
+        ObjectNode wire=wire(catalog);var refs=(ArrayNode)wire.at("/analysis/majorAnalyses/0/supportKeys");refs.add(refs.get(0));assertThrows(ProposalException.class,()->core.parseModelProposal(bytes(wire),input));
+    }
+    @Test void allOpenFieldsAreRequiredAndSourcesAboveTheExplicitCapacityFailBeforeAnyModelCall(){
+        var input=extraAnswers(experienceInput(ReportAnalysisFixtures.SOUND),1);var catalog=core.compile(input);ObjectNode analysis=proposal(catalog).analysis().deepCopy();var findings=(ArrayNode)analysis.path("findings");findings.remove(0);var missing=new Proposal("report-analysis-proposal-v2",catalog.reportType(),List.of(),analysis);
+        assertTrue(core.validate(catalog,missing,GenerationMode.AI).issues().stream().anyMatch(i->i.code().equals("ANALYSIS_FIELD_COVERAGE_INVALID")));
+        var old=core.compile(pin(input,"report-assessment-rubric-v2.3"));assertTrue(core.validate(old,missing,GenerationMode.AI).valid(),"Older source contract still needs one finding per answered step, not all fields");
+        assertEquals("REPORT_BINDING_CAPACITY_INVALID",assertThrows(ReportInputException.class,()->core.compile(extraAnswers(experienceInput(ReportAnalysisFixtures.SOUND),60))).code);
+    }
+}

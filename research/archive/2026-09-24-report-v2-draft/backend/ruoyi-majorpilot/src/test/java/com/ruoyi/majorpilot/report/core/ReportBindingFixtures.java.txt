@@ -1,0 +1,38 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.node.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import java.util.*;
+
+/** Synthetic contract fixtures, not evidence that model analysis is substantively correct. */
+public final class ReportBindingFixtures {
+    private ReportBindingFixtures(){}
+    public static ReportInput pin(ReportInput input,String rubric){
+        var sources=new ArrayList<Source>();for(var source:input.sources()){
+            ObjectNode context=source.analysisContext().deepCopy();((ObjectNode)context.path("task")).put("assessmentRubricVersion",rubric);
+            sources.add(new Source(source.majorCode(),source.studentPublicId(),source.pins(),source.snapshot(),source.items(),source.experienceVersion(),context));
+        }return new ReportInput(input.header(),input.versions(),sources,input.nextRecommendation());
+    }
+    public static ReportInput experienceInput(String answer){return pin(ReportAnalysisFixtures.v2(experience("AI",false),answer),ReportBindingCodec.RUBRIC);}
+    public static ReportInput comparisonInput(){return pin(ReportAnalysisFixtures.v2(comparison(2,false),ReportAnalysisFixtures.SOUND),ReportBindingCodec.RUBRIC);}
+    public static Proposal proposal(Catalog catalog){return proposal(catalog,"SUPPORTED");}
+    public static Proposal proposal(Catalog catalog,String assessment){
+        ObjectNode analysis=JSON.createObjectNode().put("summary","本次合成分析只验证来源绑定与合同接线，逐条解释已保存的原回答和固定材料，不判断长期能力，也不声称真实模型已经达到语义质量门槛。");
+        var majors=analysis.putArray("majorAnalyses");var findings=analysis.putArray("findings");var comparison=analysis.putArray("crossMajorAnalysis");var codes=new ArrayList<String>();var firstRefs=new ArrayList<String>();
+        for(var source:catalog.analysisContext().path("sources")){
+            String major=source.path("majorCode").asText();codes.add(major);String first=null;for(var step:source.at("/context/steps")){if(!step.path("answers").isEmpty()){var answer=step.path("answers").get(0);first=answer.path(answer.has("evidenceId")?"evidenceId":"sourceRef").asText();break;}}
+            if(first==null)throw new IllegalArgumentException("Synthetic report source must contain an open answer");firstRefs.add(first);
+            var item=majors.addObject().put("majorCode",major).put("preparation","当前材料只说明本次任务中已保存的解释及使用的支持条件，需要结合题目检查概念与证据，不能直接推断长期准备水平。").put("taskReasoning","逐项区分观察事实、原因假设和待验证行动，保持输入口径一致；本合成输出仅验证绑定合同，不作为模型分析质量已达标的证明。").put("nextPractice","后续可围绕同一题目列出有依据的观察和仍待验证的解释，并说明各自的限制及下一步检查方法。");item.putArray("evidenceRefs").add(first);
+        }
+        var ordered=new TreeMap<String,ObjectNode>();
+        for(var source:catalog.analysisContext().path("sources"))for(var step:source.at("/context/steps"))for(var answer:step.path("answers")){
+            ObjectNode template=JSON.createObjectNode().put("assessment",assessment).put("reasoning","本条合成解释只用于检验当前字段与已冻结原文之间的绑定，实际语义评价仍需结合本题要求、公开材料和可验证结果逐项审读。").put("improvement","将观察、原因假设和下一步行动分开，明确每一项判断使用的证据及仍未消除的限制，避免从一次结果推断稳定能力。").put("example","例如：先说明本次材料实际观察到什么，再列出一个待验证的解释及对应检查方法，不把未经验证的效果当作事实。");String value=answer.path("value").asText();int end=value.offsetByCodePoints(0,Math.min(1200,value.codePointCount(0,value.length())));
+            template.put("majorCode",source.path("majorCode").asText()).put("stepKey",step.path("stepKey").asText()).put("answerField",answer.path("answerField").asText()).put("answerQuote",value.substring(0,end));
+            template.putArray("evidenceRefs").add(answer.path(answer.has("evidenceId")?"evidenceId":"sourceRef").asText());ordered.put(source.path("majorCode").asText()+":"+step.path("stepKey").asText()+":"+answer.path("answerField").asText(),template);
+        }
+        ordered.values().forEach(findings::add);
+        if(catalog.reportType()==ReportType.COMPARISON){var c=comparison.addObject();c.set("majorCodes",JSON.valueToTree(codes));c.put("observation","本次合成比较保留各专业独立的题目及答案来源，不能把不同任务的结果直接排列为专业能力高低或长期适配结论。").put("interpretation","比较只讨论本次回答如何使用材料、区分事实与解释及描述限制，不把提示使用、错误数量或任务难度转换成稳定能力判断。").put("nextExperiment","选择一个共同的推理环节，在各专业自身材料范围内分别说明依据和下一步验证条件，再比较自己的实际体验。");c.set("evidenceRefs",JSON.valueToTree(firstRefs));}
+        return new Proposal("report-analysis-proposal-v2",catalog.reportType(),List.of(),analysis);
+    }
+}

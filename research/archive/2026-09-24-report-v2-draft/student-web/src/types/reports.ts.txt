@@ -1,0 +1,195 @@
+import type { MajorCode, MajorDifference, Reason } from "../types";
+
+export type ClaimType =
+  | "OBSERVED_FACT"
+  | "STUDENT_SELF_REPORT"
+  | "BOUNDED_INTERPRETATION"
+  | "LIMITATION"
+  | "NEXT_STEP";
+export type DimensionKey =
+  | "PROBLEM_INTEREST"
+  | "QUANTITATIVE_COMFORT"
+  | "UNCERTAINTY_HANDLING"
+  | "WORK_FOCUS"
+  | "HELP_AND_ITERATION"
+  | "EXPLANATION_INTEREST"
+  | "CONTINUATION_WILLINGNESS";
+export type SectionKey =
+  | "OVERVIEW"
+  | "WHAT_YOU_DID"
+  | "EXPERIENCE_PREFERENCE"
+  | "CURRENT_PREPARATION"
+  | "TASK_PERFORMANCE"
+  | "WORK_STYLE_CONNECTION"
+  | "EVIDENCE_BOUNDARIES"
+  | "OTHER_MAJOR_DIFFERENCES"
+  | "NEXT_EXPERIENCE"
+  | "SCOPE_AND_SOURCES"
+  | "WORK_COMPLETED"
+  | "SELF_REPORTED_EXPERIENCE"
+  | "COMMON_DIMENSIONS"
+  | "MAJOR_SPECIFIC_EXPERIENCE"
+  | "UNKNOWNS"
+  | "NEXT_VERIFICATION"
+  | "REMAINING_MAJOR";
+export interface ReportClaim {
+  claimType: ClaimType;
+  text: string;
+  confidence: "DIRECT" | "SELF_REPORTED" | "BOUNDED" | "RULE_BASED";
+  basisSummary: string;
+  majorCode: MajorCode | null;
+  dimensionKey: DimensionKey | null;
+}
+export interface ReportSection {
+  sectionKey: SectionKey;
+  title: string;
+  claims: ReportClaim[];
+}
+export interface ReportSource {
+  majorCode: MajorCode;
+  experienceRunId: string;
+  taskVersionId: string;
+  taskVersionCode: string;
+  taskTitle: string;
+  sourceReport: {
+    reportId: string;
+    reportVersionId: string;
+    versionNo: number;
+  } | null;
+}
+export interface ReportNext {
+  state: "RECOMMENDED" | "ALL_COMPLETED";
+  recommendationId: string | null;
+  sourceRunId: string;
+  ruleVersion: "next-recommendation-v1";
+  completedMajorCodes: MajorCode[];
+  primaryMajor: MajorCode | null;
+  alternativeMajors: MajorCode[];
+  reasonCodes: (
+    | "ONLY_REMAINING"
+    | "EXPLICIT_NEXT_STYLE"
+    | "ADJACENT_BASELINE"
+    | "ALL_COMPLETED"
+  )[];
+}
+/** Immutable public body. No internal evidence IDs, HTML, or dynamic navigation state. */
+export type AnswerAssessment = "SUPPORTED" | "PARTIAL" | "NEEDS_REVISION" | "INSUFFICIENT";
+export interface AnswerFinding {
+  majorCode: MajorCode;
+  stepKey: string;
+  stepTitle?: string;
+  answerField: string;
+  answerLabel?: string;
+  answerQuote: string;
+  assessment: AnswerAssessment;
+  reasoning: string;
+  improvement: string;
+  example: string;
+}
+export interface AnswerAnalysis {
+  status: "COMPLETE" | "UNAVAILABLE";
+  summary: string;
+  majorAnalyses: {
+    majorCode: MajorCode;
+    preparation: string;
+    taskReasoning: string;
+    nextPractice: string;
+  }[];
+  findings: AnswerFinding[];
+  crossMajorAnalysis: {
+    majorCodes: MajorCode[];
+    observation: string;
+    interpretation: string;
+    nextExperiment: string;
+  }[];
+}
+export interface Report {
+  schemaVersion: "report-v1" | "report-v2";
+  reportId: string;
+  reportVersionId: string;
+  versionNo: number;
+  reportType: "EXPERIENCE" | "COMPARISON";
+  majorCode: MajorCode | null;
+  generatedAt: string;
+  generationMode: "AI" | "DETERMINISTIC_FALLBACK";
+  sections: ReportSection[];
+  limitations: string[];
+  sources: ReportSource[];
+  nextRecommendation: ReportNext;
+  analysis?: AnswerAnalysis;
+}
+export interface ReportGeneration {
+  status: string;
+  phase: string;
+  retryable: boolean;
+  safeCode: string | null;
+}
+export interface ReportStatus {
+  reportId: string;
+  status: string;
+  currentVersionId: string | null;
+  generation: ReportGeneration | null;
+  revision: number;
+}
+export interface ReportSummary extends ReportStatus {
+  reportType: "EXPERIENCE" | "COMPARISON";
+  majorCode: MajorCode | null;
+  versionNo: number | null;
+  readyAt: string | null;
+  firstReadyAt: string | null;
+}
+export interface ReportPage {
+  items: ReportSummary[];
+  nextCursor: string | null;
+}
+export interface ComparisonWaiting {
+  state: "WAITING";
+  reason:
+    | "NEED_TWO_MAJORS"
+    | "WAITING_SOURCE_REPORTS"
+    | "SOURCE_REPORT_FAILED"
+    | "COMPARISON_GENERATING"
+    | "COMPARISON_FAILED";
+  majors: { majorCode: MajorCode; status: string }[];
+}
+export type ComparisonResponse =
+  | ComparisonWaiting
+  | { state: "READY"; report: Report; generation: ReportGeneration | null };
+/** INITIAL deliberately remains its original shape, with majorDifferences and no discriminator. */
+export interface NextRecommendation {
+  recommendationType: "NEXT";
+  recommendationId: string;
+  sourceRunId: string;
+  decisionProfileId: string;
+  ruleVersion: string;
+  explanationVersion: string;
+  completedMajorCodes: MajorCode[];
+  primaryMajor: MajorCode;
+  alternativeMajors: MajorCode[];
+  reasons: Pick<Reason, "code" | "reasonType" | "text">[];
+  differences: MajorDifference[];
+  generatedAt: string;
+}
+export type NextAction =
+  | "TRY_ANOTHER"
+  | "LEARN_CURRENT"
+  | "PAUSE_DECISION"
+  | "OTHER"
+  | "DECLINED";
+export interface ReportFeedback {
+  feedbackType: "REPORT";
+  contextType: "REPORT_VERSION";
+  contextPublicId: string;
+  comment?: string;
+  surveyVersion?: "report-value-v1";
+  answers?: {
+    insightResponse?: number;
+    clarityChange?: number;
+    nextAction?: NextAction;
+  };
+  diagnosticCode?:
+    | "REPORT_GENERATION_FAILED"
+    | "REPORT_VERSION_CHANGED"
+    | "NETWORK_ERROR"
+    | "OFFLINE";
+}

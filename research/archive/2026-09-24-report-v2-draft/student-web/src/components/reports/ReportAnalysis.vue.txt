@@ -1,0 +1,47 @@
+<script setup lang="ts">
+import type { AnswerAnalysis, AnswerAssessment } from "../../types/reports";
+import { major } from "../../data/majors";
+defineProps<{ analysis: AnswerAnalysis; printing?: boolean }>();
+const assessmentLabels: Record<AnswerAssessment, string> = {
+  SUPPORTED: "有依据的判断",
+  PARTIAL: "思路有基础，仍需补充",
+  NEEDS_REVISION: "这里需要修正",
+  INSUFFICIENT: "还不足以判断",
+};
+</script>
+<template>
+  <section id="section-ANSWER_ANALYSIS" class="report-section report-answer-analysis" tabindex="-1" aria-labelledby="title-ANSWER_ANALYSIS">
+    <h2 id="title-ANSWER_ANALYSIS" class="serif"><span class="report-section-number">01</span>你的作答分析</h2>
+    <template v-if="analysis.status === 'COMPLETE'">
+      <p class="analysis-summary">{{ analysis.summary }}</p>
+      <p class="analysis-scope">以下是 AI 对本次具体作答的解释，可能有不准确之处。它不等于对你长期能力或专业适合度的判断。</p>
+      <section v-for="item in analysis.majorAnalyses" :key="item.majorCode" class="analysis-major">
+        <h3 v-if="analysis.majorAnalyses.length > 1">{{ major(item.majorCode).name }}</h3>
+        <dl class="analysis-overview">
+          <div><dt>当前准备</dt><dd>{{ item.preparation }}</dd></div>
+          <div><dt>这次的推理</dt><dd>{{ item.taskReasoning }}</dd></div>
+          <div><dt>下一次练习</dt><dd>{{ item.nextPractice }}</dd></div>
+        </dl>
+      </section>
+      <h3 class="analysis-findings-title">回到你的具体回答</h3>
+      <article v-for="(finding, index) in analysis.findings" :key="`${finding.majorCode}-${finding.stepKey}-${finding.answerField}-${index}`" class="analysis-finding" :data-assessment="finding.assessment">
+        <header class="analysis-finding-header">
+          <h4><span class="analysis-finding-number serif">{{ String(index + 1).padStart(2, '0') }}</span>{{ finding.stepTitle || finding.answerLabel || '本次作答' }}</h4>
+          <p class="analysis-assessment">{{ assessmentLabels[finding.assessment] }}</p>
+        </header>
+        <p v-if="analysis.majorAnalyses.length > 1" class="analysis-attribution">{{ major(finding.majorCode).name }}</p>
+        <blockquote class="analysis-answer"><span>你的原话（原文摘录）<template v-if="finding.answerLabel"> · {{ finding.answerLabel }}</template></span><p>{{ finding.answerQuote }}</p></blockquote>
+        <p class="analysis-reasoning">{{ finding.reasoning }}</p>
+        <div class="analysis-improvement"><strong>可以怎样改进</strong><p>{{ finding.improvement }}</p></div>
+        <div v-if="printing" class="analysis-example"><strong>一个改写示例</strong><p>{{ finding.example }}</p></div>
+        <details v-else class="analysis-example"><summary>看一个改写示例</summary><p>{{ finding.example }}</p></details>
+      </article>
+      <section v-for="(item, index) in analysis.crossMajorAnalysis" :key="index" class="analysis-cross-major">
+        <h3>{{ item.majorCodes.map(code => major(code).name).join(' / ') }}</h3>
+        <p>{{ item.observation }}</p><p>{{ item.interpretation }}</p>
+        <p><strong>下一步验证：</strong>{{ item.nextExperiment }}</p>
+      </section>
+    </template>
+    <p v-else class="report-status-note" role="status">本次深入作答分析尚未完成。下方仅提供已有事实与自述记录，不能据此判断你的答案是否正确。</p>
+  </section>
+</template>

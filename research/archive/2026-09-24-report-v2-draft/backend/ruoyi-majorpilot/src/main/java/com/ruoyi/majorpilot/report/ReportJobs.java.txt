@@ -1,0 +1,170 @@
+package com.ruoyi.majorpilot.report;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.ruoyi.majorpilot.integration.ai.ReportGateway;
+import com.ruoyi.majorpilot.integration.ai.ReportModelSettings;
+import com.ruoyi.majorpilot.report.core.*;
+import com.ruoyi.majorpilot.report.core.ReportModels.*;
+import com.ruoyi.majorpilot.shared.*;
+import com.ruoyi.majorpilot.acceptance.ProductEligibility;
+import jakarta.annotation.PreDestroy;
+import java.sql.Timestamp;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import static com.ruoyi.majorpilot.report.ReportStore.*;
+
+/** A MySQL state machine; executor threads are disposable, never the source of durable work. */
+@Service @Profile("local")
+public class ReportJobs {
+    public record Lease(long job,long student,long report,long version,long leaseVersion,String worker,String type) {}
+    record Reserved(String invocation,ReportGateway.Stage stage,long budget,String inputSha,String inputSchema,List<String> fields) {}
+    private final ReportStore store;private final ReportCore core;private final ReportCoordinator coordinator;private final ReportGateway gateway;
+    private final String worker="report-"+UUID.randomUUID();private final AtomicBoolean busy=new AtomicBoolean();
+    private final ExecutorService executor=Executors.newSingleThreadExecutor(r->{var t=new Thread(r,"majorpilot-report-worker");t.setDaemon(true);return t;});
+    private final ScheduledExecutorService heartbeat=Executors.newSingleThreadScheduledExecutor(r->{var t=new Thread(r,"majorpilot-report-heartbeat");t.setDaemon(true);return t;});
+    public ReportJobs(ReportStore store,ReportCore core,ReportCoordinator coordinator,ReportGateway gateway){this.store=store;this.core=core;this.coordinator=coordinator;this.gateway=gateway;}
+    @PreDestroy public void stop(){executor.shutdownNow();heartbeat.shutdownNow();}
+    @Scheduled(fixedDelay=5000) public void tick(){if(!busy.compareAndSet(false,true))return;executor.execute(()->{try{var lease=claim(worker);if(lease!=null)process(lease);}finally{busy.set(false);}});}
+    public Lease claim(String workerId){
+        var candidates=store.db().queryForList("SELECT id,owner_student_id FROM mp_background_job WHERE job_type IN ('REPORT_GENERATE','COMPARISON_GENERATE') AND target_type='REPORT_VERSION' AND ((status IN ('PENDING','RETRY_WAIT') AND available_at<=UTC_TIMESTAMP(3)) OR (status='RUNNING' AND lease_until<=UTC_TIMESTAMP(3))) ORDER BY available_at,id LIMIT 20");
+        for(var c:candidates){Lease lease=store.tx().execute(tx->{var a=store.db().queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",n(c,"owner_student_id"));if(a.isEmpty())return null;var jobs=store.db().queryForList("SELECT * FROM mp_background_job WHERE id=? AND job_type IN ('REPORT_GENERATE','COMPARISON_GENERATE') AND target_type='REPORT_VERSION' AND ((status IN ('PENDING','RETRY_WAIT') AND available_at<=UTC_TIMESTAMP(3)) OR (status='RUNNING' AND lease_until<=UTC_TIMESTAMP(3))) FOR UPDATE SKIP LOCKED",n(c,"id"));if(jobs.isEmpty())return null;var j=jobs.getFirst();long id=n(j,"id");String account=s(a.getFirst(),"status");
+            if(Set.of("DELETION_PENDING","DELETED").contains(account)){store.db().update("UPDATE mp_background_job SET status='CANCELLED',last_error_code='OWNER_UNAVAILABLE',lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=?",id);return null;}
+            if(!account.equals("ACTIVE")){store.db().update("UPDATE mp_background_job SET status='RETRY_WAIT',last_error_code='OWNER_LOCKED',lease_until=NULL,available_at=UTC_TIMESTAMP(3)+INTERVAL 30 SECOND WHERE id=?",id);return null;}
+            var v=store.version(n(j,"target_id"));var r=store.report(n(v,"report_id"));if(n(r,"student_id")!=n(j,"owner_student_id")||!Objects.equals(nullable(r,"generation_target_version_id"),n(v,"id"))||!s(v,"status").equals("GENERATING")){store.db().update("UPDATE mp_background_job SET status='CANCELLED',last_error_code='REPORT_TARGET_STALE',lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=?",id);return null;}
+            String expectedType=s(r,"report_type").equals("COMPARISON")?"COMPARISON_GENERATE":"REPORT_GENERATE",expectedKey=(expectedType.equals("COMPARISON_GENERATE")?"comparison:":"report:")+s(v,"public_id");var checkpoint=store.node(j.get("checkpoint_json"));if(!expectedType.equals(s(j,"job_type"))||!expectedKey.equals(s(j,"business_key"))||!Objects.equals(nullable(j,"target_version"),n(v,"version_no"))||!s(v,"public_id").equals(checkpoint.path("reportVersionId").asText())||!Objects.equals(s(v,"source_manifest_sha256"),checkpoint.path("sourceManifestSha256").asText())){terminal(r,v,id,"REPORT_SOURCE_INVALID");return null;}
+            if(n(j,"attempt_count")>=3){terminal(r,v,id,"REPORT_RETRY_EXHAUSTED");return null;}
+            if(Set.of("INITIAL_REQUESTED","REPAIR_REQUESTED","REVIEW_REQUESTED").contains(s(v,"generation_phase"))){store.db().update("UPDATE mp_ai_call SET status='UNKNOWN',error_code='PROCESS_INTERRUPTED' WHERE report_version_id=? AND status='IN_PROGRESS'",n(v,"id"));store.db().update("UPDATE mp_report_version SET generation_phase='FALLBACK_PENDING' WHERE id=?",n(v,"id"));}
+            long generation=n(j,"lease_version")+1;store.db().update("UPDATE mp_background_job SET status='RUNNING',attempt_count=attempt_count+1,lease_version=?,worker_id=?,lease_until=UTC_TIMESTAMP(3)+INTERVAL 60 SECOND,started_at=COALESCE(started_at,UTC_TIMESTAMP(3)) WHERE id=?",generation,workerId,id);return new Lease(id,n(r,"student_id"),n(r,"id"),n(v,"id"),generation,workerId,s(j,"job_type"));
+        });if(lease!=null)return lease;}return null;
+    }
+    private boolean fence(Lease lease){
+        var a=store.db().queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",lease.student);if(a.isEmpty()||!s(a.getFirst(),"status").equals("ACTIVE"))return false;
+        var r=store.db().queryForMap("SELECT generation_target_version_id FROM mp_report WHERE id=? AND student_id=? FOR UPDATE",lease.report,lease.student);if(!Objects.equals(nullable(r,"generation_target_version_id"),lease.version))return false;
+        var v=store.db().queryForList("SELECT id FROM mp_report_version WHERE id=? AND report_id=? AND status='GENERATING' FOR UPDATE",lease.version,lease.report);if(v.isEmpty())return false;
+        return !store.db().queryForList("SELECT id FROM mp_background_job WHERE id=? AND owner_student_id=? AND target_type='REPORT_VERSION' AND target_id=? AND job_type=? AND status='RUNNING' AND worker_id=? AND lease_version=? AND lease_until>UTC_TIMESTAMP(3) FOR UPDATE",lease.job,lease.student,lease.version,lease.type,lease.worker,lease.leaseVersion).isEmpty();
+    }
+    public boolean heartbeat(Lease lease){return Boolean.TRUE.equals(store.tx().execute(tx->{if(!fence(lease))return false;store.db().update("UPDATE mp_background_job SET lease_until=UTC_TIMESTAMP(3)+INTERVAL 60 SECOND WHERE id=?",lease.job);return true;}));}
+    public void process(Lease lease){
+        var alive=new AtomicBoolean(true);var pulse=heartbeat.scheduleAtFixedRate(()->{try{if(!heartbeat(lease))alive.set(false);}catch(RuntimeException lost){alive.set(false);}},20,20,TimeUnit.SECONDS);
+        try{
+            if(!heartbeat(lease))return;var version=store.version(lease.version);store.validateRequest(version);var input=store.input(version);store.verifyInput(input,true);var catalog=core.compile(input);ReportStore.require(catalog.catalogSha256().equals(s(version,"claim_catalog_sha256")));
+            Proposal proposal=null;GenerationMode mode=GenerationMode.DETERMINISTIC_FALLBACK;String reviewedInvocation=null;boolean reviewRequired=store.reviewRequired(version);
+            if(s(version,"generation_phase").equals("VALIDATED")){var saved=store.node(version.get("validation_result_json"));
+                // The durable internal record is not the provider wire schema (v2 fallback has no analysis).
+                // Rendering below revalidates its contract, frozen sources, catalog and stored output hash.
+                try{proposal=store.mapper().treeToValue(saved.path("proposal"),Proposal.class);}catch(Exception invalid){throw new ApiException(409,"REPORT_SOURCE_INVALID");}
+                mode=GenerationMode.valueOf(s(version,"generation_mode"));requireReviewed(version,catalog,proposal,mode);}
+            else if(!s(version,"generation_phase").equals("FALLBACK_PENDING")&&gateway.available()){
+                Proposal draft=null;
+                if(s(version,"generation_phase").equals("DRAFT_READY"))draft=readDraft(version,catalog);
+                else{
+                    var safe=core.modelInput(catalog);var stage=ReportGateway.Stage.INITIAL;List<Violation> issues=List.of();
+                    while(alive.get()){
+                        Reserved reservation=reserve(lease,stage,safe);if(reservation==null)break;
+                        ReportGateway.Outcome outcome=gateway.attempt(new ReportGateway.Attempt(reservation.invocation,stage,safe,issues,reservation.budget));
+                        if(!recordAttempt(lease,reservation,outcome)||!alive.get())return;
+                        if(outcome.status()==ReportGateway.Status.PROPOSAL_RECEIVED){var validation=core.validate(catalog,outcome.proposal(),GenerationMode.AI);if(validation.valid()){draft=outcome.proposal();break;}issues=validation.issues();}
+                        else if(outcome.status()==ReportGateway.Status.INVALID_OUTPUT)issues=outcome.violations();
+                        else{if(!reviewRequired&&stage==ReportGateway.Stage.INITIAL&&Set.of("TIMEOUT","RATE_LIMITED","UPSTREAM_TIMEOUT","UPSTREAM_RATE_LIMITED","AI_TIMEOUT","AI_RATE_LIMITED").contains(outcome.safeErrorCode()==null?"":outcome.safeErrorCode())&&n(store.version(lease.version),"http_attempt_count")<2)continue;break;}
+                        if(stage==ReportGateway.Stage.REPAIR)break;stage=ReportGateway.Stage.REPAIR;
+                    }
+                    if(draft!=null&&reviewRequired&&!saveDraft(lease,catalog,draft))return;
+                }
+                if(draft!=null){
+                    if(!reviewRequired){proposal=draft;mode=GenerationMode.AI;}
+                    else if(alive.get()){
+                        var reviewInput=core.reviewInput(catalog,draft);var reservation=reserve(lease,ReportGateway.Stage.REVIEW,reviewInput);
+                        if(reservation!=null){
+                            var outcome=gateway.attempt(new ReportGateway.Attempt(reservation.invocation,ReportGateway.Stage.REVIEW,reviewInput,List.of(),reservation.budget));
+                            if(!recordAttempt(lease,reservation,outcome)||!alive.get())return;
+                            if(outcome.status()==ReportGateway.Status.PROPOSAL_RECEIVED&&core.validate(catalog,outcome.proposal(),GenerationMode.AI).valid()){proposal=outcome.proposal();mode=GenerationMode.AI;reviewedInvocation=reservation.invocation;}
+                        }
+                    }
+                }
+            }
+            if(!alive.get())return;
+            // Includes a fallback checkpoint saved before a process restart; it is never a successful enhancement.
+            if(reviewRequired&&(proposal==null||mode==GenerationMode.DETERMINISTIC_FALLBACK)&&store.report(lease.report).get("current_version_id")!=null){fail(lease,"REPORT_ANALYSIS_UNAVAILABLE",true);return;}
+            if(proposal==null){
+                if(!phase(lease,"FALLBACK_PENDING"))return;proposal=core.defaultProposal(catalog,false);mode=GenerationMode.DETERMINISTIC_FALLBACK;
+            }
+            var output=core.render(input,catalog,proposal,mode);if(!saveValidated(lease,input,catalog,proposal,output,mode,reviewedInvocation))return;publish(lease,input,catalog,proposal,mode);
+        }catch(ReportInputException failure){fail(lease,failure.code,true);}catch(ApiException failure){fail(lease,failure.code,Set.of("REPORT_SOURCE_INVALID","REPORT_CATALOG_INVALID","EVIDENCE_RULE_UNSUPPORTED","COMPARISON_SOURCE_STALE","REPORT_ANALYSIS_UNAVAILABLE","REPORT_MODEL_IDENTITY_MISMATCH").contains(failure.code));}
+        catch(RuntimeException failure){fail(lease,"REPORT_INFRASTRUCTURE_FAILURE",false);}finally{pulse.cancel(false);}
+    }
+    private Reserved reserve(Lease lease,ReportGateway.Stage stage,SafeModelInput input){return store.tx().execute(tx->{
+        if(!fence(lease))return null;var v=store.version(lease.version);store.validateRequest(v);var pinned=store.input(v);store.verifyInput(pinned,true);boolean reviewRequired=store.reviewRequired(v);String phase=s(v,"generation_phase");
+        if(stage==ReportGateway.Stage.REVIEW){
+            ReportStore.require(reviewRequired&&phase.equals("DRAFT_READY")&&v.get("review_invocation_id")==null);
+            var catalog=core.compile(pinned);var expected=core.reviewInput(catalog,readDraft(v,catalog));
+            ReportStore.require(expected.schemaVersion().equals(input.schemaVersion())&&expected.catalogSha256().equals(input.catalogSha256())&&store.hash(expected.content()).equals(store.hash(input.content())));
+            // A restarted process may have a different configuration. Fail before reserving paid work.
+            requireSameIdentity(draftIdentity(v,catalog),gateway.identity());
+        }else if(stage==ReportGateway.Stage.REPAIR){ReportStore.require(phase.equals("INITIAL_REQUESTED"));}
+        else{ReportStore.require(phase.equals("PREPARED")||!reviewRequired&&phase.equals("INITIAL_REQUESTED"));}
+        Instant now=Instant.now();Instant deadline=time(v,"external_deadline_at");if(deadline==null){deadline=now.plusMillis(pinned.versions().equals(VersionPins.v2())?ReportModelSettings.MAX_TOTAL_BUDGET_MS:45_000);store.db().update("UPDATE mp_report_version SET external_started_at=?,external_deadline_at=? WHERE id=?",Timestamp.from(now),Timestamp.from(deadline),lease.version);}long left=Duration.between(now,deadline).toMillis();if(left<=0||n(v,"http_attempt_count")>=3||stage==ReportGateway.Stage.REPAIR&&n(v,"retry_no")>=1)return null;
+        String invocation=PublicIds.next(),inputSha=store.hash(input.content());String nextPhase=switch(stage){case INITIAL->"INITIAL_REQUESTED";case REPAIR->"REPAIR_REQUESTED";case REVIEW->"REVIEW_REQUESTED";};
+        store.db().update("UPDATE mp_report_version SET generation_phase=?,retry_no=retry_no+?,http_attempt_count=http_attempt_count+1 WHERE id=?",nextPhase,stage==ReportGateway.Stage.REPAIR?1:0,lease.version);
+        if(stage==ReportGateway.Stage.REVIEW)store.db().update("UPDATE mp_report_version SET review_invocation_id=?,review_input_sha256=?,review_source_manifest_sha256=?,review_catalog_sha256=? WHERE id=?",invocation,inputSha,s(v,"source_manifest_sha256"),s(v,"claim_catalog_sha256"),lease.version);
+        var fields=new ArrayList<String>();input.content().fieldNames().forEachRemaining(fields::add);Collections.sort(fields);
+        var r=store.report(lease.report);store.db().update("INSERT INTO mp_ai_call(public_id,student_id,experience_run_id,call_kind,provider,prompt_version,input_schema_version,input_sha256,input_field_keys_json,status,duration_ms,http_attempts,repair_attempts,report_version_id,invocation_id,generation_stage) VALUES(?,?,?,?,?,?,?,?,?,'IN_PROGRESS',NULL,NULL,?,?,?,?)",PublicIds.next(),lease.student,nullable(r,"experience_run_id"),s(r,"report_type").equals("EXPERIENCE")?"EXPERIENCE_REPORT":"COMPARISON_REPORT","PENDING",stage==ReportGateway.Stage.REVIEW?ReportStore.REVIEW_POLICY:pinned.versions().promptVersion(),input.schemaVersion(),inputSha,store.json(fields),stage==ReportGateway.Stage.REPAIR?1:0,lease.version,invocation,stage.name());return new Reserved(invocation,stage,left,inputSha,input.schemaVersion(),List.copyOf(fields));
+    });}
+    private boolean recordAttempt(Lease lease,Reserved request,ReportGateway.Outcome output){return Boolean.TRUE.equals(store.tx().execute(tx->{
+        if(!fence(lease))return false;var t=output.telemetry();if(t==null||t.httpAttempts()!=1||!request.inputSchema.equals(t.inputSchemaVersion())||!request.inputSha.equals(t.inputSha256())||!new TreeSet<>(request.fields).equals(new TreeSet<>(t.inputFieldKeys())))throw new ApiException(409,"REPORT_SOURCE_INVALID");
+        int changed=store.db().update("UPDATE mp_ai_call SET provider=?,model=?,status=?,duration_ms=?,http_attempts=1,input_tokens=?,output_tokens=?,estimated_cost=?,error_code=?,thinking_enabled=?,reasoning_tokens=? WHERE invocation_id=? AND report_version_id=? AND generation_stage=? AND status='IN_PROGRESS'",t.provider(),t.model(),output.status()==ReportGateway.Status.PROPOSAL_RECEIVED?"SUCCEEDED":"FAILED",Math.max(0,t.durationMs()),t.inputTokens(),t.outputTokens(),t.estimatedCost(),output.safeErrorCode(),t.thinkingEnabled(),t.reasoningTokens(),request.invocation,lease.version,request.stage.name());ReportStore.require(changed==1);
+        if(request.stage!=ReportGateway.Stage.REVIEW)store.db().update("UPDATE mp_report_version SET model=? WHERE id=?",t.model(),lease.version);return true;
+    }));}
+    protected boolean saveDraft(Lease lease,Catalog catalog,Proposal draft){return Boolean.TRUE.equals(store.tx().execute(tx->{
+        if(!fence(lease))return false;var v=store.version(lease.version);store.validateRequest(v);store.verifyInput(store.input(v),true);ReportStore.require(store.reviewRequired(v)&&Set.of("INITIAL_REQUESTED","REPAIR_REQUESTED").contains(s(v,"generation_phase"))&&v.get("draft_proposal_json")==null&&catalog.catalogSha256().equals(s(v,"claim_catalog_sha256")));
+        String sha=core.proposalSha256(catalog,draft);store.db().update("UPDATE mp_report_version SET generation_phase='DRAFT_READY',draft_proposal_json=?,draft_proposal_sha256=? WHERE id=?",store.json(draft),sha,lease.version);return true;
+    }));}
+    private Proposal readDraft(Map<String,Object> v,Catalog catalog){
+        ReportStore.require(store.reviewRequired(v)&&v.get("draft_proposal_json")!=null&&catalog.catalogSha256().equals(s(v,"claim_catalog_sha256")));
+        try{var draft=store.mapper().treeToValue(store.node(v.get("draft_proposal_json")),Proposal.class);ReportStore.require(core.proposalSha256(catalog,draft).equals(s(v,"draft_proposal_sha256")));return draft;}
+        catch(ApiException e){throw e;}catch(RuntimeException|com.fasterxml.jackson.core.JsonProcessingException invalid){throw new ApiException(409,"REPORT_SOURCE_INVALID");}
+    }
+    private void requireReviewed(Map<String,Object> v,Catalog catalog,Proposal proposal,GenerationMode mode){
+        if(!store.reviewRequired(v)||mode!=GenerationMode.AI)return;
+        ReportStore.require(core.proposalSha256(catalog,proposal).equals(s(v,"reviewed_proposal_sha256"))&&Objects.equals(s(v,"source_manifest_sha256"),s(v,"review_source_manifest_sha256"))&&catalog.catalogSha256().equals(s(v,"review_catalog_sha256")));
+        var reviewInput=core.reviewInput(catalog,readDraft(v,catalog));String inputSha=store.hash(reviewInput.content());ReportStore.require(inputSha.equals(s(v,"review_input_sha256")));
+        var calls=store.db().queryForList("SELECT provider,model FROM mp_ai_call WHERE report_version_id=? AND invocation_id=? AND generation_stage='REVIEW' AND status='SUCCEEDED' AND http_attempts=1 AND prompt_version=? AND input_schema_version=? AND input_sha256=?",n(v,"id"),s(v,"review_invocation_id"),ReportStore.REVIEW_POLICY,reviewInput.schemaVersion(),inputSha);ReportStore.require(calls.size()==1);
+        // Recovery of VALIDATED is independent of current routing, but its two recorded calls must agree.
+        requireSameIdentity(draftIdentity(v,catalog),new ReportGateway.Identity(s(calls.getFirst(),"provider"),s(calls.getFirst(),"model")));
+    }
+    private ReportGateway.Identity draftIdentity(Map<String,Object> v,Catalog catalog){
+        var initial=core.modelInput(catalog);String stage=n(v,"retry_no")==0?"INITIAL":"REPAIR";
+        var calls=store.db().queryForList("SELECT provider,model FROM mp_ai_call WHERE report_version_id=? AND generation_stage=? AND status='SUCCEEDED' AND http_attempts=1 AND prompt_version=? AND input_schema_version=? AND input_sha256=?",n(v,"id"),stage,store.pins(v).promptVersion(),initial.schemaVersion(),store.hash(initial.content()));ReportStore.require(calls.size()==1);
+        var identity=new ReportGateway.Identity(s(calls.getFirst(),"provider"),s(calls.getFirst(),"model"));
+        if(!identity.known()||!Objects.equals(identity.model(),s(v,"model")))throw new ApiException(409,"REPORT_MODEL_IDENTITY_MISMATCH");return identity;
+    }
+    private void requireSameIdentity(ReportGateway.Identity expected,ReportGateway.Identity actual){if(expected==null||!expected.known()||actual==null||!actual.known()||!expected.equals(actual))throw new ApiException(409,"REPORT_MODEL_IDENTITY_MISMATCH");}
+    private boolean phase(Lease lease,String phase){return Boolean.TRUE.equals(store.tx().execute(tx->{if(!fence(lease))return false;store.db().update("UPDATE mp_report_version SET generation_phase=? WHERE id=?",phase,lease.version);return true;}));}
+    private boolean saveValidated(Lease lease,ReportInput input,Catalog catalog,Proposal proposal,ValidatedReport output,GenerationMode mode,String reviewedInvocation){return Boolean.TRUE.equals(store.tx().execute(tx->{
+        if(!fence(lease))return false;var v=store.version(lease.version);store.validateRequest(v);store.verifyInput(input,true);var fresh=core.render(input,catalog,proposal,mode);ReportStore.require(fresh.bodySha256().equals(output.bodySha256()));
+        if(reviewedInvocation!=null){ReportStore.require(mode==GenerationMode.AI&&store.reviewRequired(v)&&s(v,"generation_phase").equals("REVIEW_REQUESTED")&&reviewedInvocation.equals(s(v,"review_invocation_id"))&&v.get("reviewed_proposal_sha256")==null);store.db().update("UPDATE mp_report_version SET reviewed_proposal_sha256=? WHERE id=?",core.proposalSha256(catalog,proposal),lease.version);v=store.version(lease.version);}
+        requireReviewed(v,catalog,proposal,mode);
+        store.db().update("UPDATE mp_report_version SET generation_phase='VALIDATED',generation_mode=?,structured_report_json=?,report_body_sha256=?,validation_result_json=? WHERE id=?",mode.name(),store.json(output.publicReportJson()),output.bodySha256(),store.json(map("validation",output.validation(),"proposal",proposal)),lease.version);return true;
+    }));}
+    public boolean publish(Lease lease,ReportInput input,Catalog catalog,Proposal proposal,GenerationMode mode){return Boolean.TRUE.equals(store.tx().execute(tx->{if(!fence(lease))return false;var v=store.version(lease.version);store.validateRequest(v);ReportStore.require(s(v,"generation_phase").equals("VALIDATED")&&mode.name().equals(s(v,"generation_mode"))&&store.hash(store.mapper().valueToTree(input)).equals(s(v,"source_manifest_sha256"))&&catalog.catalogSha256().equals(s(v,"claim_catalog_sha256")));store.verifyInput(input,true);requireReviewed(v,catalog,proposal,mode);var output=core.render(input,catalog,proposal,mode);ReportStore.require(output.bodySha256().equals(s(v,"report_body_sha256"))&&store.hash(store.node(v.get("structured_report_json"))).equals(output.bodySha256()));
+        if(store.reviewRequired(v)&&mode==GenerationMode.DETERMINISTIC_FALLBACK&&store.report(lease.report).get("current_version_id")!=null)throw new ApiException(409,"REPORT_ANALYSIS_UNAVAILABLE");
+        Set<String> snapshots=new HashSet<>(input.sources().stream().map(s->s.snapshot().snapshotId()).toList());
+        for(var claim:output.claims()){store.db().update("INSERT INTO mp_report_claim(report_version_id,section_key,claim_order,claim_type,claim_text,confidence_code,statement_key,claim_rule_version,major_code,dimension_key,rule_refs_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)",lease.version,claim.sectionKey(),claim.claimOrder(),claim.claimType().name(),claim.text(),claim.confidence().name(),claim.statementKey(),input.versions().claimRuleVersion(),claim.majorCode(),claim.dimensionKey(),store.json(claim.ruleRefs()));long id=store.db().queryForObject("SELECT id FROM mp_report_claim WHERE report_version_id=? AND section_key=? AND claim_order=?",Long.class,lease.version,claim.sectionKey(),claim.claimOrder());
+            boolean validatedAnalysis=input.versions().equals(VersionPins.v2())&&mode==GenerationMode.AI&&claim.sectionKey().equals("DEEP_ANALYSIS")&&claim.statementKey().startsWith("analysis-v2:")&&claim.claimType()==ClaimType.BOUNDED_INTERPRETATION&&claim.ruleRefs().contains("report-analysis-v2");
+            for(String evidence:claim.evidenceIds()){var rows=store.db().queryForList("SELECT e.id,e.evidence_type,e.allowed_claim_types_json,s.public_id AS snapshot_id,s.student_id,s.status,s.run_mode,s.experience_run_id,r.run_mode AS actual_run_mode FROM mp_evidence_item e JOIN mp_evidence_snapshot s ON s.id=e.evidence_snapshot_id JOIN mp_experience_run r ON r.id=s.experience_run_id WHERE e.public_id=?",evidence);if(rows.isEmpty())throw new ApiException(409,"REPORT_SOURCE_INVALID");var e=rows.getFirst();boolean allowed=false;for(var type:store.node(e.get("allowed_claim_types_json")))if(type.asText().equals(claim.claimType().name()))allowed=true;
+                // The versioned analysis validator has already checked exact same-source citations and quoted answers.
+                // This permits bounded critique, not promotion of an unverified answer into a factual claim.
+                if(validatedAnalysis&&Set.of("STUDENT_ANALYSIS","STEP_RESPONSE","VERIFIED_EXECUTION","SELF_REPORT","ASSISTANCE_CONTEXT","DERIVED_INTERPRETATION").contains(s(e,"evidence_type")))allowed=true;
+                ReportStore.require(allowed&&n(e,"student_id")==lease.student&&snapshots.contains(s(e,"snapshot_id"))&&s(e,"status").equals("READY")&&s(e,"run_mode").equals(s(e,"actual_run_mode"))&&ProductEligibility.eligible(store.db(),lease.student,n(e,"experience_run_id")));store.db().update("INSERT INTO mp_report_claim_evidence(report_claim_id,evidence_item_id) VALUES(?,?)",id,n(e,"id"));}
+        }
+        var r=store.report(lease.report);if(r.get("current_version_id")!=null)store.db().update("UPDATE mp_report_version SET status='SUPERSEDED' WHERE id=? AND status='READY'",n(r,"current_version_id"));
+        store.db().update("UPDATE mp_report_version SET status='READY',generation_phase='PUBLISHED',completed_at=UTC_TIMESTAMP(3) WHERE id=?",lease.version);store.db().update("UPDATE mp_report SET status='READY',current_version_id=?,generation_target_version_id=NULL,ready_at=UTC_TIMESTAMP(3),first_ready_at=COALESCE(first_ready_at,UTC_TIMESTAMP(3)),row_version=row_version+1 WHERE id=?",lease.version,lease.report);store.db().update("UPDATE mp_background_job SET status='SUCCEEDED',lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=?",lease.job);
+        completedEvent(r,v,"READY",mode==GenerationMode.DETERMINISTIC_FALLBACK);if(s(r,"report_type").equals("COMPARISON"))coordinator.event(lease.student,lease.report,lease.version,"comparison_report.ready",map("majorSet",input.sources().stream().map(Source::majorCode).toList(),"sourceReportVersions",input.sources().stream().map(source->source.experienceVersion().reportVersionId()).toList()));else coordinator.compare(lease.student);return true;}));}
+    public void fail(Lease lease,String code,boolean permanent){store.tx().executeWithoutResult(tx->{if(!fence(lease))return;var j=store.db().queryForMap("SELECT attempt_count FROM mp_background_job WHERE id=?",lease.job);var r=store.report(lease.report);var v=store.version(lease.version);if(permanent||n(j,"attempt_count")>=3){terminal(r,v,lease.job,code);if(code.equals("COMPARISON_SOURCE_STALE"))coordinator.compare(lease.student);}else store.db().update("UPDATE mp_background_job SET status='RETRY_WAIT',last_error_code=?,lease_until=NULL,available_at=UTC_TIMESTAMP(3)+INTERVAL IF(attempt_count=1,5,30) SECOND WHERE id=?",code,lease.job);});}
+    private void terminal(Map<String,Object> r,Map<String,Object> v,long job,String code){int changed=store.db().update("UPDATE mp_report_version SET status='FAILED',failure_code=?,completed_at=UTC_TIMESTAMP(3) WHERE id=? AND status='GENERATING'",code,n(v,"id"));store.db().update("UPDATE mp_report SET generation_target_version_id=NULL,status=IF(current_version_id IS NULL,'FAILED','READY'),row_version=row_version+1 WHERE id=? AND generation_target_version_id=?",n(r,"id"),n(v,"id"));store.db().update("UPDATE mp_background_job SET status=?,last_error_code=?,lease_until=NULL,completed_at=UTC_TIMESTAMP(3) WHERE id=?",code.equals("COMPARISON_SOURCE_STALE")?"CANCELLED":"FAILED",code,job);if(changed==1)completedEvent(r,v,"FAILED","DETERMINISTIC_FALLBACK".equals(s(v,"generation_mode")));}
+    private void completedEvent(Map<String,Object> report,Map<String,Object> version,String status,boolean fallback){long millis=Math.max(0,Duration.between(time(version,"created_at"),Instant.now()).toMillis());String bucket=millis<10000?"LT_10S":millis<45000?"10_45S":millis<120000?"45_120S":"GTE_120S";coordinator.event(n(report,"student_id"),n(report,"id"),n(version,"id"),"report.generation.completed",map("status",status,"validationAttemptCount",n(version,"retry_no")+1,"fallbackUsed",fallback,"durationBucket",bucket));}
+}

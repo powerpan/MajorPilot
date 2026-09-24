@@ -1,0 +1,5866 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MajorPilot P6 private report and comparison API",
+    "version": "6.0.0",
+    "description": "Versioned evidence-bound reports, NEXT, comparison, feedback and private printing. Real REVIEW_PREVIEW content is excluded. Local automated acceptance uses isolated TEST_FIXTURE content and no paid calls; explicit live provider tests are separate."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:18080",
+      "description": "Managed local product; engineering preview creates no report"
+    },
+    {
+      "url": "http://127.0.0.1:18081",
+      "description": "Test-only isolated real-security harness; not a deployment"
+    }
+  ],
+  "paths": {
+    "/api/app/v1/reports": {
+      "get": {
+        "operationId": "listReports",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReportPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/reports/{id}": {
+      "get": {
+        "operationId": "readReport",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Report"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReportStatus"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/reports/{id}/status": {
+      "get": {
+        "operationId": "readReportStatus",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReportStatus"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/reports/{id}/print": {
+      "get": {
+        "operationId": "readPrivatePrint",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "name": "expectedReportVersionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Report"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReportStatus"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/comparison-report": {
+      "get": {
+        "operationId": "readComparisonReport",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/ComparisonReady"
+                        },
+                        {
+                          "$ref": "#/components/schemas/ComparisonWaiting"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/feedback": {
+      "post": {
+        "operationId": "submitFeedback",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/FeedbackAccepted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Feedback"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/recommendations/{id}": {
+      "get": {
+        "operationId": "readInitialOrNextRecommendation",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/P1Recommendation"
+                        },
+                        {
+                          "$ref": "#/components/schemas/NextRecommendation"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/recommendations/{id}/decision": {
+      "post": {
+        "operationId": "decideInitialOrNextRecommendation",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/P1Decision"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/P1DecisionInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/dashboard": {
+      "get": {
+        "operationId": "readP6Dashboard",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Dashboard"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/events": {
+      "post": {
+        "operationId": "observeP6Pages",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/P1EventAccepted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageEvents"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/v1/majorpilot/reports": {
+      "get": {
+        "operationId": "adminListReports",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReportSummary"
+                      },
+                      "minItems": 0,
+                      "maxItems": 50
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:report:view"
+        ]
+      }
+    },
+    "/api/admin/v1/majorpilot/reports/{id}": {
+      "get": {
+        "operationId": "adminReadReportSummary",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReportSummary"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:report:view"
+        ]
+      }
+    },
+    "/api/admin/v1/majorpilot/reports/{id}/regenerations": {
+      "post": {
+        "operationId": "regenerateReport",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RegenerationAccepted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Regenerate"
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:report:regenerate"
+        ]
+      }
+    },
+    "/api/admin/v1/majorpilot/reports/{id}/versions": {
+      "get": {
+        "operationId": "adminListReportVersions",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VersionSummary"
+                      },
+                      "minItems": 0,
+                      "maxItems": 50
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:report:history:view"
+        ]
+      }
+    },
+    "/api/admin/v1/majorpilot/reports/{id}/versions/{version}": {
+      "get": {
+        "operationId": "adminReadSensitiveReportVersion",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Report"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe envelope; no provider text, evidence IDs or foreign resource details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-permissions": [
+          "majorpilot:report:history:view",
+          "majorpilot:report:sensitive:view"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "apiVersion": {
+            "const": "v1"
+          }
+        },
+        "required": [
+          "requestId",
+          "apiVersion"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "fieldErrors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "code": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "code"
+                  ]
+                }
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "currentRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "activeRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "replacementRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "currentSourceRevisions": {
+                    "$ref": "#/components/schemas/SourceRevisions"
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fieldErrors",
+              "retryable"
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "requestId"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "SourceRevisions": {
+        "type": "object",
+        "maxProperties": 20,
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,79}$"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "P1Major": {
+        "type": "string",
+        "enum": [
+          "AI",
+          "DATA_SCIENCE",
+          "BUSINESS_ANALYTICS"
+        ]
+      },
+      "P1Answers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "applicationStage": {
+            "type": "string",
+            "enum": [
+              "EXPLORING",
+              "RESEARCHING_PROGRAMS",
+              "PREPARING_APPLICATION",
+              "APPLIED",
+              "HOLDING_OFFERS"
+            ]
+          },
+          "targetIntakeWindow": {
+            "type": "string",
+            "enum": [
+              "WITHIN_6_MONTHS",
+              "MONTHS_6_TO_12",
+              "MONTHS_12_TO_24",
+              "AFTER_24_MONTHS",
+              "UNSURE"
+            ]
+          },
+          "targetRegions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "HONG_KONG",
+                "SINGAPORE",
+                "UNITED_KINGDOM"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "currentField": {
+            "type": "string",
+            "enum": [
+              "COMPUTING_ENGINEERING",
+              "MATHEMATICS_STATISTICS",
+              "BUSINESS_ECONOMICS",
+              "NATURAL_LIFE_SCIENCES",
+              "SOCIAL_HUMANITIES",
+              "OTHER"
+            ]
+          },
+          "currentFieldText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consideredMajors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AI",
+                "DATA_SCIENCE",
+                "BUSINESS_ANALYTICS"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "majorFamiliarity": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "AI": {
+                "type": "string",
+                "enum": [
+                  "UNFAMILIAR",
+                  "READ_OVERVIEW",
+                  "COURSE_OR_PROJECT",
+                  "PRACTICAL_EXPERIENCE"
+                ]
+              },
+              "DATA_SCIENCE": {
+                "type": "string",
+                "enum": [
+                  "UNFAMILIAR",
+                  "READ_OVERVIEW",
+                  "COURSE_OR_PROJECT",
+                  "PRACTICAL_EXPERIENCE"
+                ]
+              },
+              "BUSINESS_ANALYTICS": {
+                "type": "string",
+                "enum": [
+                  "UNFAMILIAR",
+                  "READ_OVERVIEW",
+                  "COURSE_OR_PROJECT",
+                  "PRACTICAL_EXPERIENCE"
+                ]
+              }
+            },
+            "required": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "foundationSelfView": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "PROGRAMMING": {
+                "type": "string",
+                "enum": [
+                  "UNEXPOSED",
+                  "BEGINNER",
+                  "BASIC_TASKS",
+                  "FAMILIAR"
+                ]
+              },
+              "MATHEMATICS_STATISTICS": {
+                "type": "string",
+                "enum": [
+                  "UNEXPOSED",
+                  "BEGINNER",
+                  "BASIC_TASKS",
+                  "FAMILIAR"
+                ]
+              },
+              "DATA_ANALYSIS": {
+                "type": "string",
+                "enum": [
+                  "UNEXPOSED",
+                  "BEGINNER",
+                  "BASIC_TASKS",
+                  "FAMILIAR"
+                ]
+              },
+              "BUSINESS_PROBLEMS": {
+                "type": "string",
+                "enum": [
+                  "UNEXPOSED",
+                  "BEGINNER",
+                  "BASIC_TASKS",
+                  "FAMILIAR"
+                ]
+              }
+            },
+            "required": [
+              "PROGRAMMING",
+              "MATHEMATICS_STATISTICS",
+              "DATA_ANALYSIS",
+              "BUSINESS_PROBLEMS"
+            ]
+          },
+          "scenarioPreference": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "majorCode": {
+                  "type": "string",
+                  "enum": [
+                    "AI",
+                    "DATA_SCIENCE",
+                    "BUSINESS_ANALYTICS"
+                  ]
+                },
+                "rank": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                }
+              },
+              "required": [
+                "majorCode",
+                "rank"
+              ]
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "workElements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "CHECK_ERRORS",
+                "ADJUST_EXPERIMENTS",
+                "CLEAN_DATA",
+                "INTERPRET_CHARTS",
+                "DEFINE_METRICS",
+                "PROPOSE_ACTIONS",
+                "COMMUNICATE_CONCLUSIONS"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "decisionUncertainties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "DAILY_WORK",
+                "INTEREST",
+                "LEARNING_DIFFICULTY",
+                "CURRENT_FOUNDATION",
+                "MAJOR_DIFFERENCES",
+                "FUTURE_DEVELOPMENT"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "mainQuestion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acquisitionChannel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "FRIEND_OR_CLASSMATE",
+                  "SOCIAL_MEDIA",
+                  "SEARCH",
+                  "COMMUNITY",
+                  "OTHER",
+                  "DECLINED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "applicationStage",
+          "targetIntakeWindow",
+          "targetRegions",
+          "currentField",
+          "consideredMajors",
+          "majorFamiliarity",
+          "foundationSelfView",
+          "scenarioPreference",
+          "workElements",
+          "decisionUncertainties"
+        ]
+      },
+      "P1DraftAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "applicationStage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "EXPLORING",
+                  "RESEARCHING_PROGRAMS",
+                  "PREPARING_APPLICATION",
+                  "APPLIED",
+                  "HOLDING_OFFERS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetIntakeWindow": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "WITHIN_6_MONTHS",
+                  "MONTHS_6_TO_12",
+                  "MONTHS_12_TO_24",
+                  "AFTER_24_MONTHS",
+                  "UNSURE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetRegions": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "HONG_KONG",
+                    "SINGAPORE",
+                    "UNITED_KINGDOM"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentField": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "COMPUTING_ENGINEERING",
+                  "MATHEMATICS_STATISTICS",
+                  "BUSINESS_ECONOMICS",
+                  "NATURAL_LIFE_SCIENCES",
+                  "SOCIAL_HUMANITIES",
+                  "OTHER"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentFieldText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consideredMajors": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "AI",
+                    "DATA_SCIENCE",
+                    "BUSINESS_ANALYTICS"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "majorFamiliarity": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "AI": {
+                    "type": "string",
+                    "enum": [
+                      "UNFAMILIAR",
+                      "READ_OVERVIEW",
+                      "COURSE_OR_PROJECT",
+                      "PRACTICAL_EXPERIENCE"
+                    ]
+                  },
+                  "DATA_SCIENCE": {
+                    "type": "string",
+                    "enum": [
+                      "UNFAMILIAR",
+                      "READ_OVERVIEW",
+                      "COURSE_OR_PROJECT",
+                      "PRACTICAL_EXPERIENCE"
+                    ]
+                  },
+                  "BUSINESS_ANALYTICS": {
+                    "type": "string",
+                    "enum": [
+                      "UNFAMILIAR",
+                      "READ_OVERVIEW",
+                      "COURSE_OR_PROJECT",
+                      "PRACTICAL_EXPERIENCE"
+                    ]
+                  }
+                },
+                "required": []
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "foundationSelfView": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "PROGRAMMING": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "MATHEMATICS_STATISTICS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "DATA_ANALYSIS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "BUSINESS_PROBLEMS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  }
+                },
+                "required": []
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenarioPreference": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "majorCode": {
+                      "type": "string",
+                      "enum": [
+                        "AI",
+                        "DATA_SCIENCE",
+                        "BUSINESS_ANALYTICS"
+                      ]
+                    },
+                    "rank": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    }
+                  },
+                  "required": [
+                    "majorCode",
+                    "rank"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workElements": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CHECK_ERRORS",
+                    "ADJUST_EXPERIMENTS",
+                    "CLEAN_DATA",
+                    "INTERPRET_CHARTS",
+                    "DEFINE_METRICS",
+                    "PROPOSE_ACTIONS",
+                    "COMMUNICATE_CONCLUSIONS"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisionUncertainties": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "DAILY_WORK",
+                    "INTEREST",
+                    "LEARNING_DIFFICULTY",
+                    "CURRENT_FOUNDATION",
+                    "MAJOR_DIFFERENCES",
+                    "FUTURE_DEVELOPMENT"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mainQuestion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acquisitionChannel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "FRIEND_OR_CLASSMATE",
+                  "SOCIAL_MEDIA",
+                  "SEARCH",
+                  "COMMUNITY",
+                  "OTHER",
+                  "DECLINED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": []
+      },
+      "P1QuestionnaireVersion": {
+        "const": "decision-profile-v1",
+        "type": "string"
+      },
+      "P1Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "apiVersion": {
+            "const": "v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "apiVersion"
+        ]
+      },
+      "P1Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fieldErrors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "code"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 100
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "currentRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fieldErrors",
+              "retryable"
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "P1Health": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "local-only",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "UP",
+              "DOWN"
+            ]
+          },
+          "redis": {
+            "type": "string",
+            "enum": [
+              "UP",
+              "DOWN"
+            ]
+          },
+          "migration": {
+            "type": "string",
+            "enum": [
+              "UP",
+              "DOWN"
+            ]
+          },
+          "model": {
+            "const": "NOT_CHECKED",
+            "type": "string"
+          },
+          "mail": {
+            "const": "NOT_CHECKED",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "database",
+          "redis",
+          "migration",
+          "model",
+          "mail"
+        ]
+      },
+      "P1Csrf": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "csrfToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "csrfToken"
+        ]
+      },
+      "P1MajorDifference": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "majorCode": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "availability": {
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "majorCode",
+          "name",
+          "description",
+          "availability"
+        ]
+      },
+      "P1QuestionnaireOption": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ]
+      },
+      "P1QuestionnaireField": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "applicationStage",
+              "targetIntakeWindow",
+              "targetRegions",
+              "currentField",
+              "currentFieldText",
+              "consideredMajors",
+              "majorFamiliarity",
+              "foundationSelfView",
+              "scenarioPreference",
+              "workElements",
+              "decisionUncertainties",
+              "mainQuestion",
+              "acquisitionChannel"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SINGLE",
+              "MULTIPLE",
+              "TEXT",
+              "MATRIX",
+              "RANKING"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "minItems": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxLength": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1QuestionnaireOption"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1QuestionnaireOption"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "key",
+          "type",
+          "required",
+          "minItems",
+          "maxItems",
+          "maxLength",
+          "options",
+          "rows"
+        ]
+      },
+      "P1QuestionnairePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^step-([1-9]|1[0-2])$"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "title": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1QuestionnaireField"
+            },
+            "minItems": 1,
+            "maxItems": 2
+          }
+        },
+        "required": [
+          "stepKey",
+          "number",
+          "title",
+          "why",
+          "required",
+          "fields"
+        ]
+      },
+      "P1Questionnaire": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "pageCount": {
+            "const": 12,
+            "type": "number"
+          },
+          "requiredPageCount": {
+            "const": 10,
+            "type": "number"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1QuestionnairePage"
+            },
+            "minItems": 12,
+            "maxItems": 12
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "pageCount",
+          "requiredPageCount",
+          "pages"
+        ]
+      },
+      "P1IntakeCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/P1QuestionnaireVersion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": []
+      },
+      "P1Intake": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "intakeSessionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SUBMITTED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastStepKey": {
+            "type": "string",
+            "pattern": "^step-([1-9]|1[0-2])$"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/P1DraftAnswers"
+          },
+          "recommendationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "intakeSessionId",
+          "questionnaireVersion",
+          "status",
+          "revision",
+          "expiresAt",
+          "lastStepKey",
+          "answers",
+          "recommendationId"
+        ]
+      },
+      "P1DraftInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stepKey": {
+            "type": "string",
+            "pattern": "^step-([1-9]|1[0-2])$"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/P1DraftAnswers"
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "expectedRevision",
+          "stepKey",
+          "answers"
+        ]
+      },
+      "P1SubmitInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "$ref": "#/components/schemas/P1Answers"
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "expectedRevision",
+          "answers"
+        ]
+      },
+      "P1ProfileInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/P1Answers"
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "answers"
+        ]
+      },
+      "P1Reason": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "SCENARIO_FIRST_AI",
+              "SCENARIO_FIRST_DS",
+              "SCENARIO_FIRST_BA",
+              "SCENARIO_TIED",
+              "CURRENTLY_CONSIDERING",
+              "WORK_STYLE_ALIGNMENT",
+              "HIGH_EXPLORATION_VALUE",
+              "TIE_BREAK_BASELINE",
+              "EXPERIENCE_ORDER_ONLY"
+            ]
+          },
+          "reasonType": {
+            "type": "string",
+            "enum": [
+              "RANKING",
+              "CONTEXT",
+              "BOUNDARY"
+            ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AI",
+                  "DATA_SCIENCE",
+                  "BUSINESS_ANALYTICS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceQuestionKeys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "applicationStage",
+                "targetIntakeWindow",
+                "targetRegions",
+                "currentField",
+                "currentFieldText",
+                "consideredMajors",
+                "majorFamiliarity",
+                "foundationSelfView",
+                "scenarioPreference",
+                "workElements",
+                "decisionUncertainties",
+                "mainQuestion",
+                "acquisitionChannel"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 13
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "reasonType",
+          "majorCode",
+          "sourceQuestionKeys",
+          "text"
+        ]
+      },
+      "P1Recommendation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "recommendationId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "ruleVersion": {
+            "const": "initial-recommendation-v1",
+            "type": "string"
+          },
+          "explanationVersion": {
+            "const": "initial-template-v1",
+            "type": "string"
+          },
+          "primaryMajor": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "alternativeMajors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AI",
+                "DATA_SCIENCE",
+                "BUSINESS_ANALYTICS"
+              ]
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1Reason"
+            },
+            "minItems": 2,
+            "maxItems": 4
+          },
+          "tieDetected": {
+            "type": "boolean"
+          },
+          "tieBreakRule": {
+            "type": "string",
+            "enum": [
+              "RANK",
+              "CONSIDERED",
+              "STRONG_COUNT",
+              "MEDIUM_COUNT",
+              "FAMILIARITY",
+              "FIXED_ORDER"
+            ]
+          },
+          "majorDifferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1MajorDifference"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "supportNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "explanationStatus": {
+            "const": "STRUCTURED_ONLY",
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canRegister": {
+            "type": "boolean"
+          },
+          "availability": {
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "decisionProfileId",
+          "recommendationId",
+          "profileVersion",
+          "questionnaireVersion",
+          "ruleVersion",
+          "explanationVersion",
+          "primaryMajor",
+          "alternativeMajors",
+          "reasons",
+          "tieDetected",
+          "tieBreakRule",
+          "majorDifferences",
+          "supportNotes",
+          "explanationStatus",
+          "generatedAt",
+          "canRegister",
+          "availability"
+        ]
+      },
+      "P1DecisionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "selectedMajorCode": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "overrideReasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ALREADY_PREFERRED",
+                  "FAMILIAR_FIRST",
+                  "UNFAMILIAR_FIRST",
+                  "TIME_OR_FORMAT",
+                  "OTHER",
+                  "DECLINED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overrideText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "selectedMajorCode"
+        ]
+      },
+      "P1Decision": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "recommendationId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "decisionNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "decisionType": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "OVERRIDDEN"
+            ]
+          },
+          "recommendedMajor": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "selectedMajorCode": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "overrideReasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ALREADY_PREFERRED",
+                  "FAMILIAR_FIRST",
+                  "UNFAMILIAR_FIRST",
+                  "TIME_OR_FORMAT",
+                  "OTHER",
+                  "DECLINED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overrideText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "availability": {
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "decisionId",
+          "recommendationId",
+          "decisionNo",
+          "decisionType",
+          "recommendedMajor",
+          "selectedMajorCode",
+          "overrideReasonCode",
+          "overrideText",
+          "decidedAt",
+          "availability"
+        ]
+      },
+      "P1ProfileSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "CLAIMED",
+              "SUPERSEDED"
+            ]
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "applicationStage": {
+                "type": "string",
+                "enum": [
+                  "EXPLORING",
+                  "RESEARCHING_PROGRAMS",
+                  "PREPARING_APPLICATION",
+                  "APPLIED",
+                  "HOLDING_OFFERS"
+                ]
+              },
+              "currentField": {
+                "type": "string",
+                "enum": [
+                  "COMPUTING_ENGINEERING",
+                  "MATHEMATICS_STATISTICS",
+                  "BUSINESS_ECONOMICS",
+                  "NATURAL_LIFE_SCIENCES",
+                  "SOCIAL_HUMANITIES",
+                  "OTHER"
+                ]
+              },
+              "foundationSelfView": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "PROGRAMMING": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "MATHEMATICS_STATISTICS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "DATA_ANALYSIS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "BUSINESS_PROBLEMS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  }
+                },
+                "required": [
+                  "PROGRAMMING",
+                  "MATHEMATICS_STATISTICS",
+                  "DATA_ANALYSIS",
+                  "BUSINESS_PROBLEMS"
+                ]
+              }
+            },
+            "required": [
+              "applicationStage",
+              "currentField",
+              "foundationSelfView"
+            ]
+          }
+        },
+        "required": [
+          "decisionProfileId",
+          "profileVersion",
+          "questionnaireVersion",
+          "submittedAt",
+          "status",
+          "summary"
+        ]
+      },
+      "P1Dashboard": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/P1Recommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "majors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "majorCode": {
+                  "type": "string",
+                  "enum": [
+                    "AI",
+                    "DATA_SCIENCE",
+                    "BUSINESS_ANALYTICS"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "NOT_STARTED",
+                    "READY",
+                    "IN_PROGRESS",
+                    "PAUSED",
+                    "TASK_COMPLETED",
+                    "CLOSED"
+                  ],
+                  "type": "string"
+                },
+                "availability": {
+                  "enum": [
+                    "UNAVAILABLE",
+                    "AVAILABLE"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "majorCode",
+                "name",
+                "status",
+                "availability"
+              ]
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "currentDecision": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "decisionId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "recommendationId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "selectedMajorCode": {
+                    "type": "string",
+                    "enum": [
+                      "AI",
+                      "DATA_SCIENCE",
+                      "BUSINESS_ANALYTICS"
+                    ]
+                  },
+                  "decisionType": {
+                    "type": "string",
+                    "enum": [
+                      "ACCEPTED",
+                      "OVERRIDDEN"
+                    ]
+                  }
+                },
+                "required": [
+                  "decisionId",
+                  "recommendationId",
+                  "selectedMajorCode",
+                  "decisionType"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextStep": {
+            "enum": [
+              "TASK_CONTENT_PREPARING",
+              "SELECT_EXPERIENCE",
+              "ALL_COMPLETED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "recommendation",
+          "majors",
+          "currentDecision",
+          "nextStep"
+        ]
+      },
+      "P1Consent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "enum": [
+              "TERMS",
+              "PRIVACY",
+              "RESEARCH"
+            ]
+          },
+          "documentVersion": {
+            "const": "v1",
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "DECLINED"
+            ]
+          }
+        },
+        "required": [
+          "documentType",
+          "documentVersion",
+          "decision"
+        ]
+      },
+      "P1Register": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "intakeSessionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 15,
+            "maxLength": 128
+          },
+          "consents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1Consent"
+            },
+            "minItems": 2,
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "intakeSessionId",
+          "email",
+          "password",
+          "consents"
+        ]
+      },
+      "P1Registered": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "status": {
+            "const": "PENDING_VERIFICATION",
+            "type": "string"
+          },
+          "nextAction": {
+            "const": "VERIFY_EMAIL",
+            "type": "string"
+          },
+          "emailDeliveryStatus": {
+            "type": "string",
+            "enum": [
+              "SENT",
+              "RETRY_REQUIRED"
+            ]
+          }
+        },
+        "required": [
+          "studentId",
+          "status",
+          "nextAction",
+          "emailDeliveryStatus"
+        ]
+      },
+      "P1Login": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "P1Email": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "P1Token": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "P1Reset": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 15,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "P1Me": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_VERIFICATION",
+              "ACTIVE"
+            ]
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "canStartExperience": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "studentId",
+          "email",
+          "status",
+          "emailVerified",
+          "canStartExperience"
+        ]
+      },
+      "P1ConsentStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "enum": [
+              "TERMS",
+              "PRIVACY",
+              "RESEARCH"
+            ]
+          },
+          "documentVersion": {
+            "const": "v1",
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "DECLINED",
+              "WITHDRAWN"
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "documentType",
+          "documentVersion",
+          "decision",
+          "decidedAt"
+        ]
+      },
+      "P1Accepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "const": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ]
+      },
+      "P1PageObservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "clientEventId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-f-]{36}$"
+          },
+          "eventName": {
+            "const": "recommendation.viewed",
+            "type": "string"
+          },
+          "eventVersion": {
+            "const": "v1",
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contextType": {
+            "const": "RECOMMENDATION",
+            "type": "string"
+          },
+          "contextPublicId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "visibleDurationMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 86400000,
+            "description": "Client-reported continuous visibility after core content rendered. Validates the observation only; it is not trusted proof of attention and is not stored as a business fact."
+          },
+          "properties": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "clientEventId",
+          "eventName",
+          "eventVersion",
+          "occurredAt",
+          "contextType",
+          "contextPublicId",
+          "visibleDurationMs"
+        ]
+      },
+      "P1PageEvents": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1PageObservation"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "P1EventAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "acceptedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duplicateCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "acceptedCount",
+          "duplicateCount"
+        ]
+      },
+      "Report": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schemaVersion",
+              "reportId",
+              "reportVersionId",
+              "versionNo",
+              "reportType",
+              "majorCode",
+              "generatedAt",
+              "generationMode",
+              "sections",
+              "limitations",
+              "sources",
+              "nextRecommendation"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "report-v1"
+              },
+              "reportId": {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              "reportVersionId": {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              "versionNo": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "reportType": {
+                "enum": [
+                  "EXPERIENCE",
+                  "COMPARISON"
+                ]
+              },
+              "majorCode": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "AI",
+                      "BUSINESS_ANALYTICS",
+                      "DATA_SCIENCE"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "generatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "generationMode": {
+                "enum": [
+                  "AI",
+                  "DETERMINISTIC_FALLBACK"
+                ]
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "OVERVIEW",
+                            "EXPERIENCE_PREFERENCE",
+                            "CURRENT_PREPARATION",
+                            "TASK_PERFORMANCE",
+                            "WORK_STYLE_CONNECTION",
+                            "EVIDENCE_BOUNDARIES",
+                            "OTHER_MAJOR_DIFFERENCES",
+                            "NEXT_EXPERIENCE",
+                            "SCOPE_AND_SOURCES",
+                            "UNKNOWNS",
+                            "NEXT_VERIFICATION",
+                            "REMAINING_MAJOR"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "claimType",
+                              "text",
+                              "confidence",
+                              "basisSummary",
+                              "majorCode",
+                              "dimensionKey"
+                            ],
+                            "properties": {
+                              "claimType": {
+                                "enum": [
+                                  "OBSERVED_FACT",
+                                  "STUDENT_SELF_REPORT",
+                                  "BOUNDED_INTERPRETATION",
+                                  "LIMITATION",
+                                  "NEXT_STEP"
+                                ]
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 400
+                              },
+                              "confidence": {
+                                "enum": [
+                                  "DIRECT",
+                                  "SELF_REPORTED",
+                                  "BOUNDED",
+                                  "RULE_BASED"
+                                ]
+                              },
+                              "basisSummary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              },
+                              "majorCode": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "AI",
+                                      "BUSINESS_ANALYTICS",
+                                      "DATA_SCIENCE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "dimensionKey": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "PROBLEM_INTEREST",
+                                      "QUANTITATIVE_COMFORT",
+                                      "UNCERTAINTY_HANDLING",
+                                      "WORK_FOCUS",
+                                      "HELP_AND_ITERATION",
+                                      "EXPLANATION_INTEREST",
+                                      "CONTINUATION_WILLINGNESS"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "minItems": 1,
+                          "maxItems": 8
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "WHAT_YOU_DID"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "claimType",
+                              "text",
+                              "confidence",
+                              "basisSummary",
+                              "majorCode",
+                              "dimensionKey"
+                            ],
+                            "properties": {
+                              "claimType": {
+                                "enum": [
+                                  "OBSERVED_FACT",
+                                  "STUDENT_SELF_REPORT",
+                                  "BOUNDED_INTERPRETATION",
+                                  "LIMITATION",
+                                  "NEXT_STEP"
+                                ]
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 400
+                              },
+                              "confidence": {
+                                "enum": [
+                                  "DIRECT",
+                                  "SELF_REPORTED",
+                                  "BOUNDED",
+                                  "RULE_BASED"
+                                ]
+                              },
+                              "basisSummary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              },
+                              "majorCode": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "AI",
+                                      "BUSINESS_ANALYTICS",
+                                      "DATA_SCIENCE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "dimensionKey": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "PROBLEM_INTEREST",
+                                      "QUANTITATIVE_COMFORT",
+                                      "UNCERTAINTY_HANDLING",
+                                      "WORK_FOCUS",
+                                      "HELP_AND_ITERATION",
+                                      "EXPLANATION_INTEREST",
+                                      "CONTINUATION_WILLINGNESS"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "minItems": 3,
+                          "maxItems": 5
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "WORK_COMPLETED",
+                            "SELF_REPORTED_EXPERIENCE",
+                            "MAJOR_SPECIFIC_EXPERIENCE"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "claimType",
+                              "text",
+                              "confidence",
+                              "basisSummary",
+                              "majorCode",
+                              "dimensionKey"
+                            ],
+                            "properties": {
+                              "claimType": {
+                                "enum": [
+                                  "OBSERVED_FACT",
+                                  "STUDENT_SELF_REPORT",
+                                  "BOUNDED_INTERPRETATION",
+                                  "LIMITATION",
+                                  "NEXT_STEP"
+                                ]
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 400
+                              },
+                              "confidence": {
+                                "enum": [
+                                  "DIRECT",
+                                  "SELF_REPORTED",
+                                  "BOUNDED",
+                                  "RULE_BASED"
+                                ]
+                              },
+                              "basisSummary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              },
+                              "majorCode": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "AI",
+                                      "BUSINESS_ANALYTICS",
+                                      "DATA_SCIENCE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "dimensionKey": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "PROBLEM_INTEREST",
+                                      "QUANTITATIVE_COMFORT",
+                                      "UNCERTAINTY_HANDLING",
+                                      "WORK_FOCUS",
+                                      "HELP_AND_ITERATION",
+                                      "EXPLANATION_INTEREST",
+                                      "CONTINUATION_WILLINGNESS"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "minItems": 2,
+                          "maxItems": 6
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "COMMON_DIMENSIONS"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "claimType",
+                                  "text",
+                                  "confidence",
+                                  "basisSummary",
+                                  "majorCode",
+                                  "dimensionKey"
+                                ],
+                                "properties": {
+                                  "claimType": {
+                                    "enum": [
+                                      "OBSERVED_FACT",
+                                      "STUDENT_SELF_REPORT",
+                                      "BOUNDED_INTERPRETATION",
+                                      "LIMITATION",
+                                      "NEXT_STEP"
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 400
+                                  },
+                                  "confidence": {
+                                    "enum": [
+                                      "DIRECT",
+                                      "SELF_REPORTED",
+                                      "BOUNDED",
+                                      "RULE_BASED"
+                                    ]
+                                  },
+                                  "basisSummary": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  },
+                                  "majorCode": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "AI",
+                                          "BUSINESS_ANALYTICS",
+                                          "DATA_SCIENCE"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "dimensionKey": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "PROBLEM_INTEREST",
+                                          "QUANTITATIVE_COMFORT",
+                                          "UNCERTAINTY_HANDLING",
+                                          "WORK_FOCUS",
+                                          "HELP_AND_ITERATION",
+                                          "EXPLANATION_INTEREST",
+                                          "CONTINUATION_WILLINGNESS"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "minItems": 14,
+                              "maxItems": 14
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "claimType",
+                                  "text",
+                                  "confidence",
+                                  "basisSummary",
+                                  "majorCode",
+                                  "dimensionKey"
+                                ],
+                                "properties": {
+                                  "claimType": {
+                                    "enum": [
+                                      "OBSERVED_FACT",
+                                      "STUDENT_SELF_REPORT",
+                                      "BOUNDED_INTERPRETATION",
+                                      "LIMITATION",
+                                      "NEXT_STEP"
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 400
+                                  },
+                                  "confidence": {
+                                    "enum": [
+                                      "DIRECT",
+                                      "SELF_REPORTED",
+                                      "BOUNDED",
+                                      "RULE_BASED"
+                                    ]
+                                  },
+                                  "basisSummary": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  },
+                                  "majorCode": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "AI",
+                                          "BUSINESS_ANALYTICS",
+                                          "DATA_SCIENCE"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "dimensionKey": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "PROBLEM_INTEREST",
+                                          "QUANTITATIVE_COMFORT",
+                                          "UNCERTAINTY_HANDLING",
+                                          "WORK_FOCUS",
+                                          "HELP_AND_ITERATION",
+                                          "EXPLANATION_INTEREST",
+                                          "CONTINUATION_WILLINGNESS"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "minItems": 21,
+                              "maxItems": 21
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                "minItems": 8,
+                "maxItems": 9
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 400
+                },
+                "minItems": 1,
+                "maxItems": 8
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "majorCode",
+                    "experienceRunId",
+                    "taskVersionId",
+                    "taskVersionCode",
+                    "taskTitle",
+                    "sourceReport"
+                  ],
+                  "properties": {
+                    "majorCode": {
+                      "enum": [
+                        "AI",
+                        "BUSINESS_ANALYTICS",
+                        "DATA_SCIENCE"
+                      ]
+                    },
+                    "experienceRunId": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "taskVersionId": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "taskVersionCode": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "taskTitle": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "sourceReport": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "reportId",
+                            "reportVersionId",
+                            "versionNo"
+                          ],
+                          "properties": {
+                            "reportId": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "reportVersionId": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "versionNo": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "minItems": 1,
+                "maxItems": 3
+              },
+              "nextRecommendation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "state",
+                  "recommendationId",
+                  "sourceRunId",
+                  "ruleVersion",
+                  "completedMajorCodes",
+                  "primaryMajor",
+                  "alternativeMajors",
+                  "reasonCodes"
+                ],
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "RECOMMENDED",
+                      "ALL_COMPLETED"
+                    ]
+                  },
+                  "recommendationId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sourceRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "ruleVersion": {
+                    "const": "next-recommendation-v1"
+                  },
+                  "completedMajorCodes": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "AI",
+                        "BUSINESS_ANALYTICS",
+                        "DATA_SCIENCE"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "uniqueItems": true
+                  },
+                  "primaryMajor": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "AI",
+                          "BUSINESS_ANALYTICS",
+                          "DATA_SCIENCE"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alternativeMajors": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "AI",
+                        "BUSINESS_ANALYTICS",
+                        "DATA_SCIENCE"
+                      ]
+                    },
+                    "minItems": 0,
+                    "maxItems": 2,
+                    "uniqueItems": true
+                  },
+                  "reasonCodes": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "ONLY_REMAINING",
+                        "EXPLICIT_NEXT_STYLE",
+                        "ADJACENT_BASELINE",
+                        "ALL_COMPLETED"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schemaVersion",
+              "reportId",
+              "reportVersionId",
+              "versionNo",
+              "reportType",
+              "majorCode",
+              "generatedAt",
+              "generationMode",
+              "sections",
+              "limitations",
+              "sources",
+              "nextRecommendation",
+              "analysis"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "const": "report-v2"
+              },
+              "reportId": {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              "reportVersionId": {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              "versionNo": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "reportType": {
+                "enum": [
+                  "EXPERIENCE",
+                  "COMPARISON"
+                ]
+              },
+              "majorCode": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "AI",
+                      "BUSINESS_ANALYTICS",
+                      "DATA_SCIENCE"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "generatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "generationMode": {
+                "enum": [
+                  "AI",
+                  "DETERMINISTIC_FALLBACK"
+                ]
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "OVERVIEW",
+                            "EXPERIENCE_PREFERENCE",
+                            "CURRENT_PREPARATION",
+                            "TASK_PERFORMANCE",
+                            "WORK_STYLE_CONNECTION",
+                            "EVIDENCE_BOUNDARIES",
+                            "OTHER_MAJOR_DIFFERENCES",
+                            "NEXT_EXPERIENCE",
+                            "SCOPE_AND_SOURCES",
+                            "UNKNOWNS",
+                            "NEXT_VERIFICATION",
+                            "REMAINING_MAJOR"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "claimType",
+                              "text",
+                              "confidence",
+                              "basisSummary",
+                              "majorCode",
+                              "dimensionKey"
+                            ],
+                            "properties": {
+                              "claimType": {
+                                "enum": [
+                                  "OBSERVED_FACT",
+                                  "STUDENT_SELF_REPORT",
+                                  "BOUNDED_INTERPRETATION",
+                                  "LIMITATION",
+                                  "NEXT_STEP"
+                                ]
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 400
+                              },
+                              "confidence": {
+                                "enum": [
+                                  "DIRECT",
+                                  "SELF_REPORTED",
+                                  "BOUNDED",
+                                  "RULE_BASED"
+                                ]
+                              },
+                              "basisSummary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              },
+                              "majorCode": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "AI",
+                                      "BUSINESS_ANALYTICS",
+                                      "DATA_SCIENCE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "dimensionKey": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "PROBLEM_INTEREST",
+                                      "QUANTITATIVE_COMFORT",
+                                      "UNCERTAINTY_HANDLING",
+                                      "WORK_FOCUS",
+                                      "HELP_AND_ITERATION",
+                                      "EXPLANATION_INTEREST",
+                                      "CONTINUATION_WILLINGNESS"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "minItems": 1,
+                          "maxItems": 8
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "WHAT_YOU_DID"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "claimType",
+                              "text",
+                              "confidence",
+                              "basisSummary",
+                              "majorCode",
+                              "dimensionKey"
+                            ],
+                            "properties": {
+                              "claimType": {
+                                "enum": [
+                                  "OBSERVED_FACT",
+                                  "STUDENT_SELF_REPORT",
+                                  "BOUNDED_INTERPRETATION",
+                                  "LIMITATION",
+                                  "NEXT_STEP"
+                                ]
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 400
+                              },
+                              "confidence": {
+                                "enum": [
+                                  "DIRECT",
+                                  "SELF_REPORTED",
+                                  "BOUNDED",
+                                  "RULE_BASED"
+                                ]
+                              },
+                              "basisSummary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              },
+                              "majorCode": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "AI",
+                                      "BUSINESS_ANALYTICS",
+                                      "DATA_SCIENCE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "dimensionKey": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "PROBLEM_INTEREST",
+                                      "QUANTITATIVE_COMFORT",
+                                      "UNCERTAINTY_HANDLING",
+                                      "WORK_FOCUS",
+                                      "HELP_AND_ITERATION",
+                                      "EXPLANATION_INTEREST",
+                                      "CONTINUATION_WILLINGNESS"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "minItems": 3,
+                          "maxItems": 5
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "WORK_COMPLETED",
+                            "SELF_REPORTED_EXPERIENCE",
+                            "MAJOR_SPECIFIC_EXPERIENCE"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "claimType",
+                              "text",
+                              "confidence",
+                              "basisSummary",
+                              "majorCode",
+                              "dimensionKey"
+                            ],
+                            "properties": {
+                              "claimType": {
+                                "enum": [
+                                  "OBSERVED_FACT",
+                                  "STUDENT_SELF_REPORT",
+                                  "BOUNDED_INTERPRETATION",
+                                  "LIMITATION",
+                                  "NEXT_STEP"
+                                ]
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 400
+                              },
+                              "confidence": {
+                                "enum": [
+                                  "DIRECT",
+                                  "SELF_REPORTED",
+                                  "BOUNDED",
+                                  "RULE_BASED"
+                                ]
+                              },
+                              "basisSummary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              },
+                              "majorCode": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "AI",
+                                      "BUSINESS_ANALYTICS",
+                                      "DATA_SCIENCE"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "dimensionKey": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "PROBLEM_INTEREST",
+                                      "QUANTITATIVE_COMFORT",
+                                      "UNCERTAINTY_HANDLING",
+                                      "WORK_FOCUS",
+                                      "HELP_AND_ITERATION",
+                                      "EXPLANATION_INTEREST",
+                                      "CONTINUATION_WILLINGNESS"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "minItems": 2,
+                          "maxItems": 6
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sectionKey",
+                        "title",
+                        "claims"
+                      ],
+                      "properties": {
+                        "sectionKey": {
+                          "enum": [
+                            "COMMON_DIMENSIONS"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "claims": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "claimType",
+                                  "text",
+                                  "confidence",
+                                  "basisSummary",
+                                  "majorCode",
+                                  "dimensionKey"
+                                ],
+                                "properties": {
+                                  "claimType": {
+                                    "enum": [
+                                      "OBSERVED_FACT",
+                                      "STUDENT_SELF_REPORT",
+                                      "BOUNDED_INTERPRETATION",
+                                      "LIMITATION",
+                                      "NEXT_STEP"
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 400
+                                  },
+                                  "confidence": {
+                                    "enum": [
+                                      "DIRECT",
+                                      "SELF_REPORTED",
+                                      "BOUNDED",
+                                      "RULE_BASED"
+                                    ]
+                                  },
+                                  "basisSummary": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  },
+                                  "majorCode": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "AI",
+                                          "BUSINESS_ANALYTICS",
+                                          "DATA_SCIENCE"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "dimensionKey": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "PROBLEM_INTEREST",
+                                          "QUANTITATIVE_COMFORT",
+                                          "UNCERTAINTY_HANDLING",
+                                          "WORK_FOCUS",
+                                          "HELP_AND_ITERATION",
+                                          "EXPLANATION_INTEREST",
+                                          "CONTINUATION_WILLINGNESS"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "minItems": 14,
+                              "maxItems": 14
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "claimType",
+                                  "text",
+                                  "confidence",
+                                  "basisSummary",
+                                  "majorCode",
+                                  "dimensionKey"
+                                ],
+                                "properties": {
+                                  "claimType": {
+                                    "enum": [
+                                      "OBSERVED_FACT",
+                                      "STUDENT_SELF_REPORT",
+                                      "BOUNDED_INTERPRETATION",
+                                      "LIMITATION",
+                                      "NEXT_STEP"
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 400
+                                  },
+                                  "confidence": {
+                                    "enum": [
+                                      "DIRECT",
+                                      "SELF_REPORTED",
+                                      "BOUNDED",
+                                      "RULE_BASED"
+                                    ]
+                                  },
+                                  "basisSummary": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  },
+                                  "majorCode": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "AI",
+                                          "BUSINESS_ANALYTICS",
+                                          "DATA_SCIENCE"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "dimensionKey": {
+                                    "anyOf": [
+                                      {
+                                        "enum": [
+                                          "PROBLEM_INTEREST",
+                                          "QUANTITATIVE_COMFORT",
+                                          "UNCERTAINTY_HANDLING",
+                                          "WORK_FOCUS",
+                                          "HELP_AND_ITERATION",
+                                          "EXPLANATION_INTEREST",
+                                          "CONTINUATION_WILLINGNESS"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "minItems": 21,
+                              "maxItems": 21
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                "minItems": 8,
+                "maxItems": 9
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 400
+                },
+                "minItems": 1,
+                "maxItems": 8
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "majorCode",
+                    "experienceRunId",
+                    "taskVersionId",
+                    "taskVersionCode",
+                    "taskTitle",
+                    "sourceReport"
+                  ],
+                  "properties": {
+                    "majorCode": {
+                      "enum": [
+                        "AI",
+                        "BUSINESS_ANALYTICS",
+                        "DATA_SCIENCE"
+                      ]
+                    },
+                    "experienceRunId": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "taskVersionId": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "taskVersionCode": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "taskTitle": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "sourceReport": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "reportId",
+                            "reportVersionId",
+                            "versionNo"
+                          ],
+                          "properties": {
+                            "reportId": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "reportVersionId": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "versionNo": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "minItems": 1,
+                "maxItems": 3
+              },
+              "nextRecommendation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "state",
+                  "recommendationId",
+                  "sourceRunId",
+                  "ruleVersion",
+                  "completedMajorCodes",
+                  "primaryMajor",
+                  "alternativeMajors",
+                  "reasonCodes"
+                ],
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "RECOMMENDED",
+                      "ALL_COMPLETED"
+                    ]
+                  },
+                  "recommendationId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sourceRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "ruleVersion": {
+                    "const": "next-recommendation-v1"
+                  },
+                  "completedMajorCodes": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "AI",
+                        "BUSINESS_ANALYTICS",
+                        "DATA_SCIENCE"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "uniqueItems": true
+                  },
+                  "primaryMajor": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "AI",
+                          "BUSINESS_ANALYTICS",
+                          "DATA_SCIENCE"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alternativeMajors": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "AI",
+                        "BUSINESS_ANALYTICS",
+                        "DATA_SCIENCE"
+                      ]
+                    },
+                    "minItems": 0,
+                    "maxItems": 2,
+                    "uniqueItems": true
+                  },
+                  "reasonCodes": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "ONLY_REMAINING",
+                        "EXPLICIT_NEXT_STYLE",
+                        "ADJACENT_BASELINE",
+                        "ALL_COMPLETED"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 1
+                  }
+                }
+              },
+              "analysis": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "status",
+                      "summary",
+                      "majorAnalyses",
+                      "findings",
+                      "crossMajorAnalysis"
+                    ],
+                    "properties": {
+                      "summary": {
+                        "type": "string",
+                        "minLength": 30,
+                        "maxLength": 1800
+                      },
+                      "majorAnalyses": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "majorCode",
+                            "preparation",
+                            "taskReasoning",
+                            "nextPractice"
+                          ],
+                          "properties": {
+                            "majorCode": {
+                              "enum": [
+                                "AI",
+                                "BUSINESS_ANALYTICS",
+                                "DATA_SCIENCE"
+                              ]
+                            },
+                            "preparation": {
+                              "type": "string",
+                              "minLength": 30,
+                              "maxLength": 1800
+                            },
+                            "taskReasoning": {
+                              "type": "string",
+                              "minLength": 30,
+                              "maxLength": 1800
+                            },
+                            "nextPractice": {
+                              "type": "string",
+                              "minLength": 20,
+                              "maxLength": 1400
+                            }
+                          }
+                        },
+                        "minItems": 1,
+                        "maxItems": 3
+                      },
+                      "findings": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "majorCode",
+                            "stepKey",
+                            "answerField",
+                            "answerQuote",
+                            "assessment",
+                            "reasoning",
+                            "improvement",
+                            "example",
+                            "stepTitle",
+                            "answerLabel"
+                          ],
+                          "properties": {
+                            "majorCode": {
+                              "enum": [
+                                "AI",
+                                "BUSINESS_ANALYTICS",
+                                "DATA_SCIENCE"
+                              ]
+                            },
+                            "stepKey": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,80}$"
+                            },
+                            "answerField": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_./~-]{1,160}$"
+                            },
+                            "answerQuote": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1200
+                            },
+                            "assessment": {
+                              "enum": [
+                                "SUPPORTED",
+                                "PARTIAL",
+                                "NEEDS_REVISION",
+                                "INSUFFICIENT"
+                              ]
+                            },
+                            "reasoning": {
+                              "type": "string",
+                              "minLength": 30,
+                              "maxLength": 1800
+                            },
+                            "improvement": {
+                              "type": "string",
+                              "minLength": 20,
+                              "maxLength": 1400
+                            },
+                            "example": {
+                              "type": "string",
+                              "minLength": 10,
+                              "maxLength": 1400
+                            },
+                            "stepTitle": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160
+                            },
+                            "answerLabel": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            }
+                          }
+                        },
+                        "minItems": 1,
+                        "maxItems": 60
+                      },
+                      "crossMajorAnalysis": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "majorCodes",
+                            "observation",
+                            "interpretation",
+                            "nextExperiment"
+                          ],
+                          "properties": {
+                            "majorCodes": {
+                              "type": "array",
+                              "items": {
+                                "enum": [
+                                  "AI",
+                                  "BUSINESS_ANALYTICS",
+                                  "DATA_SCIENCE"
+                                ]
+                              },
+                              "minItems": 2,
+                              "maxItems": 3,
+                              "uniqueItems": true
+                            },
+                            "observation": {
+                              "type": "string",
+                              "minLength": 30,
+                              "maxLength": 1800
+                            },
+                            "interpretation": {
+                              "type": "string",
+                              "minLength": 30,
+                              "maxLength": 1800
+                            },
+                            "nextExperiment": {
+                              "type": "string",
+                              "minLength": 20,
+                              "maxLength": 1400
+                            }
+                          }
+                        },
+                        "minItems": 0,
+                        "maxItems": 8
+                      },
+                      "status": {
+                        "const": "COMPLETE"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "status",
+                      "summary",
+                      "majorAnalyses",
+                      "findings",
+                      "crossMajorAnalysis"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "UNAVAILABLE"
+                      },
+                      "summary": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1800
+                      },
+                      "majorAnalyses": {
+                        "type": "array",
+                        "items": {},
+                        "minItems": 0,
+                        "maxItems": 0
+                      },
+                      "findings": {
+                        "type": "array",
+                        "items": {},
+                        "minItems": 0,
+                        "maxItems": 0
+                      },
+                      "crossMajorAnalysis": {
+                        "type": "array",
+                        "items": {},
+                        "minItems": 0,
+                        "maxItems": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "Generation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "GENERATING",
+              "READY",
+              "FAILED",
+              "SUPERSEDED"
+            ]
+          },
+          "phase": {
+            "enum": [
+              "WAITING_EVIDENCE",
+              "PREPARED",
+              "INITIAL_REQUESTED",
+              "REPAIR_REQUESTED",
+              "DRAFT_READY",
+              "REVIEW_REQUESTED",
+              "FALLBACK_PENDING",
+              "VALIDATED",
+              "PUBLISHED"
+            ]
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "safeCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "phase",
+          "retryable",
+          "safeCode"
+        ]
+      },
+      "ReportStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "GENERATING",
+              "READY",
+              "FAILED"
+            ]
+          },
+          "currentVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Generation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "reportId",
+          "status",
+          "currentVersionId",
+          "generation",
+          "revision"
+        ]
+      },
+      "ReportSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "reportType": {
+            "enum": [
+              "EXPERIENCE",
+              "COMPARISON"
+            ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "BUSINESS_ANALYTICS",
+                  "DATA_SCIENCE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "GENERATING",
+              "READY",
+              "FAILED"
+            ]
+          },
+          "currentVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionNo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Generation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readyAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstReadyAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "reportId",
+          "reportType",
+          "majorCode",
+          "status",
+          "currentVersionId",
+          "versionNo",
+          "generation",
+          "readyAt",
+          "firstReadyAt",
+          "revision"
+        ]
+      },
+      "ReportPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportSummary"
+            },
+            "minItems": 0,
+            "maxItems": 50
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ComparisonWaiting": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "const": "WAITING"
+          },
+          "reason": {
+            "enum": [
+              "NEED_TWO_MAJORS",
+              "WAITING_SOURCE_REPORTS",
+              "SOURCE_REPORT_FAILED",
+              "COMPARISON_GENERATING",
+              "COMPARISON_FAILED"
+            ]
+          },
+          "majors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "majorCode": {
+                  "enum": [
+                    "AI",
+                    "BUSINESS_ANALYTICS",
+                    "DATA_SCIENCE"
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "NOT_REQUESTED",
+                    "PENDING",
+                    "GENERATING",
+                    "READY",
+                    "FAILED"
+                  ]
+                }
+              },
+              "required": [
+                "majorCode",
+                "status"
+              ]
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "state",
+          "reason",
+          "majors"
+        ]
+      },
+      "ComparisonReady": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "const": "READY"
+          },
+          "report": {
+            "$ref": "#/components/schemas/Report"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Generation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "report",
+          "generation"
+        ]
+      },
+      "Regenerate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reasonCode": {
+            "enum": [
+              "CONTENT_CORRECTION",
+              "GENERATION_FAILURE",
+              "RULE_UPDATE",
+              "OPERATOR_REQUEST"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "evidenceMode": {
+            "enum": [
+              "REUSE_READY_EVIDENCE",
+              "REBUILD_EVIDENCE"
+            ]
+          },
+          "targetEvidenceRuleVersion": {
+            "anyOf": [
+              {
+                "enum": [
+                  "evidence-v3",
+                  "ds-evidence-v2",
+                  "ba-evidence-v2"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "reasonCode",
+          "reason",
+          "evidenceMode"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "evidenceMode": {
+                  "const": "REBUILD_EVIDENCE"
+                }
+              },
+              "required": [
+                "evidenceMode"
+              ]
+            },
+            "then": {
+              "required": [
+                "targetEvidenceRuleVersion"
+              ],
+              "properties": {
+                "targetEvidenceRuleVersion": {
+                  "enum": [
+                    "evidence-v3",
+                    "ds-evidence-v2",
+                    "ba-evidence-v2"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "targetEvidenceRuleVersion": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "RegenerationAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "reportVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "status": {
+            "const": "GENERATING"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "reportId",
+          "reportVersionId",
+          "status",
+          "revision"
+        ]
+      },
+      "VersionSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reportVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "versionNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "GENERATING",
+              "READY",
+              "FAILED",
+              "SUPERSEDED"
+            ]
+          },
+          "generationMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "DETERMINISTIC_FALLBACK"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reportVersionId",
+          "versionNo",
+          "status",
+          "generationMode",
+          "failureCode",
+          "createdAt",
+          "completedAt"
+        ]
+      },
+      "FeedbackAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "insightResponse": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "clarityChange": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "nextAction": {
+            "enum": [
+              "TRY_ANOTHER",
+              "LEARN_CURRENT",
+              "PAUSE_DECISION",
+              "OTHER",
+              "DECLINED"
+            ]
+          }
+        },
+        "required": [],
+        "minProperties": 1
+      },
+      "Feedback": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "feedbackType": {
+            "enum": [
+              "GENERAL",
+              "TASK",
+              "REPORT",
+              "TECHNICAL"
+            ]
+          },
+          "contextType": {
+            "enum": [
+              "EXPERIENCE_RUN",
+              "REPORT_VERSION"
+            ]
+          },
+          "contextPublicId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "surveyVersion": {
+            "const": "report-value-v1"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/FeedbackAnswers"
+          },
+          "diagnosticCode": {
+            "enum": [
+              "REPORT_GENERATION_FAILED",
+              "REPORT_VERSION_CHANGED",
+              "NETWORK_ERROR",
+              "OFFLINE"
+            ]
+          }
+        },
+        "required": [
+          "feedbackType"
+        ],
+        "dependentRequired": {
+          "contextType": [
+            "contextPublicId"
+          ],
+          "contextPublicId": [
+            "contextType"
+          ],
+          "surveyVersion": [
+            "answers"
+          ],
+          "answers": [
+            "surveyVersion"
+          ]
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "rating": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
+            },
+            "required": [
+              "rating"
+            ]
+          },
+          {
+            "properties": {
+              "comment": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "comment"
+            ]
+          },
+          {
+            "properties": {
+              "answers": {
+                "$ref": "#/components/schemas/FeedbackAnswers"
+              }
+            },
+            "required": [
+              "answers"
+            ]
+          }
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "feedbackType": {
+                  "const": "REPORT"
+                }
+              },
+              "required": [
+                "feedbackType"
+              ]
+            },
+            "then": {
+              "required": [
+                "contextType",
+                "contextPublicId"
+              ],
+              "properties": {
+                "contextType": {
+                  "const": "REPORT_VERSION"
+                },
+                "contextPublicId": {
+                  "type": "string",
+                  "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "FeedbackAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "feedbackId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "status": {
+            "const": "RECEIVED"
+          }
+        },
+        "required": [
+          "feedbackId",
+          "status"
+        ]
+      },
+      "NextReason": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "reasonType": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "code",
+          "reasonType",
+          "text"
+        ]
+      },
+      "NextRecommendation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "recommendationType": {
+            "const": "NEXT"
+          },
+          "recommendationId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "sourceRunId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "ruleVersion": {
+            "const": "next-recommendation-v1"
+          },
+          "explanationVersion": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "completedMajorCodes": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "AI",
+                "BUSINESS_ANALYTICS",
+                "DATA_SCIENCE"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "primaryMajor": {
+            "enum": [
+              "AI",
+              "BUSINESS_ANALYTICS",
+              "DATA_SCIENCE"
+            ]
+          },
+          "alternativeMajors": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "AI",
+                "BUSINESS_ANALYTICS",
+                "DATA_SCIENCE"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 1,
+            "uniqueItems": true
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NextReason"
+            },
+            "minItems": 1,
+            "maxItems": 8
+          },
+          "differences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/P1MajorDifference"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "recommendationType",
+          "recommendationId",
+          "sourceRunId",
+          "decisionProfileId",
+          "ruleVersion",
+          "explanationVersion",
+          "completedMajorCodes",
+          "primaryMajor",
+          "alternativeMajors",
+          "reasons",
+          "differences",
+          "generatedAt"
+        ]
+      },
+      "PageObservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "clientEventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventName": {
+            "enum": [
+              "recommendation.viewed",
+              "next_recommendation.viewed",
+              "report.viewed",
+              "report.printed",
+              "comparison_report.viewed"
+            ]
+          },
+          "eventVersion": {
+            "const": "v1"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contextType": {
+            "enum": [
+              "RECOMMENDATION",
+              "REPORT_VERSION"
+            ]
+          },
+          "contextPublicId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "visibleDurationMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 86400000
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {},
+            "required": []
+          }
+        },
+        "required": [
+          "clientEventId",
+          "eventName",
+          "eventVersion",
+          "occurredAt",
+          "contextType",
+          "contextPublicId",
+          "visibleDurationMs"
+        ]
+      },
+      "PageEvents": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageObservation"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "Dashboard": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/P1Recommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "majors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "majorCode": {
+                  "type": "string",
+                  "enum": [
+                    "AI",
+                    "DATA_SCIENCE",
+                    "BUSINESS_ANALYTICS"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "NOT_STARTED",
+                    "READY",
+                    "IN_PROGRESS",
+                    "PAUSED",
+                    "TASK_COMPLETED",
+                    "CLOSED"
+                  ],
+                  "type": "string"
+                },
+                "availability": {
+                  "enum": [
+                    "UNAVAILABLE",
+                    "AVAILABLE"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "majorCode",
+                "name",
+                "status",
+                "availability"
+              ]
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "currentDecision": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "decisionId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "recommendationId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "selectedMajorCode": {
+                    "type": "string",
+                    "enum": [
+                      "AI",
+                      "DATA_SCIENCE",
+                      "BUSINESS_ANALYTICS"
+                    ]
+                  },
+                  "decisionType": {
+                    "type": "string",
+                    "enum": [
+                      "ACCEPTED",
+                      "OVERRIDDEN"
+                    ]
+                  }
+                },
+                "required": [
+                  "decisionId",
+                  "recommendationId",
+                  "selectedMajorCode",
+                  "decisionType"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextStep": {
+            "enum": [
+              "ALL_COMPLETED",
+              "SELECT_EXPERIENCE",
+              "TASK_CONTENT_PREPARING"
+            ]
+          },
+          "nextRecommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextRecommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "recommendation",
+          "majors",
+          "currentDecision",
+          "nextStep",
+          "nextRecommendation"
+        ]
+      }
+    },
+    "parameters": {
+      "Origin": {
+        "name": "Origin",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "http://localhost:15173",
+            "http://127.0.0.1:15176"
+          ]
+        },
+        "description": "Each separately guarded server accepts exactly its own origin, never both. Product: localhost:15173; test-only harness: 127.0.0.1:15176."
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{16,128}$"
+        }
+      }
+    },
+    "securitySchemes": {
+      "StudentSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_SESSION"
+      },
+      "CsrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      },
+      "AdminBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

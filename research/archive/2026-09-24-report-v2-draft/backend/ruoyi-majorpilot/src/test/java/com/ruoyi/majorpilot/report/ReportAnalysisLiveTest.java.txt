@@ -1,0 +1,62 @@
+package com.ruoyi.majorpilot.report;
+
+import com.ruoyi.majorpilot.integration.ai.*;
+import com.ruoyi.majorpilot.report.core.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.JSON;
+import static org.junit.jupiter.api.Assertions.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+/** Explicitly paid, synthetic quality probe. Never part of normal tests or database workflows. */
+@EnabledIfEnvironmentVariable(named="MP_REPORT_ANALYSIS_LIVE",matches="true")
+class ReportAnalysisLiveTest {
+    @Test void guardedRealProviderQualityProbe()throws Exception{
+        assertEquals("synthetic-quality-only",System.getenv("MP_REPORT_ANALYSIS_LIVE_CONFIRM"),"Explicit synthetic-only confirmation is required");
+        String guardValue=System.getenv("MP_REPORT_ANALYSIS_GUARD_FILE");assertNotNull(guardValue,"A durable guarded runner is required");Path guard=Path.of(guardValue);assertTrue(guard.isAbsolute()&&Files.isRegularFile(guard,LinkOption.NOFOLLOW_LINKS)&&!Files.isSymbolicLink(guard)&&!Files.isSymbolicLink(guard.getParent()));
+        assertEquals(PosixFilePermissions.fromString("rw-------"),Files.getPosixFilePermissions(guard));
+        // A direct repeat with inherited env cannot resend, even if the first process timed out.
+        Files.createFile(Path.of(guardValue+".started"),PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+        String selection=System.getenv("MP_REPORT_ANALYSIS_LIVE_CASES");assertNotNull(selection,"Explicit case list is required; no implicit paid suite");var cases=List.of(selection.split(","));assertFalse(cases.isEmpty());assertTrue(cases.size()<=6&&ReportAnalysisLiveFixtures.CASES.containsAll(cases));assertEquals(cases.size(),new HashSet<>(cases).size());
+        String provider=env("MP_REPORT_AI_PROVIDER","BAILIAN"),key=System.getenv(provider.equals("BAILIAN")?"BAILIAN_API_KEY":"DEEPSEEK_API_KEY"),model=env("MP_REPORT_AI_MODEL",provider.equals("BAILIAN")?ReportHttpGateway.BAILIAN_MODEL:ReportHttpGateway.DEEPSEEK_MODEL),base=env(provider.equals("BAILIAN")?"BAILIAN_BASE_URL":"DEEPSEEK_BASE_URL",provider.equals("BAILIAN")?"https://dashscope.aliyuncs.com/compatible-mode/v1":ReportHttpGateway.DEEPSEEK_BASE_URL);
+        assertNotNull(key,"Provider key required in environment");var core=new ReportCore(JSON);var defaults=ReportModelSettings.defaults(provider);String format=env("MP_REPORT_AI_OUTPUT_FORMAT",defaults.outputFormat().name());var settings=new ReportModelSettings(defaults.requestTimeoutMs(),defaults.maxOutputTokens(),defaults.thinkingBudgetTokens(),defaults.maxResponseBytes(),ReportModelSettings.OutputFormat.valueOf(format));
+        var directory=Files.createTempDirectory("majorpilot-report-analysis-quality-",PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));var results=JSON.createArrayNode();var failed=new ArrayList<String>();
+        System.out.println("REPORT_ANALYSIS_ARTIFACT_DIR="+directory);
+        for(String name:cases){
+            var input=ReportAnalysisLiveFixtures.input(name);var catalog=core.compile(input);var modelInput=core.modelInput(catalog);var sequence=new ReportAnalysisProbeSequence(core,catalog);long started=System.nanoTime();var attempts=JSON.createArrayNode();ValidatedReport rendered=null;
+            var result=results.addObject().put("case",name).put("status","RUNNING").put("structurallyValid",false).put("independentRewriteCompleted",false).put("semanticReviewRequired",true);result.set("attempts",attempts);
+            var artifact=JSON.createObjectNode();artifact.set("syntheticModelInput",modelInput.content());artifact.putNull("validatedReport");artifact.set("metadata",result);
+            // Preserve synthetic inputs before any request. Interruptions retain STARTED metadata,
+            // not raw provider output or private reasoning; failures are inspectable too.
+            writePrivate(directory.resolve(name+".json"),artifact.toPrettyString());writePrivate(directory.resolve("results.json"),results.toPrettyString());
+            for(int attempt=0;attempt<3&&sequence.hasNext();attempt++){
+                long remaining=ReportModelSettings.MAX_TOTAL_BUDGET_MS-(System.nanoTime()-started)/1_000_000;if(remaining<1)break;
+                var stage=sequence.stage();boolean review=stage==ReportGateway.Stage.REVIEW;var attemptInput=sequence.input();var issues=sequence.issues();long attemptStarted=System.nanoTime();
+                var metadata=attempts.addObject().put("phase","STARTED").put("attempt",attempt+1).put("stage",stage.name()).put("startedAt",java.time.Instant.now().toString()).put("remainingBudgetMs",remaining).put("requestTimeoutMs",Math.min(settings.requestTimeoutMs(),remaining));
+                metadata.set("repairIssues",JSON.valueToTree(issues));System.out.println("REPORT_ANALYSIS_ATTEMPT="+JSON.createObjectNode().put("case",name).set("progress",metadata.deepCopy()));
+                writePrivate(directory.resolve(name+".json"),artifact.toPrettyString());writePrivate(directory.resolve("results.json"),results.toPrettyString());
+                // Factory exists only in test sources and verifies exact synthetic input plus live guard.
+                var gateway=SyntheticReportFinalCapture.create(JSON,core,provider,key,base,model,settings,guard,directory,name,attempt+1,stage,attemptInput,review?sequence.draft():null);
+                var outcome=gateway.attempt(new ReportGateway.Attempt("synthetic-"+name+"-"+attempt,stage,attemptInput,issues,remaining));
+                metadata.put("phase","COMPLETED").put("status",outcome.status().name()).put("durationMs",(System.nanoTime()-attemptStarted)/1_000_000);metadata.set("telemetry",JSON.valueToTree(outcome.telemetry()));if(outcome.safeErrorCode()!=null)metadata.put("safeCode",outcome.safeErrorCode());
+                String captureName=SyntheticReportFinalCapture.fileName(name,attempt+1);if(Files.isRegularFile(directory.resolve(captureName)))metadata.put("unvalidatedSyntheticFinalDiagnostic",captureName);
+                sequence.accept(outcome);if(sequence.draft()!=null)result.put("draftProposalSha256",core.proposalSha256(catalog,sequence.draft()));
+                if(sequence.finalProposal()!=null){rendered=core.render(input,catalog,sequence.finalProposal(),GenerationMode.AI);result.put("independentRewriteCompleted",true);}
+                metadata.set("violations",JSON.valueToTree(sequence.issues()));System.out.println("REPORT_ANALYSIS_ATTEMPT="+JSON.createObjectNode().put("case",name).set("progress",metadata.deepCopy()));
+                if(rendered!=null)artifact.set("validatedReport",rendered.publicReportJson());writePrivate(directory.resolve(name+".json"),artifact.toPrettyString());writePrivate(directory.resolve("results.json"),results.toPrettyString());
+
+            }
+            result.put("status",rendered==null?"FAILED":"REWRITTEN_VALIDATED_REQUIRES_HUMAN_SEMANTIC_REVIEW").put("structurallyValid",rendered!=null).put("durationMs",(System.nanoTime()-started)/1_000_000);
+            if(rendered!=null){var signals=ReportAnalysisLiveFixtures.qualitySignals(name,rendered.publicReportJson());result.set("qualitySignals",JSON.valueToTree(signals));if(signals.isEmpty())failed.add(name+":NO_EXPECTED_QUALITY_SIGNAL");}
+            else failed.add(name+":NO_VALID_ANALYSIS");
+            System.out.println("REPORT_ANALYSIS_CASE="+result);writePrivate(directory.resolve(name+".json"),artifact.toPrettyString());writePrivate(directory.resolve("results.json"),results.toPrettyString());
+        }
+        System.out.println("REPORT_ANALYSIS_ARTIFACT_DIR="+directory);assertTrue(failed.isEmpty(),"Probe gaps: "+String.join(",",failed)+". Artifacts: "+directory);
+    }
+    private static String env(String key,String fallback){String value=System.getenv(key);return value==null||value.isBlank()?fallback:value;}
+    private static void writePrivate(Path path,String value)throws Exception{if(!Files.exists(path))Files.createFile(path,PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));Files.writeString(path,value,StandardCharsets.UTF_8,StandardOpenOption.TRUNCATE_EXISTING);}
+}

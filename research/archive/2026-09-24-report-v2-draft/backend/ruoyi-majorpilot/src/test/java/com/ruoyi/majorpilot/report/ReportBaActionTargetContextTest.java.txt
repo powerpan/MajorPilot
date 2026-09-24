@@ -1,0 +1,96 @@
+package com.ruoyi.majorpilot.report;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static com.ruoyi.majorpilot.report.core.ReportTestFixtures.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ruoyi.majorpilot.businessanalytics.BaSemantics;
+import com.ruoyi.majorpilot.businessanalytics.BaStatistics;
+import com.ruoyi.majorpilot.shared.ApiException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+/** Frozen student targets are neither generated examples nor concurrent-control effect targets. */
+class ReportBaActionTargetContextTest {
+    @Test void actualSavedTargetHasAnExplicitHistoricalBaselineAndSeparateControlBoundary() throws Exception {
+        var context=context();var frame=context.at("/task/actionTargetFrame");
+        assertEquals("ba-action-target-frame-v1",frame.path("schemaVersion").asText());
+        assertEquals("APPLIED",frame.at("/group/key").asText());assertEquals("应用课程",frame.at("/group/label").asText());
+        assertEquals("FIRST_LESSON_RATE",frame.at("/successMetric/key").asText());assertEquals("报名人数",frame.at("/successMetric/denominatorLabel").asText());
+        assertEquals(93,frame.at("/target/baselineNumerator").asInt());assertEquals(114,frame.at("/target/baselineDenominator").asInt());
+        decimal("81.578947",frame.at("/target/baselinePercent"));decimal("2",frame.at("/target/increasePercentagePoints"));decimal("83.578947",frame.at("/target/absoluteTargetPercent"));
+        assertFalse(frame.at("/target/isPrediction").asBoolean());assertFalse(frame.at("/target/isNewExample").asBoolean());assertFalse(frame.at("/target/isConcurrentControlDifference").asBoolean());
+        assertTrue(frame.at("/target/comparisonBoundary").asText().contains("不能用它替换原目标"));
+        assertEquals(context.at("/task/aggregateLineage/verifiedSegmentSource/evidenceRefs"),frame.at("/baselineSource/evidenceRefs"));
+        assertEquals(context.at("/task/aggregateLineage/datasetSha256"),frame.at("/baselineSource/datasetSha256"));
+        assertEquals(7,frame.at("/baselineSource/window/startWeek").asInt());assertEquals(12,frame.at("/baselineSource/window/endWeek").asInt());
+        decimal("149.122807",frame.at("/supportGuardrail/baselinePer100"));decimal("180",frame.at("/supportGuardrail/maximum"));decimal("30.877193",frame.at("/supportGuardrail/headroomPer100"));
+        assertEquals("次/100名报名者",frame.at("/supportGuardrail/unit").asText());assertTrue(frame.at("/supportGuardrail/countsEventsNotPeople").asBoolean());
+    }
+    @Test void everyLegalMetricAndCourseOrChannelUsesItsActualSelectedCounts() throws Exception {
+        var context=context();var action=response(context,"b6-action");var original=action.deepCopy();var params=parameters(context);
+        var numerators=Map.of("COMPLETION_RATE","completed_count","FIRST_LESSON_RATE","first_lesson_count","WEEK_ONE_ACTIVE_RATE","week_one_active_count","ASSIGNMENT_SUBMISSION_RATE","assignment_submitted_count","STARTER_COMPLETION_RATE","completed_count");
+        int checked=0;
+        for(var dimension:BaSemantics.GROUPS.entrySet())for(String group:dimension.getValue())for(var metric:numerators.entrySet()){
+            var choices=params.deepCopy().put("segmentBy",dimension.getKey()).put("denominator",metric.getKey().equals("STARTER_COMPLETION_RATE")?"first_lesson_count":"enrolled_count");
+            var selected=calculate(context,choices);var input=action.deepCopy().put("targetSegmentKey",group).put("successMetric",metric.getKey()).put("targetChangePercentagePoints",.125);
+            var frame=ReportBaActionTargetContext.build(JSON,input,choices,group,selected,refs(context));
+            long n=rawTotal(context,choices,dimension.getKey(),group,metric.getValue()),d=rawTotal(context,choices,dimension.getKey(),group,metric.getKey().equals("STARTER_COMPLETION_RATE")?"first_lesson_count":"enrolled_count");
+            assertEquals(n,frame.at("/target/baselineNumerator").asLong());assertEquals(d,frame.at("/target/baselineDenominator").asLong());
+            BigDecimal expected=BigDecimal.valueOf(n).multiply(BigDecimal.valueOf(100)).add(new BigDecimal("0.125").multiply(BigDecimal.valueOf(d))).divide(BigDecimal.valueOf(d),6,RoundingMode.HALF_UP);
+            assertEquals(0,expected.compareTo(frame.at("/target/absoluteTargetPercent").decimalValue()),metric.getKey()+" "+group);
+            assertEquals(group,frame.at("/group/key").asText());assertEquals(dimension.getKey(),frame.at("/group/dimension").asText());checked++;
+        }
+        assertEquals(25,checked);assertEquals(original,action,"Computing a frame must not rewrite the student's saved action");
+    }
+    @Test void arbitrarySavedGoalAndNegativeGuardrailHeadroomRemainUnchanged() throws Exception {
+        var context=context();var action=response(context,"b6-action").deepCopy().put("targetChangePercentagePoints",new BigDecimal("1.375")).put("guardrailMaximum",new BigDecimal("3")).put("reviewAfterDays",42);
+        var frame=ReportBaActionTargetContext.build(JSON,action,parameters(context),"APPLIED",calculate(context,parameters(context)),refs(context));
+        decimal("1.375",frame.at("/target/increasePercentagePoints"));decimal("82.953947",frame.at("/target/absoluteTargetPercent"));
+        decimal("3",frame.at("/supportGuardrail/maximum"));decimal("-146.122807",frame.at("/supportGuardrail/headroomPer100"));
+        assertEquals(42,frame.at("/observation/reviewDaysAfterLastParticipant").asInt());assertEquals(28,frame.at("/observation/participantWindowDays").asInt());
+    }
+    @Test void differentFrozenWindowAndStarterMetricDoNotReuseTheDefaultBaseline() throws Exception {
+        var context=context();var params=parameters(context).put("baselineStartWeek",2).put("baselineEndWeek",4).put("comparisonStartWeek",8).put("comparisonEndWeek",10).put("segmentBy","signup_source").put("denominator","first_lesson_count");
+        var action=response(context,"b6-action").deepCopy().put("targetSegmentKey","CAMPAIGN").put("successMetric","STARTER_COMPLETION_RATE").put("targetChangePercentagePoints",.5);
+        var frame=ReportBaActionTargetContext.build(JSON,action,params,"CAMPAIGN",calculate(context,params),refs(context));
+        assertEquals(rawTotal(context,params,"signup_source","CAMPAIGN","completed_count"),frame.at("/target/baselineNumerator").asLong());
+        assertEquals(rawTotal(context,params,"signup_source","CAMPAIGN","first_lesson_count"),frame.at("/target/baselineDenominator").asLong());
+        assertEquals("开始首课人数",frame.at("/successMetric/denominatorLabel").asText());assertEquals(8,frame.at("/baselineSource/window/startWeek").asInt());assertEquals(10,frame.at("/baselineSource/window/endWeek").asInt());
+    }
+    @Test void targetFrameDoesNotDependOnOpenAnswerQualityOrModelJudgment() throws Exception {
+        var expected=context().at("/task/actionTargetFrame");
+        for(String name:List.of("ba-concept-errors","ba-unrelated","ba-alternative"))assertEquals(expected,ReportAnalysisLiveFixtures.input(name).sources().getFirst().analysisContext().at("/task/actionTargetFrame"),name);
+        assertTrue(JSON.writeValueAsBytes(expected).length<4000);assertFalse(expected.toString().contains("assessment"));
+    }
+    @Test void invalidOrMissingSavedTargetsFailClosedInsteadOfInventingValues() throws Exception {
+        for(String fault:List.of("missing-goal","unknown-metric","wrong-group","zero-goal","impossible-goal","negative-guardrail","wrong-guardrail-unit","wrong-review-day","starter-denominator","no-reference")){
+            var context=context();var action=response(context,"b6-action").deepCopy();var references=refs(context).deepCopy();
+            switch(fault){
+                case "missing-goal"->action.remove("targetChangePercentagePoints");case "unknown-metric"->action.put("successMetric","REVENUE_RATE");case "wrong-group"->action.put("targetSegmentKey","FOUNDATIONS");
+                case "zero-goal"->action.put("targetChangePercentagePoints",0);case "impossible-goal"->action.put("targetChangePercentagePoints",100);case "negative-guardrail"->action.put("guardrailMaximum",-1);
+                case "wrong-guardrail-unit"->action.put("guardrailMetric","CONTACTED_PEOPLE_PERCENT");case "wrong-review-day"->action.put("reviewAfterDays",29);case "starter-denominator"->action.put("successMetric","STARTER_COMPLETION_RATE");
+                default->((com.fasterxml.jackson.databind.node.ArrayNode)references).removeAll();
+            }
+            assertEquals("REPORT_SOURCE_INVALID",assertThrows(ApiException.class,()->ReportBaActionTargetContext.build(JSON,action,parameters(context),"APPLIED",calculate(context,parameters(context)),references),fault).code);
+        }
+    }
+    @Test void zeroDenominatorAndMissingVerifiedResultNeverBecomeZeroPercentBaselines() throws Exception {
+        var context=context();var params=parameters(context);var rows=material(context).deepCopy();
+        for(var row:rows){for(String field:BaSemantics.STAGES)((ObjectNode)row).put(field,0);((ObjectNode)row).put("support_contact_count",0);}
+        var empty=BaStatistics.calculate("ba-segments",rows,params,context.at("/task/aggregateLineage/datasetSha256").asText());
+        assertEquals("REPORT_SOURCE_INVALID",assertThrows(ApiException.class,()->ReportBaActionTargetContext.build(JSON,response(context,"b6-action"),params,"APPLIED",empty,refs(context))).code);
+        assertEquals("REPORT_SOURCE_INVALID",assertThrows(ApiException.class,()->ReportBaActionTargetContext.build(JSON,response(context,"b6-action"),params,"APPLIED",JSON.createObjectNode(),refs(context))).code);
+    }
+    private static ObjectNode context()throws Exception{return (ObjectNode)ReportAnalysisLiveFixtures.input("ba-good").sources().getFirst().analysisContext();}
+    private static ObjectNode response(JsonNode context,String key){for(var step:context.path("steps"))if(key.equals(step.path("stepKey").asText()))return (ObjectNode)step.path("submittedResponse");throw new AssertionError(key);}
+    private static ObjectNode parameters(JsonNode context){return (ObjectNode)context.at("/task/aggregateLineage/selection").deepCopy();}
+    private static JsonNode refs(JsonNode context){return context.at("/task/aggregateLineage/verifiedSegmentSource/evidenceRefs");}
+    private static JsonNode material(JsonNode context){for(var item:context.at("/task/materials"))if(item.path("assetKey").asText().equals("weekly-funnel"))return item.path("content");throw new AssertionError("Missing source");}
+    private static JsonNode calculate(JsonNode context,JsonNode params){return BaStatistics.calculate("ba-segments",material(context),params,context.at("/task/aggregateLineage/datasetSha256").asText());}
+    private static long rawTotal(JsonNode context,JsonNode params,String dimension,String group,String count){long total=0;for(var row:material(context))if(row.path("week").asInt()>=params.path("comparisonStartWeek").asInt()&&row.path("week").asInt()<=params.path("comparisonEndWeek").asInt()&&group.equals(row.path(dimension).asText()))total+=row.path(count).asLong();return total;}
+    private static void decimal(String expected,JsonNode actual){assertTrue(actual.isNumber());assertEquals(0,new BigDecimal(expected).compareTo(actual.decimalValue()));}
+}

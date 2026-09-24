@@ -1,0 +1,171 @@
+package com.ruoyi.majorpilot.report.core;
+
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.*;
+import static com.ruoyi.majorpilot.report.core.ReportModels.*;
+import java.util.*;
+
+/** Explicit v3 wire contract. Machine-owned answer identity is frozen BEFORE any model call. */
+public final class ReportBindingCodec {
+    public static final String RUBRIC="report-assessment-rubric-v2.4";
+    public static final String INPUT_SCHEMA="report-model-input-v3",REVIEW_SCHEMA="report-model-review-input-v2",WIRE_SCHEMA="report-analysis-wire-proposal-v3";
+    public static final int MAX_FINDINGS=60,QUOTE_CODE_POINTS=1200;
+    private final ObjectMapper mapper;
+    private final ReportSchema schema;
+    public ReportBindingCodec(ObjectMapper mapper,ReportSchema schema){this.mapper=mapper;this.schema=schema;}
+
+    /** Mixing new and old frozen sources is rejected, never silently sent through an older protocol. */
+    public static boolean enabled(JsonNode context){
+        if(context==null)return false;
+        int total=context.path("sources").size(),bound=0,count=0;
+        for(var source:context.path("sources")){
+            if(Set.of(RUBRIC,"report-assessment-rubric-v2.5").contains(source.at("/context/task/assessmentRubricVersion").asText()))bound++;
+            for(var step:source.at("/context/steps"))count+=step.path("answers").size();
+        }
+        require(bound==0||bound==total,"REPORT_BINDING_VERSION_MIXED");
+        if(bound>0)require(total>0&&count>0&&count<=MAX_FINDINGS,"REPORT_BINDING_CAPACITY_INVALID");
+        return bound>0;
+    }
+    public boolean recognizes(String version){return INPUT_SCHEMA.equals(version)||REVIEW_SCHEMA.equals(version);}
+
+    private record Ref(String key,String raw,String major,String type){}
+    private record Binding(String key,String major,String step,String field,String answer,String rawRef,String sourceKey,LinkedHashMap<String,String> segments){}
+    private record Registry(JsonNode original,LinkedHashMap<String,Ref> refs,Map<String,Ref> byRaw,LinkedHashMap<String,Binding> bindings){}
+
+    private Registry registry(Catalog catalog){
+        require(catalog!=null&&enabled(catalog.analysisContext()),"REPORT_CATALOG_INVALID");
+        JsonNode original=catalog.analysisContext();
+        var rawRefs=new TreeMap<String,Ref>();
+        for(var source:original.path("sources")){
+            String major=source.path("majorCode").asText();
+            for(var evidence:source.path("evidence"))addRef(rawRefs,evidence.path("evidenceId").asText(),major,evidence.path("type").asText());
+            for(var frozen:source.at("/context/frozenSources"))addRef(rawRefs,frozen.path("sourceRef").asText(),major,frozen.path("sourceType").asText());
+        }
+        var refs=new LinkedHashMap<String,Ref>();var byRaw=new HashMap<String,Ref>();int refNumber=0;
+        for(var raw:rawRefs.values()){var ref=new Ref(String.format(Locale.ROOT,"E%05d",++refNumber),raw.raw(),raw.major(),raw.type());refs.put(ref.key(),ref);byRaw.put(ref.raw(),ref);}
+        require(!refs.isEmpty(),"REPORT_CATALOG_INVALID");
+        var ordered=new TreeMap<String,Binding>();
+        for(var source:original.path("sources"))for(var step:source.at("/context/steps"))for(var answer:step.path("answers")){
+            String major=source.path("majorCode").asText(),stepKey=step.path("stepKey").asText(),field=answer.path("answerField").asText(),value=answer.path("value").asText();
+            String raw=answer.path(answer.has("evidenceId")?"evidenceId":"sourceRef").asText();var ref=byRaw.get(raw);
+            require(ref!=null&&ref.major().equals(major)&&!value.isBlank()&&value.length()<=12000,"REPORT_CATALOG_INVALID");
+            var segments=new LinkedHashMap<String,String>();int offset=0,part=0;
+            while(offset<value.length()){
+                int count=Math.min(QUOTE_CODE_POINTS,value.codePointCount(offset,value.length()));int end=value.offsetByCodePoints(offset,count);
+                segments.put(String.format(Locale.ROOT,"S%03d",++part),value.substring(offset,end));offset=end;
+            }
+            String tuple=tuple(major,stepKey,field);require(!ordered.containsKey(tuple),"REPORT_CATALOG_INVALID");
+            ordered.put(tuple,new Binding(null,major,stepKey,field,value,raw,ref.key(),segments));
+        }
+        require(!ordered.isEmpty()&&ordered.size()<=MAX_FINDINGS,"REPORT_BINDING_CAPACITY_INVALID");
+        var bindings=new LinkedHashMap<String,Binding>();int bindingNumber=0;
+        for(var b:ordered.values()){String key=String.format(Locale.ROOT,"F%03d",++bindingNumber);bindings.put(key,new Binding(key,b.major(),b.step(),b.field(),b.answer(),b.rawRef(),b.sourceKey(),b.segments()));}
+        return new Registry(original,refs,byRaw,bindings);
+    }
+    private static void addRef(Map<String,Ref> refs,String raw,String major,String type){
+        require(raw.matches("(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|frozen-response:[A-Za-z0-9_./~-]{1,80}:[A-Za-z0-9_./~-]{1,160}|frozen-reflection:[A-Za-z0-9_./~-]{1,160})")&&!refs.containsKey(raw),"REPORT_CATALOG_INVALID");
+        if(raw.startsWith("frozen-"))require(type.equals("STEP_RESPONSE")&&raw.startsWith("frozen-response:"+major+"/")||type.equals("REFLECTION")&&raw.startsWith("frozen-reflection:"+major+"/"),"REPORT_CATALOG_INVALID");
+        refs.put(raw,new Ref(null,raw,major,type));
+    }
+
+    public ObjectNode modelContent(Catalog catalog){
+        var registry=registry(catalog);ObjectNode content=registry.original().deepCopy();
+        // Only metadata positions are rewritten. Submitted values and public material text stay exact.
+        projectMetadata(content.path("sources"),registry.byRaw());
+        var contract=(ObjectNode)content.path("analysisContract");
+        contract.put("proposalSchemaVersion",WIRE_SCHEMA).put("coverage","EXACTLY_ONE_FINDING_PER_ANSWERED_FIELD").put("bindingPolicy","PREBOUND_FIELDS_AND_QUOTES").put("quotePolicy","FROZEN_CONTIGUOUS_SEGMENT_NOT_NECESSARILY_FULL_ANSWER");
+        var bindingCatalog=content.putObject("bindingCatalog");bindingCatalog.put("schemaVersion","report-binding-catalog-v1");
+        var sources=bindingCatalog.putArray("sources");
+        for(var ref:registry.refs().values())sources.addObject().put("sourceKey",ref.key()).put("majorCode",ref.major()).put("sourceType",ref.type()).put("supportsStudentAnswer",ref.type().equals("STUDENT_ANALYSIS")||ref.raw().startsWith("frozen-response:"));
+        var findings=bindingCatalog.putArray("findings");
+        for(var binding:registry.bindings().values()){
+            var finding=findings.addObject().put("findingKey",binding.key()).put("majorCode",binding.major()).put("stepKey",binding.step()).put("answerField",binding.field()).put("answerSourceKey",binding.sourceKey()).put("answerText",binding.answer());
+            var segments=finding.putArray("quoteSegments");
+            binding.segments().forEach((key,quote)->segments.addObject().put("quoteSegmentKey",key).put("quote",quote).put("isFullAnswer",binding.segments().size()==1));
+        }
+        return content;
+    }
+    private void projectMetadata(JsonNode value,Map<String,Ref> refs){
+        if(value.isArray()){value.forEach(child->projectMetadata(child,refs));return;}
+        if(!value.isObject())return;
+        ObjectNode object=(ObjectNode)value;var names=new ArrayList<String>();object.fieldNames().forEachRemaining(names::add);
+        for(String name:names){
+            JsonNode child=object.path(name);
+            if(Set.of("value","submittedResponse","inputSchema","materials").contains(name))continue;
+            if((name.equals("evidenceId")||name.equals("sourceRef"))&&child.isTextual()){
+                var ref=refs.get(child.asText());require(ref!=null,"REPORT_CATALOG_INVALID");object.remove(name);object.put("sourceKey",ref.key());
+            }else if(name.equals("evidenceRefs")&&child.isArray()){
+                var selected=mapper.createArrayNode();for(var raw:child){var ref=refs.get(raw.asText());require(ref!=null,"REPORT_CATALOG_INVALID");selected.add(ref.key());}object.remove(name);object.set("supportKeys",selected);
+            }else projectMetadata(child,refs);
+        }
+    }
+
+    public JsonNode providerSchema(Catalog catalog){
+        ObjectNode projected=wireSchema(catalog,registry(catalog));schema.providerOnlyVocabulary(projected);return projected;
+    }
+    private ObjectNode wireSchema(Catalog catalog,Registry registry){
+        ObjectNode projected=schema.boundWireSchemaTemplate(catalog.reportType());
+        var majors=new TreeSet<String>();registry.refs().values().forEach(r->majors.add(r.major()));
+        var template=projected.at("/$defs/boundFinding").deepCopy();projected.remove("$defs");
+        var findings=(ObjectNode)projected.at("/properties/analysis/properties/findings");var fields=findings.putObject("properties");findings.set("required",mapper.valueToTree(registry.bindings().keySet()));
+        for(var binding:registry.bindings().values()){
+            ObjectNode field=template.deepCopy();((ObjectNode)field.at("/properties/quoteSegmentKey")).set("enum",mapper.valueToTree(binding.segments().keySet()));
+            var allowed=registry.refs().values().stream().filter(r->r.major().equals(binding.major())&&!r.raw().equals(binding.rawRef())).map(Ref::key).toList();
+            ObjectNode supports=(ObjectNode)field.at("/properties/supportKeys");if(allowed.isEmpty())supports.put("maxItems",0);else ((ObjectNode)supports.path("items")).set("enum",mapper.valueToTree(allowed));fields.set(binding.key(),field);
+        }
+        for(String section:List.of("majorAnalyses","crossMajorAnalysis")){
+            var properties=projected.at("/properties/analysis/properties/"+section+"/items/properties");
+            ((ObjectNode)properties.at("/supportKeys/items")).set("enum",mapper.valueToTree(registry.refs().keySet()));
+            ((ObjectNode)properties.at(section.equals("crossMajorAnalysis")?"/majorCodes/items":"/majorCode")).set("enum",mapper.valueToTree(majors));
+        }
+        var majorList=(ObjectNode)projected.at("/properties/analysis/properties/majorAnalyses");majorList.put("minItems",majors.size()).put("maxItems",majors.size());return projected;
+    }
+
+    /** Decodes only the NEW declared wire protocol; no attempt is made to fix old incorrect references. */
+    public Proposal decode(Catalog catalog,JsonNode wire){
+        var registry=registry(catalog);var issues=schema.boundWireProposalViolations(wire,catalog.reportType(),wireSchema(catalog,registry));if(!issues.isEmpty())throw new ProposalException(issues);
+        ObjectNode analysis=wire.path("analysis").deepCopy();JsonNode supplied=analysis.path("findings");var expanded=analysis.putArray("findings");int i=0;
+        for(var binding:registry.bindings().values()){
+            String p="/analysis/findings/"+binding.key();ObjectNode finding=supplied.path(binding.key()).deepCopy();
+            String quote=binding.segments().get(finding.path("quoteSegmentKey").asText());if(quote==null)throw invalid("ANALYSIS_QUOTE_SEGMENT_INVALID",p+"/quoteSegmentKey");
+            var extra=resolve(finding.path("supportKeys"),registry,Set.of(binding.major()),binding.rawRef(),p+"/supportKeys");
+            finding.remove(List.of("findingKey","quoteSegmentKey","supportKeys"));finding.put("majorCode",binding.major()).put("stepKey",binding.step()).put("answerField",binding.field()).put("answerQuote",quote);
+            var evidence=finding.putArray("evidenceRefs");evidence.add(binding.rawRef());extra.forEach(evidence::add);expanded.add(finding);
+        }
+        i=0;for(var value:analysis.path("majorAnalyses")){ObjectNode major=(ObjectNode)value;var refs=resolve(major.path("supportKeys"),registry,Set.of(major.path("majorCode").asText()),null,"/analysis/majorAnalyses/"+i+++"/supportKeys");major.remove("supportKeys");major.set("evidenceRefs",mapper.valueToTree(refs));}
+        i=0;for(var value:analysis.path("crossMajorAnalysis")){ObjectNode comparison=(ObjectNode)value;var owners=new HashSet<String>();comparison.path("majorCodes").forEach(m->owners.add(m.asText()));var refs=resolve(comparison.path("supportKeys"),registry,owners,null,"/analysis/crossMajorAnalysis/"+i+++"/supportKeys");comparison.remove("supportKeys");comparison.set("evidenceRefs",mapper.valueToTree(refs));}
+        if(exposesAlias(wire.path("analysis"),null,registry))throw invalid("ANALYSIS_INTERNAL_REFERENCE_EXPOSED","/analysis");
+        return new Proposal("report-analysis-proposal-v2",catalog.reportType(),List.of(),analysis);
+    }
+    private List<String> resolve(JsonNode keys,Registry registry,Set<String> owners,String anchor,String path){
+        var selected=new ArrayList<String>();var seen=new HashSet<String>();
+        for(var key:keys){var ref=registry.refs().get(key.asText());if(ref==null||!owners.contains(ref.major()))throw invalid("ANALYSIS_SUPPORT_INVALID",path);if(!seen.add(key.asText())||Objects.equals(anchor,ref.raw()))throw invalid("ANALYSIS_SUPPORT_DUPLICATE",path);selected.add(ref.raw());}
+        return selected;
+    }
+
+    /** Re-encodes a validated v3-derived draft for REVIEW without exposing long raw IDs or copying quotes. */
+    public ObjectNode encode(Catalog catalog,Proposal proposal){
+        var registry=registry(catalog);require(proposal.schemaVersion().equals("report-analysis-proposal-v2")&&proposal.reportType()==catalog.reportType(),"REPORT_CATALOG_INVALID");
+        ObjectNode analysis=proposal.analysis().deepCopy();var byTuple=new HashMap<String,Binding>();registry.bindings().values().forEach(b->byTuple.put(tuple(b.major(),b.step(),b.field()),b));var seen=new HashSet<String>();var encoded=new TreeMap<String,JsonNode>();
+        for(var value:analysis.path("findings")){
+            ObjectNode finding=value.deepCopy();var binding=byTuple.get(tuple(finding.path("majorCode").asText(),finding.path("stepKey").asText(),finding.path("answerField").asText()));require(binding!=null&&seen.add(binding.key()),"REPORT_CATALOG_INVALID");
+            String quote=finding.path("answerQuote").asText(),segment=null;for(var s:binding.segments().entrySet())if(s.getValue().equals(quote)){segment=s.getKey();break;}require(segment!=null,"REPORT_BOUND_QUOTE_INVALID");
+            var extras=mapper.createArrayNode();boolean anchor=false;var selected=new HashSet<String>();for(var raw:finding.path("evidenceRefs")){var ref=registry.byRaw().get(raw.asText());require(ref!=null&&ref.major().equals(binding.major())&&selected.add(raw.asText()),"REPORT_CATALOG_INVALID");if(raw.asText().equals(binding.rawRef()))anchor=true;else extras.add(ref.key());}require(anchor,"REPORT_CATALOG_INVALID");
+            finding.remove(List.of("majorCode","stepKey","answerField","answerQuote","evidenceRefs"));finding.put("quoteSegmentKey",segment);finding.set("supportKeys",extras);encoded.put(binding.key(),finding);
+        }
+        require(seen.equals(registry.bindings().keySet()),"REPORT_CATALOG_INVALID");
+        ObjectNode findings=analysis.putObject("findings");encoded.forEach(findings::set);
+        for(String section:List.of("majorAnalyses","crossMajorAnalysis"))for(var value:analysis.path(section)){ObjectNode item=(ObjectNode)value;var aliases=mapper.createArrayNode();for(var raw:item.path("evidenceRefs")){var ref=registry.byRaw().get(raw.asText());require(ref!=null,"REPORT_CATALOG_INVALID");aliases.add(ref.key());}item.remove("evidenceRefs");item.set("supportKeys",aliases);}
+        var wire=mapper.createObjectNode().put("schemaVersion",WIRE_SCHEMA).put("reportType",catalog.reportType().name());wire.set("analysis",analysis);var issues=schema.boundWireProposalViolations(wire,catalog.reportType(),wireSchema(catalog,registry));if(!issues.isEmpty())throw new ProposalException(issues);return wire;
+    }
+    private boolean exposesAlias(JsonNode value,String key,Registry registry){
+        if(Set.of("findingKey","quoteSegmentKey","supportKeys","majorCode","majorCodes","assessment").contains(key==null?"":key))return false;
+        if(value.isTextual()){var aliases=new HashSet<>(registry.refs().keySet());aliases.addAll(registry.bindings().keySet());registry.bindings().values().forEach(b->aliases.addAll(b.segments().keySet()));for(String alias:aliases)if(value.asText().matches("(?s).*(?<![A-Za-z0-9])"+alias+"(?![A-Za-z0-9]).*"))return true;return false;}
+        if(value.isArray()){for(var child:value)if(exposesAlias(child,key,registry))return true;}
+        else if(value.isObject()){var fields=value.fields();while(fields.hasNext()){var field=fields.next();if(exposesAlias(field.getValue(),field.getKey(),registry))return true;}}
+        return false;
+    }
+    private static String tuple(String major,String step,String field){return major+":"+step+":"+field;}
+    private static void require(boolean valid,String code){if(!valid)throw new ReportInputException(code);}
+    private static ProposalException invalid(String code,String path){return new ProposalException(List.of(new Violation(code,path)));}
+}
