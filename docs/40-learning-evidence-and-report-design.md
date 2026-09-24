@@ -1,6 +1,6 @@
 # 方法过程证据与新手可读报告
 
-> 2026-09-24，设计提案，未实施／未发布Schema。关联：[38 总体设计](./38-method-led-experience-redesign.md)、[39 案例](./39-guided-major-case-specifications.md)、[41 Excel](./41-excel-download-and-local-results.md)。
+> 2026-09-24，当前报告设计基线，已获准实施；实现与 Schema 发布状态见[42 台账](./42-method-led-implementation-ledger.md)。关联：[38 总体设计](./38-method-led-experience-redesign.md)、[39 案例](./39-guided-major-case-specifications.md)、[41 Excel](./41-excel-download-and-local-results.md)。
 
 ## 1. 报告要回答的问题
 

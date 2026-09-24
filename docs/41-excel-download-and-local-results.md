@@ -1,6 +1,6 @@
 # 原始数据 Excel 下载与本地结果回填
 
-> 2026-09-24，设计提案，待实现。用户已确认 A：下载Excel，在本地查看／处理，将关键结果和理由填回网站，不上传工作簿。
+> 2026-09-24，当前 Excel 设计基线，已获准实施。用户已确认 A：下载Excel，在本地查看／处理，将关键结果和理由填回网站，不上传工作簿。实现状态见[42 台账](./42-method-led-implementation-ledger.md)。
 > 关联：[38 总体设计](./38-method-led-experience-redesign.md)、[39 案例](./39-guided-major-case-specifications.md)、[40 报告](./40-learning-evidence-and-report-design.md)。
 
 ## 1. 页面要改成什么

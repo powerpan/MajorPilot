@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "design-archive-v1",
+  "date": "2026-09-24",
+  "sourceCommit": "e7a9c2f92c8dfc642a3b350966cabf720fe8b0db",
+  "linkTransformation": "Only relative Markdown links to non-archived files receive ../../ prefix; reverse this prefix to reconstruct the original.",
+  "files": [
+    {
+      "source": "docs/09-three-major-task-designs.md",
+      "archive": "09-three-major-task-designs.md",
+      "sha256": "22086ff1f28564d6767cfbaea008b1deab31032bbbfb93d1289244ca1ad275a8",
+      "sourceSha256": "8aec6265efea9e97624773a80366c0b2fda40c36fdde848d50e160baa89b00a3",
+      "committedSourceSha256": "8aec6265efea9e97624773a80366c0b2fda40c36fdde848d50e160baa89b00a3",
+      "hadUncommittedChanges": false,
+      "hardBreakLines": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "source": "docs/10-report-and-evidence-design.md",
+      "archive": "10-report-and-evidence-design.md",
+      "sha256": "dd1b2b3c821ef334442d833ef5fa80c7384662994af53471242dc80310e94226",
+      "sourceSha256": "b41c3aa615f2ef56bf77c1f2800bd8060585891c6fe896f1597dfb5ec7cba713",
+      "committedSourceSha256": "6b7fd066589c17eb930e417be97ebe0e74b1827f41789c67ed1509cb6aaffb34",
+      "hadUncommittedChanges": true,
+      "hardBreakLines": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "source": "docs/25-p3-engineering-plan.md",
+      "archive": "25-p3-engineering-plan.md",
+      "sha256": "7b692ab4c66b914c81e78cf42deda1b1c0c80662d566ed488c895329ab434157",
+      "sourceSha256": "7b692ab4c66b914c81e78cf42deda1b1c0c80662d566ed488c895329ab434157",
+      "committedSourceSha256": "7b692ab4c66b914c81e78cf42deda1b1c0c80662d566ed488c895329ab434157",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/26-p3-ai-visual-direction.md",
+      "archive": "26-p3-ai-visual-direction.md",
+      "sha256": "bf5d01762e8a252a5bbea8af52a1c59e2624bf4178cda131c3c8ebe5d17668db",
+      "sourceSha256": "bcae80cbaa0dee038955aace68f47fe2b86bdbbbccfd64e8b402e40ab85bbe17",
+      "committedSourceSha256": "bcae80cbaa0dee038955aace68f47fe2b86bdbbbccfd64e8b402e40ab85bbe17",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/27-p4-engineering-plan.md",
+      "archive": "27-p4-engineering-plan.md",
+      "sha256": "4a6672a3439e64ad2c35daa10d48bc9534ab7e29d416494991334d9b40021b53",
+      "sourceSha256": "0da683b1e95c9f365c2934c1125817c2d35e48d656f36d7006188181b7bb5777",
+      "committedSourceSha256": "0da683b1e95c9f365c2934c1125817c2d35e48d656f36d7006188181b7bb5777",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/28-p4-ds-visual-direction.md",
+      "archive": "28-p4-ds-visual-direction.md",
+      "sha256": "0a8cdf26900476806d40ac61ce7d4fecd1dd05b3fda45736c862ed32628c7cfc",
+      "sourceSha256": "d2776e3f4370180c3c807a151db37b7326e48e425e26058a93146113de105eab",
+      "committedSourceSha256": "d2776e3f4370180c3c807a151db37b7326e48e425e26058a93146113de105eab",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/29-p5-engineering-plan.md",
+      "archive": "29-p5-engineering-plan.md",
+      "sha256": "e28c9475ce13c7cb63788f6ab965d37b9ff3552828b292e3caa765a2c6c4bc01",
+      "sourceSha256": "a28fdd022eef1bc47ff2924957e7e80a7944fa0a88ed2d2e3a3b87c691d99b4d",
+      "committedSourceSha256": "a28fdd022eef1bc47ff2924957e7e80a7944fa0a88ed2d2e3a3b87c691d99b4d",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/30-p5-ba-visual-direction.md",
+      "archive": "30-p5-ba-visual-direction.md",
+      "sha256": "ba5db0099475df86b5fcf0e3524d5efecf2af221ab1c0ea9bafea8fb8c3213b5",
+      "sourceSha256": "ce80d0b71d8edd0716e37240bfa7636e1b8119f8b25b758534fb767ff3e0730f",
+      "committedSourceSha256": "ce80d0b71d8edd0716e37240bfa7636e1b8119f8b25b758534fb767ff3e0730f",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/31-p6-engineering-plan.md",
+      "archive": "31-p6-engineering-plan.md",
+      "sha256": "46394417d032899136b885708ac3f24c44fee431e39a81da14d8d66ce1add512",
+      "sourceSha256": "c86739575c4914a58d9a3b2d4ce70cbdc95e9ceee6f61ac81c2151a048c02ce2",
+      "committedSourceSha256": "9599cf2c350b1ee545f10f05d45a2f8aad027a4457a2fcaa6e104300331f7f9c",
+      "hadUncommittedChanges": true
+    },
+    {
+      "source": "docs/32-p6-report-visual-direction.md",
+      "archive": "32-p6-report-visual-direction.md",
+      "sha256": "5c4863d93b4c13030c733dd2effc50c8c50b70e3d72e05f821799d561d0a0609",
+      "sourceSha256": "de4d54e57c117988caa9fa1969152fcbfacc6edec9dc9f7c34ed93c8b255f744",
+      "committedSourceSha256": "de4d54e57c117988caa9fa1969152fcbfacc6edec9dc9f7c34ed93c8b255f744",
+      "hadUncommittedChanges": false
+    },
+    {
+      "source": "docs/37-report-answer-analysis-v2.md",
+      "archive": "37-report-answer-analysis-v2.md",
+      "sha256": "25aa09d39240d40ff49e1a106ab9bc4d8ec5ba2e80be3c20a3c675163e786b80",
+      "sourceSha256": "25aa09d39240d40ff49e1a106ab9bc4d8ec5ba2e80be3c20a3c675163e786b80",
+      "committedSourceSha256": null,
+      "hadUncommittedChanges": true,
+      "linkTransformation": "none",
+      "sourceState": "untracked-working-draft-not-accepted"
+    },
+    {
+      "source": "docs/adr/0002-evidence-grounded-answer-analysis.md",
+      "archive": "adr/0002-evidence-grounded-answer-analysis.md",
+      "sha256": "d94dbf686eeee432c7fb2bc0c41208474ed58258f98c284590a293a609e340d0",
+      "sourceSha256": "d94dbf686eeee432c7fb2bc0c41208474ed58258f98c284590a293a609e340d0",
+      "committedSourceSha256": null,
+      "hadUncommittedChanges": true,
+      "linkTransformation": "none",
+      "sourceState": "untracked-working-draft-not-accepted"
+    },
+    {
+      "source": "docs/adr/0003-required-analysis-refinement.md",
+      "archive": "adr/0003-required-analysis-refinement.md",
+      "sha256": "701e34fd07a348071281e587d980d5cf2ed257b6c3c176fee2e734d62ce4785f",
+      "sourceSha256": "701e34fd07a348071281e587d980d5cf2ed257b6c3c176fee2e734d62ce4785f",
+      "committedSourceSha256": null,
+      "hadUncommittedChanges": true,
+      "linkTransformation": "none",
+      "sourceState": "untracked-working-draft-not-accepted"
+    },
+    {
+      "source": "docs/adr/0004-prebound-answer-analysis.md",
+      "archive": "adr/0004-prebound-answer-analysis.md",
+      "sha256": "5fc9f16f820e720b579f00686c4531c9a6993f77f9ed910b644c1d74b62cbfa2",
+      "sourceSha256": "5fc9f16f820e720b579f00686c4531c9a6993f77f9ed910b644c1d74b62cbfa2",
+      "committedSourceSha256": null,
+      "hadUncommittedChanges": true,
+      "linkTransformation": "none",
+      "sourceState": "untracked-working-draft-not-accepted"
+    }
+  ]
+}
