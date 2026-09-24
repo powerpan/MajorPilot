@@ -17,6 +17,8 @@ import static com.ruoyi.majorpilot.report.ReportStore.*;
 /** Only short database transactions. Never calls a model. */
 @Service @Profile("local")
 public class ReportCoordinator {
+    private com.ruoyi.majorpilot.experience.MethodReports methods;
+    @org.springframework.beans.factory.annotation.Autowired public void methodReports(com.ruoyi.majorpilot.experience.MethodReports value){methods=value;}
     private final ReportStore store;private final NextRecommendations next;private final ReportCore core;
     public ReportCoordinator(ReportStore store,NextRecommendations next,ReportCore core){this.store=store;this.next=next;this.core=core;}
     private ReportCore core(){return core;}
@@ -63,6 +65,7 @@ public class ReportCoordinator {
     }
     public void compare(long student){compare(student,false);}
     public void compare(long student,boolean explicitRegeneration){
+        if(methods!=null&&store.db().queryForObject("SELECT COUNT(*) FROM mp_report r JOIN mp_report_version v ON v.id=r.current_version_id WHERE r.student_id=? AND r.report_type='EXPERIENCE' AND v.schema_version='method-report-v1' AND v.status='READY'",Integer.class,student)>0){methods.comparison(student,explicitRegeneration);return;}
         var sources=store.db().queryForList("SELECT v.*,p.public_id AS report_public_id,p.major_id,m.code AS major_code FROM mp_report p JOIN mp_report_version v ON v.id=p.current_version_id JOIN mp_major m ON m.id=p.major_id JOIN mp_experience_run r ON r.id=p.experience_run_id WHERE p.student_id=? AND p.report_type='EXPERIENCE' AND v.status='READY' AND "+ProductEligibility.sql("r")+" ORDER BY m.code",student);
         ReportStore.require(sources.stream().map(v->s(v,"major_code")).distinct().count()==sources.size());
         if(sources.size()<2)return;var reports=store.db().queryForList("SELECT * FROM mp_report WHERE student_id=? AND report_type='COMPARISON'",student);

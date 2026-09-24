@@ -140,6 +140,7 @@ export const useWorkspace = defineStore("workspace", () => {
   const baActionBlocked = computed(
     () =>
       selectedStep.value === "b6-action" &&
+      manifest.value?.schemaVersion !== 'task-manifest-v5' &&
       (!baActionContext.value ||
         baContextStale.value ||
         !baContextConfirmed.value ||
@@ -609,13 +610,13 @@ export const useWorkspace = defineStore("workspace", () => {
     )
       edit({
         ...clone(model.value.baselineConfig),
-        modificationReason: "",
-        expectedEffect: "",
+        ...(manifest.value?.assets.some(a=>a.assetKey==='method-guide') ? {changeReason:'',expectedTradeoff:''} : {modificationReason:'',expectedEffect:''}),
       });
     if (
       !recovered.value &&
       !readOnly.value &&
       key === "d2-quality" &&
+      manifest.value?.schemaVersion !== 'task-manifest-v5' &&
       Object.keys(answer.value).length === 0
     )
       edit({
@@ -627,6 +628,7 @@ export const useWorkspace = defineStore("workspace", () => {
       !recovered.value &&
       !readOnly.value &&
       key === "b2-metric" &&
+      manifest.value?.schemaVersion !== 'task-manifest-v5' &&
       Object.keys(answer.value).length === 0
     )
       edit({

@@ -210,14 +210,18 @@ async function run() {
         await page.locator('.formal-description').waitFor(); assert.equal(mutations.length, mutationCount, 'Reading an introduction must never create a decision/Run');
         assert.equal(expect(await client.call(runRoot), 200, 'runs after read-only introduction').length, before);
         await shot('formal-introduction');
-        const decisionResponse = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith(`/recommendations/${nextId}/decision`));
-        await page.getByRole('button', { name: '确认并保存选择', exact: true }).click(); assert.equal((await decisionResponse).status(), 201);
-        assert.equal(expect(await client.call(runRoot), 200, 'choice is not start').length, before);
-        await page.getByRole('button', { name: '开始正式体验', exact: true }).click(); await page.waitForURL('**/app/runs/*');
+        // The approved product entry combines explicit choice + start in one CTA.
+        // Attach the rejection handler before clicking so timeout cannot skip cleanup.
+        const [decisionResponse] = await Promise.all([
+          page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith(`/recommendations/${nextId}/decision`)),
+          page.getByRole('button', { name: '开始 DS 体验', exact: true }).click(),
+        ]);
+        assert.equal(decisionResponse.status(), 201);await page.waitForURL('**/app/runs/*');
+        assert.equal(expect(await client.call(runRoot), 200, 'explicit start creates one run').length, before + 1);
         const dsRunId = new URL(page.url()).pathname.split('/').at(-1); assert.match(dsRunId, /^[0-9A-Z]{26}$/);
         let dsRun = expect(await client.call(`${runRoot}/${dsRunId}`), 200, 'UI started pinned DS');
         dsRun = expect(await post(client, `${runRoot}/${dsRunId}/pause`, { expectedRevision: dsRun.revision }), 200, 'prepare paused continuation');
-        await page.goto(`${p6Origin}/app/experiences/DATA_SCIENCE?recommendationId=${nextId}`); await page.getByRole('button', { name: '恢复原体验进度', exact: true }).click();
+        await page.goto(`${p6Origin}/app/experiences/DATA_SCIENCE?recommendationId=${nextId}`); await page.getByRole('button', { name: '继续 DS 体验', exact: true }).click();
         await page.waitForURL(`**/app/runs/${dsRunId}`); dsRun = expect(await client.call(`${runRoot}/${dsRunId}`), 200, 'UI resumed pinned run'); assert.equal(dsRun.status, 'IN_PROGRESS');
         await view(ai); gateway('INVALID_INITIAL'); await completeTask(account, materials[1], dsRun);
         const ds = await reportFor(account, 'DATA_SCIENCE'); assert.equal(ds.generationMode, 'AI');
@@ -280,8 +284,8 @@ async function run() {
         assert.equal(await page.locator('.report-next-panel').count(), 0);
         assert.equal(await page.locator('.dashboard-recommendation').count(), 0);
         console.log(JSON.stringify({ channel, stage: 'fallback, 21-cell comparison/print and ALL_COMPLETED without INITIAL PASS' }));
-        await page.goto(`${p6Origin}/app/experiences/AI`); await page.getByText('这个正式专业体验已经完成。你可以在个人主页读取报告，不会重复创建本次方向的体验。', { exact: true }).waitFor();
-        assert.equal(await page.getByRole('button', { name: '开始正式体验', exact: true }).count(), 0);
+        await page.goto(`${p6Origin}/app/experiences/AI`); await page.getByText('这个专业体验已经完成。你的操作与反思已保存，可以继续查看体验报告。', { exact: true }).waitFor();
+        assert.equal(await page.getByRole('button', { name: /^开始 (AI|DS|BA) 体验$/ }).count(), 0);
         if (previousReports.length) {
           await page.goto(`${p6Origin}/app/reports/${previousReports[0]}`); await page.locator('.report-empty').waitFor(); assert.equal(await page.locator('.report-claim').count(), 0);
         }
@@ -324,7 +328,7 @@ async function run() {
   }
   if (failure) throw failure;
   await writeFile(`${output}/results.json`, JSON.stringify({ result: 'PASS', results, exactCleanup: true, accountsCreated: channels.length, rateLimitsReset: false, paidCalls: 0 }, null, 2));
-  console.log('PASS: P6 actual isolated Chrome/Edge business regression; all exact synthetic fixtures cleaned.');
+  console.log(`PASS: P6 actual isolated ${channels.join('/')} business regression; all exact synthetic fixtures cleaned.`);
 }
 export { materials, gateway, releaseGateway, completeTask, reportFor, comparisonFor };
 if (invoked) {

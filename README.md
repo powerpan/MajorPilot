@@ -2,6 +2,8 @@
 
 通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
 
+**2026-09-25 方法主线改版正在收尾验收**：新内容采用“先解释一个想法 → 实际操作 → 明确提交／帮助／修改 → 换题验证”的路线，原始数据通过 Excel 下载，关键结果与理由回填。新报告读取完整相关作答及过程证据，并经过独立审阅。旧设计、1.0.0 内容和历史体验保留；准确的工程、模型、运行与 Git 状态见 [本轮记录](docs/45-method-led-release-verification.md)，不把代码完成当作已切换或已上线。
+
 **P7 管理、分析与账户隐私已完成本地工程验收并推送**：功能提交 `f4d26dd64d18da9a02c96b2939925d17c8076a66` 已核对远端完整SHA。七个运营页面、可复算指标、受控CSV、个人ZIP、账户安全、研究撤回及持久化删除已实现；真实HTTP、Chrome/Edge、两次实际JVM崩溃恢复、V7→V8与空库迁移已验证。完整结果与后续门禁见 [P7台账](docs/35-p7-delivery-ledger.md) 和 [真实页面截图](docs/34-p7-visual-contract.md)。P0–P7已推送，P6报告/比较/打印证据见 [原交付记录](docs/23-p2-to-p6-delivery-ledger.md)。普通测试仍0付费；正式报告链用隔离TEST_FIXTURE验证，主站三专业内容仍REVIEW，尚待真人专业审核及目标用户计时，不因工程验收自动发布。当前范围止于P7；P8完整MVP硬化及公网部署均未开展。
 
 P1保留记录见 [身份与推荐验收](docs/21-p1-implementation-and-delivery.md)、[已确认视觉方向](docs/22-p1-visual-direction.md)。按2026-09-20用户确认，首次推荐使用确定性规则解释，AI润色单列后续增强。
@@ -84,12 +86,14 @@ P7验证入口：`data/tools/node/bin/node scripts/test-p7-api.mjs --check`仅�
 
 真实密钥只在 `.env.local`，权限 `0600`；`.env.example` 只列出变量。启动器只给后端注入秘密，前端通过环境白名单启动，不继承供应商密钥。正常构建和单元测试不调用付费模型。
 
-百炼使用北京地域；生产模型与真实用户数据条款仍须后续评估。2026-09-21用户已授权开发中真实调用，P6合成报告探针已分别验证百炼与DeepSeek；结果见交付记录。**不要把真实探针加入CI**。普通测试保持0付费调用；显式报告测试入口如下，必须使用新run-id，已尝试标记即使超时也保留，不自动重发。每轮最多2次HTTP/45秒，区分AI_VALIDATED与FALLBACK_VALIDATED。
+百炼使用北京地域；生产模型与真实用户数据条款仍须后续评估。2026-09-21用户已授权开发中真实调用，P6历史合成报告探针已分别验证百炼与DeepSeek；结果见交付记录。**不要把真实探针加入CI**。普通测试保持0付费调用。当前方法报告使用独立高能力模型配置、完整相关上下文、逐题分析与必经独立审阅，见 [当前报告设计](docs/40-learning-evidence-and-report-design.md) 和 [质量记录](docs/45-method-led-release-verification.md)。旧报告 v2 草稿已归档，不再使用其探针命令。每个质量案例最多初稿、一次结构修复及一次审阅，共3次请求／2700秒，不是容量压测。
 
 ```sh
-data/tools/node/bin/node scripts/report-spike.mjs --check
-# 以下命令会真实调用所选平台；密钥只从忽略的.env.local读取。
-data/tools/node/bin/node scripts/report-spike.mjs --live --provider BAILIAN --run-id your-new-probe-id
+# 先在独立测试库导出合成输入；这两步不调用模型。
+data/tools/node/bin/node scripts/test-method-flow.mjs --export-quality-inputs
+data/tools/node/bin/node scripts/method-quality-fixtures.mjs
+# 以下命令真实调用模型；密钥只从忽略的.env.local读取。
+data/tools/node/bin/node scripts/test-method-quality.mjs Q01,Q02
 ```
 
 `MP_REPORT_AI_ENABLED`是正式报告单独的启用开关，默认false；`MP_REPORT_AI_PROVIDER`支持BAILIAN或DEEPSEEK。它不把REVIEW预览变成正式内容，不更改任务提示开关。隔离P6浏览器验收使用测试源码harness（18081/15176、majorpilot_test、Redis14及独立`.env.p6-test.local`），不会继承供应商Key；与MySQL集成测试由同一归属锁互斥。按 `prepare → start → test-p6-api / tests/e2e/p6 / test-p6-restart → stop → cleanup` 顺序使用 `scripts/p6-harness.mjs`，不得并行清理共享测试库或重置限流。

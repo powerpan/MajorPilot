@@ -55,7 +55,8 @@ public class RunStore {
         boolean eligible=productEligible(run);
         var reports=eligible?jdbc.queryForList("SELECT status FROM mp_report WHERE experience_run_id=?",run.id):List.<Map<String,Object>>of();
         String report=!eligible?"NOT_APPLICABLE":reports.isEmpty()?"NOT_REQUESTED":s(reports.getFirst(),"status");
-        return new RunDtos.Run(run.publicId,run.kind,run.majorCode,run.demoKey,run.status,run.revision,run.taskPublicId,run.currentStep,run.pausedFrom,active==null?null:active.publicId,replacement.isEmpty()?null:s(replacement.getFirst(),"public_id"),!Set.of("IN_PROGRESS","TASK_COMPLETED").contains(run.status),steps,run.started,run.closed,report,run.mode,eligible);
+        int edition=jdbc.queryForObject("SELECT experience_edition FROM mp_experience_run WHERE id=?",Integer.class,run.id);
+        return new RunDtos.Run(run.publicId,run.kind,run.majorCode,run.demoKey,run.status,run.revision,run.taskPublicId,run.currentStep,run.pausedFrom,active==null?null:active.publicId,replacement.isEmpty()?null:s(replacement.getFirst(),"public_id"),!Set.of("IN_PROGRESS","TASK_COMPLETED").contains(run.status),steps,run.started,run.closed,report,run.mode,eligible,edition>1?edition:null);
     }
     String json(Object object) { try{return mapper.writeValueAsString(object);}catch(Exception failure){throw new ApiException(422,"VALIDATION_ERROR");} }
     JsonNode node(Object value) { if(value==null)return NullNode.instance;try{return mapper.readTree(value.toString());}catch(Exception failure){throw new IllegalStateException("Invalid stored content");} }

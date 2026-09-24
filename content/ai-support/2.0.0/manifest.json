@@ -1,0 +1,1334 @@
+{
+  "schemaVersion": "task-manifest-v2",
+  "taskVersionId": "01JA2000000000000000000001",
+  "contentKind": "MAJOR",
+  "majorCode": "AI",
+  "demoKey": null,
+  "versionCode": "2.0.0",
+  "title": "AI：让课程求助消息分得更可靠",
+  "scenario": "LumenLearn合成教学情境。你体验的是检查模型如何犯错、决定改什么、比较改动的代价。这里只使用固定的轻量分类器，不训练大型模型，也不证明系统已经能上线。",
+  "goals": [
+    "先找错在哪里，再试着改一次",
+    "先看简短讲解，再提交自己的想法；需要时可以求助和修改",
+    "把本次表现、所获帮助和本人感受分开理解"
+  ],
+  "estimatedMinutes": {
+    "minimum": 45,
+    "maximum": 60
+  },
+  "assets": [
+    {
+      "assetKey": "classifier-model",
+      "path": "ai-support/1.0.0/classifier-model.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "257477e47ac516f01b5ae0d7aa2349f464bcd0e8b8e63d43105dd2d2d0497dc9",
+      "byteLength": 21300
+    },
+    {
+      "assetKey": "example-pool",
+      "path": "ai-support/1.0.0/example-pool.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "30e3332d70c38b639df2373ee3e53a3468e85bf4180ee5d2d655f77aef80e0e1",
+      "byteLength": 1818
+    },
+    {
+      "assetKey": "practice-public",
+      "path": "ai-support/1.0.0/practice-public.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "e0c38f6da40a68b594f8d973cdc13d455dc7abe77f048eb7bc004c518c3d9666",
+      "byteLength": 9566
+    },
+    {
+      "assetKey": "evaluation-public",
+      "path": "ai-support/1.0.0/evaluation-public.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "07d9fdca39c8af4d641fbe49b6e219b203347b0fb905736c833e70e92c3db0d1",
+      "byteLength": 5586
+    },
+    {
+      "assetKey": "evaluation-private",
+      "path": "ai-support/1.0.0/evaluation-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "d021071610d8e0fda3506e92f4d7c1b55a3d6355744c298f474ea6600608077a",
+      "byteLength": 7422
+    },
+    {
+      "assetKey": "support-messages",
+      "path": "ai-support/1.0.0/support-messages.csv",
+      "visibility": "PRIVATE",
+      "mediaType": "text/csv",
+      "sha256": "48b0d1137aa12073b19d5bdf05ec8ac251639ebbb741fb129488efd6adabc759",
+      "byteLength": 9568
+    },
+    {
+      "assetKey": "training-private",
+      "path": "ai-support/1.0.0/training-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "c6741374e6e101ee5edd54512281be733119ea813dac3fb57d7ce33b1cfc6f34",
+      "byteLength": 3441
+    },
+    {
+      "assetKey": "baseline-summary",
+      "path": "ai-support/1.0.0/baseline-summary.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "1bace89c956a99e5c472a0c11a483b99a29ccef1253c7a6ff7c8f480e9edc68b",
+      "byteLength": 3411
+    },
+    {
+      "assetKey": "review-private",
+      "path": "ai-support/1.0.0/review-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "e7f13406d1694a0a5d0bb00e8f8f261e7ff9cb612d99497ab2898c994d996a53",
+      "byteLength": 325
+    },
+    {
+      "assetKey": "golden-private",
+      "path": "ai-support/1.0.0/golden-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "7619580638b08c5e6571935a45f92696e8919386efb143112daccc7a453c9deb",
+      "byteLength": 30063
+    },
+    {
+      "assetKey": "method-guide",
+      "path": "ai-support/2.0.0/method-guide.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "0e398209fd7c73ed028dff3e5eafba878e2ecc38ecd7e3137d7956963af74e2e",
+      "byteLength": 15038
+    }
+  ],
+  "steps": [
+    {
+      "stepKey": "a1-task",
+      "title": "先认识这份工作",
+      "instructions": "课程团队每天会收到求助消息。分类器把消息分为技术问题、知识理解、学习安排、学习支持。你不需要会编程：先看看自动分类哪里值得信任、哪里需要人来接手。",
+      "dependencies": [],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskUnderstanding": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "taskUnderstanding"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "classifier-model"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "taskUnderstanding"
+      ],
+      "evidenceFields": [
+        "taskUnderstanding"
+      ]
+    },
+    {
+      "stepKey": "a2-metrics",
+      "title": "自动处理得多，就一定好吗？",
+      "instructions": "小例子：10条消息中，系统自动处理6条，其中5条分对；另4条交给人工。5÷6描述“自动处理的里面有多少分对”，6÷10描述“有多少交给系统”。交给人工不算系统分对，也不等于系统分错。",
+      "dependencies": [
+        "a1-task"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accuracyMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "coverageMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "humanReviewMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "accuracyMeaning",
+          "coverageMeaning",
+          "humanReviewMeaning"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "baseline-summary"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先问分母是谁：全部消息，还是系统已经自动处理的消息？"
+        },
+        {
+          "level": 2,
+          "text": "5和6来自自动处理组，10是全部消息；4条还要交给人工。"
+        },
+        {
+          "level": 3,
+          "text": "5/6约83.3%，6/10=60%。较少自动处理可能提高前者，却增加人工工作。"
+        }
+      ],
+      "hintContextFields": [
+        "accuracyMeaning",
+        "coverageMeaning",
+        "humanReviewMeaning"
+      ],
+      "evidenceFields": [
+        "accuracyMeaning",
+        "coverageMeaning",
+        "humanReviewMeaning"
+      ]
+    },
+    {
+      "stepKey": "a3-errors",
+      "title": "从具体错例找出值得改的地方",
+      "instructions": "下载Excel，查看“原始数据”的公开练习消息、系统预测和参考标签。先找至少两条分错的消息，比较它们有什么共同点；找不到两个有共同点的错例，也可以说明为什么暂时不能概括。参考标签只是本次教学任务的对照。",
+      "dependencies": [
+        "a2-metrics"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "errorIds": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "errorPattern": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "errorCost": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "errorIds",
+          "errorPattern",
+          "errorCost"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "practice-public"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "从公开练习表里挑出预测与参考标签不同的行。"
+        },
+        {
+          "level": 2,
+          "text": "看看两条消息是否都有相近表达、边界模糊或需要额外背景。不要只写“模型不好”。"
+        },
+        {
+          "level": 3,
+          "text": "如果两例没有共同点，可以写暂时无法概括，并分别说明错分代价。"
+        }
+      ],
+      "hintContextFields": [
+        "errorIds",
+        "errorPattern",
+        "errorCost"
+      ],
+      "evidenceFields": [
+        "errorIds",
+        "errorPattern",
+        "errorCost"
+      ]
+    },
+    {
+      "stepKey": "a4-configure",
+      "title": "选择一次有理由的改动",
+      "instructions": "可以改标签说明、加入一个例子，或者调整交给人工的门槛。尽量一次只改一种；如果同时改了几种，后面就不能确定是哪一种造成变化。保持原方案也是允许的，但请解释。",
+      "dependencies": [
+        "a3-errors"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "changeReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "expectedTradeoff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "confidenceThreshold": {
+            "type": "number",
+            "enum": [
+              0.4,
+              0.55,
+              0.7
+            ]
+          },
+          "definitionVariantIds": {
+            "type": "object",
+            "properties": {
+              "technical_issue": {
+                "type": "string",
+                "enum": [
+                  "technical-default",
+                  "technical-clarified"
+                ]
+              },
+              "concept_confusion": {
+                "type": "string",
+                "enum": [
+                  "concept-default",
+                  "concept-clarified"
+                ]
+              },
+              "schedule_constraint": {
+                "type": "string",
+                "enum": [
+                  "schedule-default",
+                  "schedule-clarified"
+                ]
+              },
+              "motivation_support": {
+                "type": "string",
+                "enum": [
+                  "motivation-default",
+                  "motivation-clarified"
+                ]
+              }
+            },
+            "required": [
+              "technical_issue",
+              "concept_confusion",
+              "schedule_constraint",
+              "motivation_support"
+            ],
+            "additionalProperties": false
+          },
+          "exampleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "example-technical-1",
+                "example-technical-2",
+                "example-technical-3",
+                "example-concept-1",
+                "example-concept-2",
+                "example-concept-3",
+                "example-schedule-1",
+                "example-schedule-2",
+                "example-schedule-3",
+                "example-motivation-1",
+                "example-motivation-2",
+                "example-motivation-3"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "lowConfidencePolicy": {
+            "type": "string",
+            "enum": [
+              "MANUAL_REVIEW",
+              "AUTO_ROUTE"
+            ]
+          }
+        },
+        "required": [
+          "changeReason",
+          "expectedTradeoff",
+          "confidenceThreshold",
+          "definitionVariantIds",
+          "exampleIds",
+          "lowConfidencePolicy"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "classifier-model",
+        "example-pool",
+        "practice-public"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "changeReason",
+        "expectedTradeoff",
+        "lowConfidencePolicy"
+      ],
+      "evidenceFields": [
+        "changeReason",
+        "expectedTradeoff",
+        "confidenceThreshold",
+        "definitionVariantIds",
+        "exampleIds",
+        "lowConfidencePolicy"
+      ]
+    },
+    {
+      "stepKey": "a5-evaluate",
+      "title": "在同一批消息上比较",
+      "instructions": "点击下方“运行”，把你的设置放到同一个固定评价集中，与原方案比较。多分对一些但交给人工更多，并不是毫无代价的改进。反复尝试同一批消息，结果也不代表在新消息上一定一样好。",
+      "dependencies": [
+        "a4-configure"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "tradeoff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "comparison",
+          "tradeoff"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "evaluation-public",
+        "baseline-summary"
+      ],
+      "operationKey": "ai-evaluate",
+      "hints": [
+        {
+          "level": 1,
+          "text": "对照原方案与当前方案，先分别看准确率、覆盖率和人工数量。"
+        },
+        {
+          "level": 2,
+          "text": "若准确率上升但覆盖率下降，问问多出来的人工工作是否值得。"
+        },
+        {
+          "level": 3,
+          "text": "没有提升也能有合理结论：说清改动没解决什么、还需怎样检查。"
+        }
+      ],
+      "hintContextFields": [
+        "comparison",
+        "tradeoff"
+      ],
+      "evidenceFields": [
+        "comparison",
+        "tradeoff"
+      ]
+    },
+    {
+      "stepKey": "a6-decision",
+      "title": "交付建议，再换个情境想一想",
+      "instructions": "新情境：A方案处理100条中的90条，81条正确；B处理60条，57条正确。B自动处理的准确率较高，但更多消息需要人工。不要把这道小题的数据和刚才运行的数据混在一起。",
+      "dependencies": [
+        "a5-evaluate"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "risk": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "transferMode": {
+            "type": "string",
+            "enum": [
+              "ANSWER",
+              "SKIP"
+            ]
+          },
+          "transfer": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "decision",
+          "risk",
+          "transferMode",
+          "transfer"
+        ]
+      },
+      "assetKeys": [
+        "method-guide"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "decision",
+        "risk",
+        "transferMode",
+        "transfer"
+      ],
+      "evidenceFields": [
+        "decision",
+        "risk",
+        "transferMode",
+        "transfer"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "operationKey": "ai-evaluate",
+      "stepKey": "a5-evaluate",
+      "engineType": "FROZEN_CLASSIFIER",
+      "engineVersion": "classifier-v1",
+      "parametersSchema": {
+        "type": "object",
+        "properties": {
+          "definitionVariantIds": {
+            "type": "object",
+            "properties": {
+              "technical_issue": {
+                "type": "string",
+                "enum": [
+                  "technical-default",
+                  "technical-clarified"
+                ]
+              },
+              "concept_confusion": {
+                "type": "string",
+                "enum": [
+                  "concept-default",
+                  "concept-clarified"
+                ]
+              },
+              "schedule_constraint": {
+                "type": "string",
+                "enum": [
+                  "schedule-default",
+                  "schedule-clarified"
+                ]
+              },
+              "motivation_support": {
+                "type": "string",
+                "enum": [
+                  "motivation-default",
+                  "motivation-clarified"
+                ]
+              }
+            },
+            "required": [
+              "technical_issue",
+              "concept_confusion",
+              "schedule_constraint",
+              "motivation_support"
+            ],
+            "additionalProperties": false
+          },
+          "exampleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "example-technical-1",
+                "example-technical-2",
+                "example-technical-3",
+                "example-concept-1",
+                "example-concept-2",
+                "example-concept-3",
+                "example-schedule-1",
+                "example-schedule-2",
+                "example-schedule-3",
+                "example-motivation-1",
+                "example-motivation-2",
+                "example-motivation-3"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "confidenceThreshold": {
+            "type": "number",
+            "enum": [
+              0.4,
+              0.55,
+              0.7
+            ]
+          },
+          "lowConfidencePolicy": {
+            "type": "string",
+            "enum": [
+              "MANUAL_REVIEW",
+              "AUTO_ROUTE"
+            ]
+          }
+        },
+        "required": [
+          "definitionVariantIds",
+          "exampleIds",
+          "confidenceThreshold",
+          "lowConfidencePolicy"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "const": "classifier-result-v1"
+          },
+          "baseline": {
+            "type": "object",
+            "properties": {
+              "sampleCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "autoRoutedCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "correctAutoRoutedCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "manualReviewCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "coverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "autoAccuracy": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "totalCorrectAutoRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "perLabel": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support"
+                      ]
+                    },
+                    "precision": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "recall": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "supportCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "predictedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "truePositiveCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "precision",
+                    "recall",
+                    "supportCount",
+                    "predictedCount",
+                    "truePositiveCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "confusionMatrix": {
+                "type": "object",
+                "properties": {
+                  "labelOrder": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support"
+                      ]
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support",
+                        "MANUAL_REVIEW"
+                      ]
+                    },
+                    "minItems": 5,
+                    "maxItems": 5
+                  },
+                  "counts": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "minItems": 5,
+                      "maxItems": 5
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  }
+                },
+                "required": [
+                  "labelOrder",
+                  "columns",
+                  "counts"
+                ],
+                "additionalProperties": false
+              },
+              "errorCounts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "trueLabel": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support"
+                      ]
+                    },
+                    "predictedLabel": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support",
+                        "MANUAL_REVIEW"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "trueLabel",
+                    "predictedLabel",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 16,
+                "maxItems": 16
+              }
+            },
+            "required": [
+              "sampleCount",
+              "autoRoutedCount",
+              "correctAutoRoutedCount",
+              "manualReviewCount",
+              "coverage",
+              "autoAccuracy",
+              "totalCorrectAutoRate",
+              "perLabel",
+              "confusionMatrix",
+              "errorCounts"
+            ],
+            "additionalProperties": false
+          },
+          "candidate": {
+            "type": "object",
+            "properties": {
+              "sampleCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "autoRoutedCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "correctAutoRoutedCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "manualReviewCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "coverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "autoAccuracy": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "totalCorrectAutoRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "perLabel": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support"
+                      ]
+                    },
+                    "precision": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "recall": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "supportCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "predictedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    },
+                    "truePositiveCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "precision",
+                    "recall",
+                    "supportCount",
+                    "predictedCount",
+                    "truePositiveCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "confusionMatrix": {
+                "type": "object",
+                "properties": {
+                  "labelOrder": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support"
+                      ]
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support",
+                        "MANUAL_REVIEW"
+                      ]
+                    },
+                    "minItems": 5,
+                    "maxItems": 5
+                  },
+                  "counts": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "minItems": 5,
+                      "maxItems": 5
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  }
+                },
+                "required": [
+                  "labelOrder",
+                  "columns",
+                  "counts"
+                ],
+                "additionalProperties": false
+              },
+              "errorCounts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "trueLabel": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support"
+                      ]
+                    },
+                    "predictedLabel": {
+                      "type": "string",
+                      "enum": [
+                        "technical_issue",
+                        "concept_confusion",
+                        "schedule_constraint",
+                        "motivation_support",
+                        "MANUAL_REVIEW"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "required": [
+                    "trueLabel",
+                    "predictedLabel",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 16,
+                "maxItems": 16
+              }
+            },
+            "required": [
+              "sampleCount",
+              "autoRoutedCount",
+              "correctAutoRoutedCount",
+              "manualReviewCount",
+              "coverage",
+              "autoAccuracy",
+              "totalCorrectAutoRate",
+              "perLabel",
+              "confusionMatrix",
+              "errorCounts"
+            ],
+            "additionalProperties": false
+          },
+          "delta": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1
+              },
+              "autoAccuracy": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1
+              },
+              "totalCorrectAutoRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1
+              },
+              "manualReviewCount": {
+                "type": "integer",
+                "minimum": -10000,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "coverage",
+              "autoAccuracy",
+              "totalCorrectAutoRate",
+              "manualReviewCount"
+            ],
+            "additionalProperties": false
+          },
+          "errorCategoryChanges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "trueLabel": {
+                  "type": "string",
+                  "enum": [
+                    "technical_issue",
+                    "concept_confusion",
+                    "schedule_constraint",
+                    "motivation_support"
+                  ]
+                },
+                "predictedLabel": {
+                  "type": "string",
+                  "enum": [
+                    "technical_issue",
+                    "concept_confusion",
+                    "schedule_constraint",
+                    "motivation_support",
+                    "MANUAL_REVIEW"
+                  ]
+                },
+                "baselineCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                "candidateCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                "change": {
+                  "type": "integer",
+                  "minimum": -10000,
+                  "maximum": 10000
+                }
+              },
+              "required": [
+                "trueLabel",
+                "predictedLabel",
+                "baselineCount",
+                "candidateCount",
+                "change"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 16,
+            "maxItems": 16
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "baseline",
+          "candidate",
+          "delta",
+          "errorCategoryChanges"
+        ],
+        "additionalProperties": false
+      },
+      "maxEvaluations": 5,
+      "publicAssetKeys": [
+        "classifier-model",
+        "practice-public",
+        "evaluation-public",
+        "baseline-summary"
+      ],
+      "privateAssetKeys": [
+        "evaluation-private"
+      ],
+      "datasetAssetKey": "evaluation-private",
+      "modelAssetKey": "classifier-model",
+      "inputBindings": [
+        {
+          "parameterKey": "definitionVariantIds",
+          "sourceStepKey": "a4-configure",
+          "sourceField": "definitionVariantIds"
+        },
+        {
+          "parameterKey": "exampleIds",
+          "sourceStepKey": "a4-configure",
+          "sourceField": "exampleIds"
+        },
+        {
+          "parameterKey": "confidenceThreshold",
+          "sourceStepKey": "a4-configure",
+          "sourceField": "confidenceThreshold"
+        },
+        {
+          "parameterKey": "lowConfidencePolicy",
+          "sourceStepKey": "a4-configure",
+          "sourceField": "lowConfidencePolicy"
+        }
+      ]
+    }
+  ],
+  "reflection": {
+    "questionSetVersion": "method-reflection-v1",
+    "instructions": "回想你刚才真正体验到的工作：哪些愿意继续、哪里觉得困难、帮助是否有用？不确定也可以。这些感受不由题目对错代替。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "interestingStepKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "a1-task",
+              "a2-metrics",
+              "a3-errors",
+              "a4-configure",
+              "a5-evaluate",
+              "a6-decision",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "difficultySources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "KNOWLEDGE",
+              "TOOLS",
+              "TIME",
+              "WORK_STYLE",
+              "OTHER",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "continueSimilarWork": {
+          "type": "string",
+          "enum": [
+            "YES",
+            "UNSURE",
+            "NO"
+          ]
+        },
+        "reflectionNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "nextWorkStyle": {
+          "type": "string",
+          "enum": [
+            "MODEL_ITERATION",
+            "DATA_REASONING",
+            "BUSINESS_ACTION",
+            "UNSURE",
+            "SKIPPED"
+          ]
+        },
+        "aiFollowUp": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "interestingStepKeys",
+        "difficultySources",
+        "continueSimilarWork"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "review": {
+    "kind": "PROFESSIONAL",
+    "checkKeys": [
+      "PROFESSIONAL_CORE",
+      "BEGINNER_ACCESS",
+      "DATA_CORRECTNESS",
+      "EVIDENCE_SOURCES",
+      "HINT_NO_FINAL_ANSWER",
+      "FAIRNESS",
+      "CHROME_EDGE",
+      "TIMING_45_60",
+      "RECOVERY",
+      "VERSION_CONSISTENCY"
+    ],
+    "professionalReviewRequired": true
+  }
+}

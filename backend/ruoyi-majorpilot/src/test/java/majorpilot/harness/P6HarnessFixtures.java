@@ -32,7 +32,7 @@ public class P6HarnessFixtures {
             var manifest = bundle.manifest();
             String major = manifest.path("majorCode").asText(), task = manifest.path("taskVersionId").asText();
             if (!task.equals(IDS.get(major)) || !manifest.path("title").asText().startsWith("TEST_FIXTURE")
-                || !"9.6.0".equals(manifest.path("versionCode").asText())
+                || !(com.ruoyi.majorpilot.learning.MethodGuide.enabled(manifest)?"2.0.0":"9.6.0").equals(manifest.path("versionCode").asText())
                 || !bundle.path().startsWith("p6-fixtures/")) throw new IllegalStateException("Unexpected harness content");
             var production = EvidenceRuleRegistry.production().stream().filter(entry -> entry.majorCode().equals(major)).findFirst().orElseThrow();
             var steps = new ArrayList<String>();
@@ -71,8 +71,8 @@ public class P6HarnessFixtures {
                     return;
                 }
                 Long major=db.queryForObject("SELECT id FROM mp_major WHERE code=?", Long.class, manifest.path("majorCode").asText());
-                db.update("INSERT INTO mp_task_version(public_id,content_kind,major_id,demo_key,version_code,status,manifest_path,manifest_sha256,data_sha256,content_schema_version,manifest_json,published_at,review_note,review_checks_json) VALUES(?,'MAJOR',?,NULL,'9.6.0','PUBLISHED',?,?,?,?,?,UTC_TIMESTAMP(3),?,?)",
-                    id,major,bundle.path(),bundle.manifestSha256(),bundle.dataSha256(),manifest.path("schemaVersion").asText(),manifest.toString(),
+                db.update("INSERT INTO mp_task_version(public_id,content_kind,major_id,demo_key,version_code,status,manifest_path,manifest_sha256,data_sha256,content_schema_version,manifest_json,published_at,review_note,review_checks_json) VALUES(?,'MAJOR',?,NULL,?,'PUBLISHED',?,?,?,?,?,UTC_TIMESTAMP(3),?,?)",
+                    id,major,manifest.path("versionCode").asText(),bundle.path(),bundle.manifestSha256(),bundle.dataSha256(),manifest.path("schemaVersion").asText(),manifest.toString(),
                     "TEST_FIXTURE only: published-state test precondition; human professional review and user timing NOT performed",
                     "{\"TEST_FIXTURE\":true,\"PROFESSIONAL_CORE\":false,\"TIMING_45_60\":false}");
             });

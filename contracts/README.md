@@ -1,5 +1,13 @@
 # API contracts
 
+## Method-led edition (post-P7 amendment)
+
+`openapi-method-flow.json` adds five authenticated routes for version-bound learning records, explicit checkpoint submission, local-result verification and explicit new-edition creation. Server time and saved Step Response snapshots are authoritative; clients cannot submit invented answers, timestamps, scores or owners as learning evidence. Mutations use existing Student locking, CSRF, Origin, revision and idempotency controls.
+
+Content 2.0.0 uses the existing AI classifier manifest and the new `task-manifest-v5` for DS/BA's local Excel workflow. Earlier immutable content remains readable. `method-report-v1` is an additional strict report format, not a rewrite of `report-v1`. P6/P7 report responses accept either; method reports require independent review and cannot publish a generic fallback as deep analysis. `Run.experienceEdition` and `ReportSummary.sourceRunId` distinguish preserved historical attempts from new ones.
+
+Run `node --test contracts/tests/method-flow.test.mjs` for static contracts; `node scripts/test-method-flow.mjs` separately exercises isolated MySQL. Neither calls a model. Explicit paid synthetic quality tests use `scripts/test-method-quality.mjs`; current delivery and remaining human gates are in [the implementation ledger](../docs/42-method-led-implementation-ledger.md).
+
 ## Post-P7 local product flow amendment
 
 `openapi-product-flow.json` is the two-operation supplement for the owner's post-P7 acceptance feedback, **not P8 or public deployment**. It covers local-only exact-version release and exact CLOSED preview adoption. Both endpoints require the `local` profile, `MP_LOCAL_PRODUCT_ENABLED`, an authorized Operator, pinned revision/hash and explicit authorization reference/reason. Adoption requires **both** recovery and report-regeneration permissions, an owned READY Evidence Snapshot, matching immutable closure inputs and no other product Run for that Major.

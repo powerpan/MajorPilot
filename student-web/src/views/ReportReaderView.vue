@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useReports } from "../stores/reports";
 import { useAuth } from "../stores/auth";
 import { major } from "../data/majors";
-import { reportDate, waitingLabels } from "../lib/report-display";
+import { reportDate, waitingLabels, reportChapters, generationExplanation } from "../lib/report-display";
 import { observePrivateContent, sendPrivateObservation } from "../lib/events";
 import ReportBody from "../components/reports/ReportBody.vue";
 import ReportFeedback from "../components/reports/ReportFeedback.vue";
@@ -30,7 +30,7 @@ function trackSection() {
   cancelAnimationFrame(scrollFrame);
   scrollFrame = requestAnimationFrame(() => {
     if (!reader.report || printing.value) return;
-    const sections = reader.report.sections;
+    const sections = reportChapters(reader.report);
     const current = [...sections].reverse().find((section) => {
       const element = document.getElementById(`section-${section.sectionKey}`);
       return element && element.getBoundingClientRect().top <= 150;
@@ -70,7 +70,7 @@ watch(
     if (!version) return;
     await nextTick();
     if (!core.value || reader.report?.reportVersionId !== version) return;
-    activeSection.value = reader.report.sections[0]?.sectionKey || "";
+    activeSection.value = reportChapters(reader.report)[0]?.sectionKey || "";
     dispose = observePrivateContent(core.value, () => {
       if (printing.value) printReady.value = true;
       else
@@ -157,7 +157,7 @@ const ordinaryLink = computed(() =>
         aria-label="报告章节"
       >
         <a
-          v-for="(section, index) in reader.report.sections"
+          v-for="(section, index) in reportChapters(reader.report)"
           :key="section.sectionKey"
           :href="`#section-${section.sectionKey}`"
           :aria-current="
@@ -204,7 +204,7 @@ const ordinaryLink = computed(() =>
                 @change="jump(($event.target as HTMLSelectElement).value)"
               >
                 <option
-                  v-for="section in reader.report.sections"
+                  v-for="section in reportChapters(reader.report)"
                   :key="section.sectionKey"
                   :value="section.sectionKey"
                 >
@@ -324,6 +324,7 @@ const ordinaryLink = computed(() =>
             登录状态已失效，请登录后重新读取本账户的报告。
           </p>
           <p v-else-if="!reader.error">当前暂无可读取的报告。</p>
+          <p v-if="reader.preparing" role="status">{{ generationExplanation(reader.generation?.phase) }}</p>
           <div class="button-row">
             <RouterLink to="/app" class="text-link">返回个人主页 →</RouterLink
             ><RouterLink v-if="!auth.me" to="/login" class="quiet-button"

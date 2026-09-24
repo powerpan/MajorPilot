@@ -1,0 +1,403 @@
+{
+  "schemaVersion": "method-guide-v1",
+  "methodVersion": "method-led-v1",
+  "methodName": "错误分析与有限迭代",
+  "scope": "你体验的是检查模型如何犯错、决定改什么、比较改动的代价。这里只使用固定的轻量分类器，不训练大型模型，也不证明系统已经能上线。",
+  "steps": [
+    {
+      "stepKey": "a1-task",
+      "title": "先认识这份工作",
+      "introduction": "课程团队每天会收到求助消息。分类器把消息分为技术问题、知识理解、学习安排、学习支持。你不需要会编程：先看看自动分类哪里值得信任、哪里需要人来接手。",
+      "fields": [
+        {
+          "key": "taskUnderstanding",
+          "label": "你认为这次需要检查什么？",
+          "help": "例如：把技术故障分成知识问题，会把消息送错给谁？也可以写现在还不确定的地方。"
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "a2-metrics",
+      "title": "自动处理得多，就一定好吗？",
+      "introduction": "小例子：10条消息中，系统自动处理6条，其中5条分对；另4条交给人工。5÷6描述“自动处理的里面有多少分对”，6÷10描述“有多少交给系统”。交给人工不算系统分对，也不等于系统分错。",
+      "fields": [
+        {
+          "key": "accuracyMeaning",
+          "label": "5÷6在说什么？",
+          "help": ""
+        },
+        {
+          "key": "coverageMeaning",
+          "label": "6÷10在说什么？",
+          "help": ""
+        },
+        {
+          "key": "humanReviewMeaning",
+          "label": "那4条交给人工的消息，为什么不能直接算作分对？",
+          "help": ""
+        }
+      ],
+      "checkpointId": "AI-C1",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "a3-errors",
+      "title": "从具体错例找出值得改的地方",
+      "introduction": "下载Excel，查看“原始数据”的公开练习消息、系统预测和参考标签。先找至少两条分错的消息，比较它们有什么共同点；找不到两个有共同点的错例，也可以说明为什么暂时不能概括。参考标签只是本次教学任务的对照。",
+      "fields": [
+        {
+          "key": "errorIds",
+          "label": "引用哪些公开消息ID？",
+          "help": ""
+        },
+        {
+          "key": "errorPattern",
+          "label": "这些消息为什么容易分错？",
+          "help": "指向消息中的具体词或含义；证据不够时请直说。"
+        },
+        {
+          "key": "errorCost",
+          "label": "分错后会给谁带来什么麻烦？",
+          "help": ""
+        }
+      ],
+      "checkpointId": "AI-C2",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "a4-configure",
+      "title": "选择一次有理由的改动",
+      "introduction": "可以改标签说明、加入一个例子，或者调整交给人工的门槛。尽量一次只改一种；如果同时改了几种，后面就不能确定是哪一种造成变化。保持原方案也是允许的，但请解释。",
+      "fields": [
+        {
+          "key": "changeReason",
+          "label": "你想解决哪一类问题，为什么选择这个改动？",
+          "help": ""
+        },
+        {
+          "key": "expectedTradeoff",
+          "label": "你预期会变好什么，又可能多出什么代价？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "a5-evaluate",
+      "title": "在同一批消息上比较",
+      "introduction": "点击下方“运行”，把你的设置放到同一个固定评价集中，与原方案比较。多分对一些但交给人工更多，并不是毫无代价的改进。反复尝试同一批消息，结果也不代表在新消息上一定一样好。",
+      "fields": [
+        {
+          "key": "comparison",
+          "label": "与原方案相比，准确率、覆盖率和人工工作分别怎样变了？",
+          "help": ""
+        },
+        {
+          "key": "tradeoff",
+          "label": "你怎么看这个变化？",
+          "help": "没有提升也可以形成合理判断。引用实际结果，不把预期当作结果。"
+        }
+      ],
+      "checkpointId": "AI-C3",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "a6-decision",
+      "title": "交付建议，再换个情境想一想",
+      "introduction": "新情境：A方案处理100条中的90条，81条正确；B处理60条，57条正确。B自动处理的准确率较高，但更多消息需要人工。不要把这道小题的数据和刚才运行的数据混在一起。",
+      "fields": [
+        {
+          "key": "decision",
+          "label": "对你刚才的方案，你建议保留、改进后再看，还是暂不使用？为什么？",
+          "help": ""
+        },
+        {
+          "key": "risk",
+          "label": "还要留意什么风险？",
+          "help": ""
+        },
+        {
+          "key": "transferMode",
+          "label": "这道新情境小题（可选）",
+          "help": "",
+          "options": {
+            "ANSWER": "尝试回答",
+            "SKIP": "这次先不回答，保留为未作答"
+          }
+        },
+        {
+          "key": "transfer",
+          "label": "在这个新情境里，B是否一定比A好？请说明。",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": "AI-C3",
+      "local": null
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpointId": "AI-C1",
+      "stepKey": "a2-metrics",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accuracyMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "coverageMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "humanReviewMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "accuracyMeaning",
+          "coverageMeaning",
+          "humanReviewMeaning"
+        ]
+      },
+      "transferQuestionId": null,
+      "transferStepKey": null,
+      "transferSchema": null,
+      "supports": [
+        {
+          "supportId": "ai-c1-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "小例子：10条消息中，系统自动处理6条，其中5条分对；另4条交给人工。5÷6描述“自动处理的里面有多少分对”，6÷10描述“有多少交给系统”。交给人工不算系统分对，也不等于系统分错。",
+          "sha256": "39ae20dc93fa02462886b75bb39c738bbbbc6ae58e1760e071c92d9bab9bdec2"
+        },
+        {
+          "supportId": "ai-c1-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "先问分母是谁：全部消息，还是系统已经自动处理的消息？",
+          "sha256": "900366085c1069dfb8d7677133cb31bb61fc4808aa2c277f048de693a0dd41fb"
+        },
+        {
+          "supportId": "ai-c1-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "5和6来自自动处理组，10是全部消息；4条还要交给人工。",
+          "sha256": "9fff23707af4018e49519ee5c90944a786f00d9b667c1473d3fd7a201ba34717"
+        },
+        {
+          "supportId": "ai-c1-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "5/6约83.3%，6/10=60%。较少自动处理可能提高前者，却增加人工工作。",
+          "sha256": "c5aecae42c408dc2bc6dbdb8531c7bb12cb0a5ddf4f25c2f05d2f9f9001e6e52"
+        },
+        {
+          "supportId": "ai-c1-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可用已核对小例子继续：自动处理准确率5/6，覆盖率6/10；它是系统提供的，不是你的计算。",
+          "sha256": "ceedf329cee045e915f81dc577b6024bbc5ef5d78a298ee7f9c286e21c8a6689"
+        }
+      ],
+      "criteria": [
+        "区分自动处理准确率5/6与覆盖率6/10。人工复核不是正确分类，未自动处理不应混入已自动分类的准确率分母。"
+      ],
+      "dependencies": []
+    },
+    {
+      "checkpointId": "AI-C2",
+      "stepKey": "a3-errors",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "errorIds": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "errorPattern": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "errorCost": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "errorIds",
+          "errorPattern",
+          "errorCost"
+        ]
+      },
+      "transferQuestionId": null,
+      "transferStepKey": null,
+      "transferSchema": null,
+      "supports": [
+        {
+          "supportId": "ai-c2-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "下载Excel，查看“原始数据”的公开练习消息、系统预测和参考标签。先找至少两条分错的消息，比较它们有什么共同点；找不到两个有共同点的错例，也可以说明为什么暂时不能概括。参考标签只是本次教学任务的对照。",
+          "sha256": "068cd31b4007c440c22cf925864022cf879b766bc32305d9dd89d0d4c60ebcf9"
+        },
+        {
+          "supportId": "ai-c2-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "从公开练习表里挑出预测与参考标签不同的行。",
+          "sha256": "a26327faab7754f0d7112e6661562a5aecd6d7952ad546426100b8cc17d4f537"
+        },
+        {
+          "supportId": "ai-c2-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "看看两条消息是否都有相近表达、边界模糊或需要额外背景。不要只写“模型不好”。",
+          "sha256": "ad7f8e335c3bdbfc0902ef717b5f669523dc7b9fade313926ef8440f5fdbadac"
+        },
+        {
+          "supportId": "ai-c2-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "如果两例没有共同点，可以写暂时无法概括，并分别说明错分代价。",
+          "sha256": "82cd1cc80064ca2680c0463a69e22d145d35b1260f4ee6ff7f1e04bc8b5cbbcb"
+        },
+        {
+          "supportId": "ai-c2-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可以使用原配置继续评估；后续结果来自固定分类器，不代表你已解决这些错例。",
+          "sha256": "4d92c593b2758dd4669f5b49fda18c497c4b1adc1663dc41d9ade530bee301f0"
+        }
+      ],
+      "criteria": [
+        "核对引用是否为公开练习ID；共同点必须能在引用消息中找到。至少两例才支持共同模式，明确承认样本不足也合理。错误代价须与分类情境相符。"
+      ],
+      "dependencies": [
+        "AI-C1"
+      ]
+    },
+    {
+      "checkpointId": "AI-C3",
+      "stepKey": "a5-evaluate",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "tradeoff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "comparison",
+          "tradeoff"
+        ]
+      },
+      "transferQuestionId": "ai-transfer-1",
+      "transferStepKey": "a6-decision",
+      "transferSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "risk": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "transferMode": {
+            "type": "string",
+            "enum": [
+              "ANSWER",
+              "SKIP"
+            ]
+          },
+          "transfer": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "decision",
+          "risk",
+          "transferMode",
+          "transfer"
+        ]
+      },
+      "supports": [
+        {
+          "supportId": "ai-c3-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "点击下方“运行”，把你的设置放到同一个固定评价集中，与原方案比较。多分对一些但交给人工更多，并不是毫无代价的改进。反复尝试同一批消息，结果也不代表在新消息上一定一样好。",
+          "sha256": "b983a25a4adf7aeb8321f8b52f10839b5bbe2336b28e03dff20c8eaf633ef7be"
+        },
+        {
+          "supportId": "ai-c3-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "对照原方案与当前方案，先分别看准确率、覆盖率和人工数量。",
+          "sha256": "9ea2001376238f2611a0a4c8e56ab7db36d0812ccd3b4112ba3f32decda4fafb"
+        },
+        {
+          "supportId": "ai-c3-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "若准确率上升但覆盖率下降，问问多出来的人工工作是否值得。",
+          "sha256": "4724794be40d1585471a3ecf44583df96ac85589df2208fbfdb2745037b23554"
+        },
+        {
+          "supportId": "ai-c3-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "没有提升也能有合理结论：说清改动没解决什么、还需怎样检查。",
+          "sha256": "e2d20b5d3078b583ad8e998b53047036d4da77679094be37efec96497887f217"
+        },
+        {
+          "supportId": "ai-c3-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可以以原方案作为比较基线；这份基线是系统提供的数据，不是你的模型训练成果。",
+          "sha256": "975a029dfd588afb2910f1d924e9cb250ff9e5a3f4c01a5df98444df6104d2bb"
+        }
+      ],
+      "criteria": [
+        "比较同一评价集的准确率、覆盖率、人工复核与错误类别。指出配置是否改变；多因素调整不能归因于单一因素。无提升不自动代表推理错误。"
+      ],
+      "dependencies": [
+        "AI-C1",
+        "AI-C2"
+      ]
+    }
+  ]
+}

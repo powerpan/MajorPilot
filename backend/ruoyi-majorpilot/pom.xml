@@ -20,7 +20,7 @@
       <resource><directory>../../database/baseline</directory><targetPath>upstream-baseline</targetPath></resource>
       <resource><directory>../../database/migration</directory><targetPath>db/migration</targetPath></resource>
       <resource><directory>../../content</directory><targetPath>task-content</targetPath></resource>
-      <resource><directory>../../contracts/schemas</directory><targetPath>report-schemas</targetPath><includes><include>report-v1.json</include><include>report-proposal-v1.json</include></includes></resource>
+      <resource><directory>../../contracts/schemas</directory><targetPath>report-schemas</targetPath><includes><include>report-v1.json</include><include>report-proposal-v1.json</include><include>method-report-v1.json</include></includes></resource>
     </resources>
     <testResources>
       <testResource><directory>src/test/resources</directory></testResource>

@@ -44,7 +44,7 @@ const code = computed(
   );
 const existing = computed(() => code.value ? productRun(runs.value, code.value) : undefined);
 const completed = computed(() => existing.value?.status === "CLOSED");
-const report = computed(() => reports.value?.items.find((item) => item.reportType === "EXPERIENCE" && item.majorCode === code.value));
+const report = computed(() => reports.value?.items.find((item) => item.reportType === "EXPERIENCE" && item.majorCode === code.value && (!item.sourceRunId || item.sourceRunId === existing.value?.runId)));
 const selected = computed(
   () => !!code.value && currentDecisionFor(decision.value, recommendation.value?.recommendationId, code.value),
 );
@@ -234,7 +234,10 @@ async function start() {
       <h2>{{ major(code).chinese }}</h2>
       <p class="formal-description">{{ definition.description }}</p>
       <p>先阅读介绍，再决定是否体验。查看本页不会创建或开始体验记录。</p>
-      <section class="formal-task-overview">
+      <p v-if="existing?.taskVersionId && (existing.experienceEdition || 1) === 1" class="notice">
+        你保存的是旧版体验，继续时仍会使用原来的任务和记录。新版方法路线可在个人主页另行开始，不会覆盖这里的进度。
+      </p>
+      <section v-else class="formal-task-overview">
         <h2 class="serif">你会做些什么</h2>
         <ol>
           <li v-for="[title, description] in major(code).steps" :key="title"><strong>{{ title }}</strong><p>{{ description }}</p></li>

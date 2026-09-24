@@ -1,0 +1,919 @@
+{
+  "schemaVersion": "task-manifest-v5",
+  "taskVersionId": "01JB2000000000000000000001",
+  "contentKind": "MAJOR",
+  "majorCode": "BUSINESS_ANALYTICS",
+  "demoKey": null,
+  "versionCode": "2.0.0",
+  "title": "BA：课程团队下一步应该先做什么？",
+  "scenario": "LumenLearn合成教学情境。你体验的是用人数和比例确定值得先处理的问题、区分现象与原因、设计下一步。它不是统计考试，也不要求商科背景；商业分析还有财务、定价等本案例没有覆盖的工作。",
+  "goals": [
+    "找出哪里值得先处理，再想办法验证",
+    "先看简短讲解，再提交自己的想法；需要时可以求助和修改",
+    "把本次表现、所获帮助和本人感受分开理解"
+  ],
+  "estimatedMinutes": {
+    "minimum": 45,
+    "maximum": 60
+  },
+  "assets": [
+    {
+      "assetKey": "weekly-funnel",
+      "path": "ba-learning/1.0.0/weekly-funnel.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1",
+      "byteLength": 21969
+    },
+    {
+      "assetKey": "weekly-funnel-csv",
+      "path": "ba-learning/1.0.0/weekly-funnel-csv.csv",
+      "visibility": "PUBLIC",
+      "mediaType": "text/csv",
+      "sha256": "07e580766ab15ed02071c5e4d04c14de10d0896f8425898dd943870f86ca41b7",
+      "byteLength": 2704
+    },
+    {
+      "assetKey": "source-provenance-private",
+      "path": "ba-learning/1.0.0/source-provenance-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "2941b49f3290dd06c851a5eb1763cc126777c184d3ae9c12e3cb49370d6d9f02",
+      "byteLength": 518
+    },
+    {
+      "assetKey": "data-dictionary",
+      "path": "ba-learning/1.0.0/data-dictionary.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "2a9f9404c8f44ac27ef21d80773d20b254e89a74501dd36fc9cc8195fece8379",
+      "byteLength": 4457
+    },
+    {
+      "assetKey": "business-brief",
+      "path": "ba-learning/1.0.0/business-brief.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "28c4f256d5476d340d7baf87ce128529bfe5175e3be55e6ea786b8b7fdba248e",
+      "byteLength": 1335
+    },
+    {
+      "assetKey": "sql-examples",
+      "path": "ba-learning/1.0.0/sql-examples.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "f44f4ab0306daa1e2e4a205e7256d3d4edf684303abbe32faf72c6f698ace215",
+      "byteLength": 2220
+    },
+    {
+      "assetKey": "review-private",
+      "path": "ba-learning/1.0.0/review-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "335c5dc5485f631c0bf9e827f930f32acda0f5bcf294d7777eb51b1f5526694c",
+      "byteLength": 224
+    },
+    {
+      "assetKey": "golden-private",
+      "path": "ba-learning/1.0.0/golden-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "78b00f8f7def6f01547bc63db5f1ea327f6d0114b9321972a0c5e6c4b5643a30",
+      "byteLength": 49603
+    },
+    {
+      "assetKey": "method-guide",
+      "path": "ba-learning/2.0.0/method-guide.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "0d151ef5943c2c8e9a4403938c41a83236a705da34bc92b7fe931d66cf995d4d",
+      "byteLength": 22628
+    }
+  ],
+  "steps": [
+    {
+      "stepKey": "b1-context",
+      "title": "先弄清比例在回答什么",
+      "instructions": "小例子：100人报名，80人开始，40人完成。40÷100回答“报名的人中多少完成”，40÷80回答“开始的人中多少完成”。主案例有第1–6批与第7–12批，每个人都观察报名后28天；这是不同批次的人，不是同一批人的前后变化。",
+      "dependencies": [],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enrollmentRate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "starterRate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "cohortMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "enrollmentRate",
+          "starterRate",
+          "cohortMeaning"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "business-brief",
+        "data-dictionary",
+        "weekly-funnel"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先用一句话说分母这群人是谁。"
+        },
+        {
+          "level": 2,
+          "text": "报名者含尚未开始的人；已开始者只是其中一部分。"
+        },
+        {
+          "level": 3,
+          "text": "40/100=40%表示报名者的完成率；40/80=50%表示已开始者的完成率，两句话都可能正确但回答不同问题。"
+        }
+      ],
+      "hintContextFields": [
+        "enrollmentRate",
+        "starterRate",
+        "cohortMeaning"
+      ],
+      "evidenceFields": [
+        "enrollmentRate",
+        "starterRate",
+        "cohortMeaning"
+      ]
+    },
+    {
+      "stepKey": "b2-metric",
+      "title": "沿着学习流程找一个值得先处理的地方",
+      "instructions": "Excel给出报名、首课、首周活跃、开始作业、提交作业、完成的人数。选相邻两步：后一步人数÷前一步人数。再看有多少人没有继续。先加总人数再算比例，不平均小组的百分比；也别把比例最低直接当作原因。",
+      "dependencies": [
+        "b1-context"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "focusReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "otherTransition": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "FOCUS"
+                    ]
+                  },
+                  "baselineStartWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "baselineEndWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "comparisonStartWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "comparisonEndWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "courseTrack": {
+                    "type": "string",
+                    "enum": [
+                      "ALL",
+                      "FOUNDATIONS",
+                      "APPLIED"
+                    ]
+                  },
+                  "signupSource": {
+                    "type": "string",
+                    "enum": [
+                      "ALL",
+                      "ORGANIC",
+                      "PARTNER",
+                      "CAMPAIGN"
+                    ]
+                  },
+                  "numerator": {
+                    "type": "string",
+                    "enum": [
+                      "first_lesson_count",
+                      "week_one_active_count",
+                      "assignment_started_count",
+                      "assignment_submitted_count",
+                      "completed_count"
+                    ]
+                  },
+                  "denominator": {
+                    "type": "string",
+                    "enum": [
+                      "enrolled_count",
+                      "first_lesson_count",
+                      "week_one_active_count",
+                      "assignment_started_count",
+                      "assignment_submitted_count"
+                    ]
+                  }
+                },
+                "required": [
+                  "resultSet",
+                  "baselineStartWeek",
+                  "baselineEndWeek",
+                  "comparisonStartWeek",
+                  "comparisonEndWeek",
+                  "courseTrack",
+                  "signupSource",
+                  "numerator",
+                  "denominator"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "baselineNumerator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "baselineDenominator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "baselinePercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "comparisonNumerator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "comparisonDenominator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "comparisonPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "baselineNumerator",
+                  "baselineDenominator",
+                  "baselinePercent",
+                  "comparisonNumerator",
+                  "comparisonDenominator",
+                  "comparisonPercent"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "focusReason",
+          "otherTransition",
+          "local"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "focusReason",
+        "otherTransition"
+      ],
+      "evidenceFields": [
+        "focusReason",
+        "otherTransition",
+        "local"
+      ]
+    },
+    {
+      "stepKey": "b3-funnel",
+      "title": "先帮助谁？数字之外还缺什么？",
+      "instructions": "按课程或来源缩小范围，比较人数规模与当前问题。可以选择规模较小但值得先试的群体；请解释，不必一律选跌得最多的。表里没有团队预算、真实联系渠道或未启动原因，不要把自己的猜测写成事实。",
+      "dependencies": [
+        "b2-metric"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "priorityReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "feasibility": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "FOCUS"
+                    ]
+                  },
+                  "baselineStartWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "baselineEndWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "comparisonStartWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "comparisonEndWeek": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "courseTrack": {
+                    "type": "string",
+                    "enum": [
+                      "ALL",
+                      "FOUNDATIONS",
+                      "APPLIED"
+                    ]
+                  },
+                  "signupSource": {
+                    "type": "string",
+                    "enum": [
+                      "ALL",
+                      "ORGANIC",
+                      "PARTNER",
+                      "CAMPAIGN"
+                    ]
+                  },
+                  "numerator": {
+                    "type": "string",
+                    "enum": [
+                      "first_lesson_count",
+                      "week_one_active_count",
+                      "assignment_started_count",
+                      "assignment_submitted_count",
+                      "completed_count"
+                    ]
+                  },
+                  "denominator": {
+                    "type": "string",
+                    "enum": [
+                      "enrolled_count",
+                      "first_lesson_count",
+                      "week_one_active_count",
+                      "assignment_started_count",
+                      "assignment_submitted_count"
+                    ]
+                  }
+                },
+                "required": [
+                  "resultSet",
+                  "baselineStartWeek",
+                  "baselineEndWeek",
+                  "comparisonStartWeek",
+                  "comparisonEndWeek",
+                  "courseTrack",
+                  "signupSource",
+                  "numerator",
+                  "denominator"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "baselineNumerator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "baselineDenominator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "baselinePercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "comparisonNumerator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "comparisonDenominator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "comparisonPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "baselineNumerator",
+                  "baselineDenominator",
+                  "baselinePercent",
+                  "comparisonNumerator",
+                  "comparisonDenominator",
+                  "comparisonPercent"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "priorityReason",
+          "feasibility",
+          "local"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "priorityReason",
+        "feasibility"
+      ],
+      "evidenceFields": [
+        "priorityReason",
+        "feasibility",
+        "local"
+      ]
+    },
+    {
+      "stepKey": "b4-segment",
+      "title": "我们知道发生了什么，但知道原因了吗？",
+      "instructions": "“首课人数少了”是观察；“提醒没有送达”是一种解释；“这些人是否收到并看懂提醒”是还需查的信息。课程和来源人数已经在表里，不能当成完全未知。几个主动反馈的人，也不能代表所有人。",
+      "dependencies": [
+        "b3-funnel"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "observed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "possibleReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "needToKnow": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "observed",
+          "possibleReason",
+          "needToKnow"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "data-dictionary",
+        "sql-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "把你写的句子分成“已经看到”和“可能因为”。"
+        },
+        {
+          "level": 2,
+          "text": "问自己：表格真的记录了原因，还是只记录了人数与行为？"
+        },
+        {
+          "level": 3,
+          "text": "“首课人数减少”与“提醒没送达”不是同一种证据。可以先向未开始及已开始的人分别了解是否收到、是否理解。"
+        }
+      ],
+      "hintContextFields": [
+        "observed",
+        "possibleReason",
+        "needToKnow"
+      ],
+      "evidenceFields": [
+        "observed",
+        "possibleReason",
+        "needToKnow"
+      ]
+    },
+    {
+      "stepKey": "b5-hypothesis",
+      "title": "先试一个办法：怎么看有没有用？",
+      "instructions": "可先补信息，也可试一个小改动。补信息时想清楚问谁、问什么、怎样避免只听到积极回应。小试验时最好同一时期留一组没有额外改动的人比较，并让两组分母与观察时间一致。A/B测试只是可选方法，不要求复杂统计或虚构预算。",
+      "dependencies": [
+        "b4-segment"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "planType": {
+            "type": "string",
+            "enum": [
+              "INFORMATION",
+              "SMALL_TRIAL"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "comparison": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "decisionRule": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "negativeImpact": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "planType",
+          "target",
+          "action",
+          "comparison",
+          "decisionRule",
+          "negativeImpact"
+        ]
+      },
+      "assetKeys": [
+        "method-guide"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "你是要先了解原因，还是先试一个改动？两种选择的检查办法不同。"
+        },
+        {
+          "level": 2,
+          "text": "补信息要避免只问主动回应的人；试改动要想同一时期如果没做这个改动会怎样。"
+        },
+        {
+          "level": 3,
+          "text": "小试验可比较同批符合条件的人，一组额外提醒，一组沿用原安排；统一观察报名后28天，并留意打扰和支持负荷。这只是例子。"
+        }
+      ],
+      "hintContextFields": [
+        "planType",
+        "target",
+        "action",
+        "comparison",
+        "decisionRule",
+        "negativeImpact"
+      ],
+      "evidenceFields": [
+        "planType",
+        "target",
+        "action",
+        "comparison",
+        "decisionRule",
+        "negativeImpact"
+      ]
+    },
+    {
+      "stepKey": "b6-action",
+      "title": "交付一页行动建议，再换个问题",
+      "instructions": "新情境：上个月没发提醒，这个月发了提醒，开课比例上升。两个月参与的人可能不同，也可能有其他变化。",
+      "dependencies": [
+        "b5-hypothesis"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workProduct": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "transferMode": {
+            "type": "string",
+            "enum": [
+              "ANSWER",
+              "SKIP"
+            ]
+          },
+          "transfer": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "workProduct",
+          "transferMode",
+          "transfer"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "business-brief",
+        "data-dictionary"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "workProduct",
+        "transferMode",
+        "transfer"
+      ],
+      "evidenceFields": [
+        "workProduct",
+        "transferMode",
+        "transfer"
+      ]
+    }
+  ],
+  "operations": [],
+  "reflection": {
+    "questionSetVersion": "method-reflection-v1",
+    "instructions": "回想你刚才真正体验到的工作：哪些愿意继续、哪里觉得困难、帮助是否有用？不确定也可以。这些感受不由题目对错代替。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "interestingStepKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "b1-context",
+              "b2-metric",
+              "b3-funnel",
+              "b4-segment",
+              "b5-hypothesis",
+              "b6-action",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "difficultySources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "KNOWLEDGE",
+              "TOOLS",
+              "TIME",
+              "WORK_STYLE",
+              "OTHER",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "continueSimilarWork": {
+          "type": "string",
+          "enum": [
+            "YES",
+            "UNSURE",
+            "NO"
+          ]
+        },
+        "reflectionNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "nextWorkStyle": {
+          "type": "string",
+          "enum": [
+            "MODEL_ITERATION",
+            "DATA_REASONING",
+            "BUSINESS_ACTION",
+            "UNSURE",
+            "SKIPPED"
+          ]
+        },
+        "aiFollowUp": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "interestingStepKeys",
+        "difficultySources",
+        "continueSimilarWork"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "review": {
+    "kind": "PROFESSIONAL",
+    "checkKeys": [
+      "PROFESSIONAL_CORE",
+      "BEGINNER_ACCESS",
+      "DATA_CORRECTNESS",
+      "EVIDENCE_SOURCES",
+      "HINT_NO_FINAL_ANSWER",
+      "FAIRNESS",
+      "CHROME_EDGE",
+      "TIMING_45_60",
+      "RECOVERY",
+      "VERSION_CONSISTENCY"
+    ],
+    "professionalReviewRequired": true
+  }
+}

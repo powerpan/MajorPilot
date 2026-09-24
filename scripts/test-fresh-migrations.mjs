@@ -8,13 +8,13 @@ import { mysqlCommand } from './infra.mjs';
 
 // Requires explicit task authorization for temporary schema/account creation.
 // No server is started/stopped and no provider/application credentials are copied.
-// Usage: node scripts/test-fresh-migrations.mjs [validated-ruoyi-admin.jar] [--upgrade-from-v6|--upgrade-from-v7|--upgrade-from-v8]
+// Usage: node scripts/test-fresh-migrations.mjs [validated-ruoyi-admin.jar] [--upgrade-from-v6|--upgrade-from-v7|--upgrade-from-v8|--upgrade-from-v9]
 // Parsing is exported without running the probe so ordinary tests never create a
 // schema, connect to MySQL, extract an artifact or invoke a provider.
 export function parseMigrationArguments(arguments_) {
   const options = arguments_.filter(argument => argument.startsWith('--'));
   const artifacts = arguments_.filter(argument => !argument.startsWith('--'));
-  assert.ok(options.every(option => ['--upgrade-from-v6', '--upgrade-from-v7', '--upgrade-from-v8'].includes(option)), 'Unknown migration option');
+  assert.ok(options.every(option => ['--upgrade-from-v6', '--upgrade-from-v7', '--upgrade-from-v8', '--upgrade-from-v9'].includes(option)), 'Unknown migration option');
   assert.ok(options.length <= 1, 'Select at most one upgrade baseline');
   assert.ok(artifacts.length <= 1, 'Select at most one validated build JAR');
   return { artifactArgument: artifacts[0] ?? null, fromVersion: options.length ? Number(options[0].slice(-1)) : null };

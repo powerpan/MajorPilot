@@ -20,6 +20,8 @@ import static com.ruoyi.majorpilot.experience.RunStore.*;
 public class RunService {
     private final RunStore db;private final TaskContentProvider content;private final IdempotencyService idem;private final TransactionTemplate tx;
     private LocalProductAccess local;
+    private GuidedLearning learning;
+    @Autowired public void guidedLearning(GuidedLearning learning){this.learning=learning;}
     @Autowired public void localProductAccess(LocalProductAccess local){this.local=local;}
     public RunService(RunStore db,TaskContentProvider content,IdempotencyService idem,TransactionTemplate tx) {this.db=db;this.content=content;this.idem=idem;this.tx=tx;}
     public RunStore store() {return db;}
@@ -53,6 +55,17 @@ public class RunService {
     }
     public List<RunDtos.Run> list(StudentPrincipal student) {return tx.execute(status->{db.activeStudent(student);return db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? ORDER BY r.id",student.internalId()).stream().map(db::row).filter(r->(db.demoEnabled()||r.kind().equals("MAJOR"))&&(db.previewEnabled()||!r.mode().equals("REVIEW_PREVIEW")||db.productEligible(r))).map(db::view).toList();});}
     public RunDtos.Run get(StudentPrincipal student,String id) {return tx.execute(status->{db.activeStudent(student);return db.view(db.owned(student,id));});}
+    public List<Map<String,Object>> editions(StudentPrincipal student){return tx.execute(t->{db.activeStudent(student);var list=new ArrayList<Map<String,Object>>();for(String code:List.of("AI","DATA_SCIENCE","BUSINESS_ANALYTICS")){try{var version=content.currentMajor(code);if(com.ruoyi.majorpilot.learning.MethodGuide.enabled(version.manifest()))list.add(map("majorCode",code,"experienceEdition",2,"taskVersionId",version.taskVersionId(),"versionCode",version.versionCode()));}catch(ApiException unavailable){if(unavailable.status!=404&&unavailable.status!=409)throw unavailable;}}return list;});}
+    /** Explicit new edition, not a reset/replacement of historical work. */
+    public RunDtos.Run newEdition(StudentPrincipal student,String id,String key,RunDtos.Revision input){return writeOwned(student,id,"/experience-runs/"+id+"/new-edition",key,input,RunDtos.Run.class,()->{
+        var old=db.owned(student,id);db.revision(old,input.expectedRevision());if(!db.productEligible(old)||old.status().equals("REPLACED"))throw new ApiException(409,"RUN_STATE_INVALID");
+        var version=content.currentMajor(old.majorCode());if(!com.ruoyi.majorpilot.learning.MethodGuide.enabled(version.manifest()))throw new ApiException(409,"TASK_VERSION_UNAVAILABLE");
+        var existing=db.jdbc().queryForList(SELECT+" WHERE r.student_id=? AND r.lane_key=? AND r.status<>'REPLACED'",student.internalId(),"major:"+old.majorId()+":edition:2");if(!existing.isEmpty())return db.view(db.row(existing.getFirst()));
+        if(old.profileId()==null||old.taskPublicId()==null)throw new ApiException(409,"RUN_STATE_INVALID");
+        Long recommendation=old.recommendationId(),decision=old.decisionId();
+        if(recommendation==null||decision==null){var choices=db.jdbc().queryForList("SELECT id,primary_major_code FROM mp_recommendation WHERE student_id=? AND decision_profile_id=? AND recommendation_type='INITIAL' ORDER BY id DESC LIMIT 1",student.internalId(),old.profileId());if(choices.isEmpty())throw new ApiException(409,"DECISION_PROFILE_INVALID");var rec=choices.getFirst();recommendation=n(rec,"id");long no=db.jdbc().queryForObject("SELECT COALESCE(MAX(decision_no),0)+1 FROM mp_recommendation_decision WHERE recommendation_id=?",Long.class,recommendation);String selected=PublicIds.next();boolean accepted=old.majorCode().equals(s(rec,"primary_major_code"));db.jdbc().update("INSERT INTO mp_recommendation_decision(public_id,recommendation_id,student_id,decision_no,decision_type,selected_major_code,override_reason_code,decided_at) VALUES(?,?,?,?,?,?,?,UTC_TIMESTAMP(3))",selected,recommendation,student.internalId(),no,accepted?"ACCEPTED":"OVERRIDDEN",old.majorCode(),accepted?null:"DECLINED");decision=db.jdbc().queryForObject("SELECT id FROM mp_recommendation_decision WHERE public_id=?",Long.class,selected);}
+        String fresh=PublicIds.next();db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,task_version_id,source_recommendation_id,source_decision_id,decision_profile_id,experience_edition) VALUES(?,?,'MAJOR',?,?,?,?,?,2)",fresh,student.internalId(),old.majorId(),version.internalId(),recommendation,decision,old.profileId());var run=db.owned(student,fresh);db.event(run,"run.created",map("contentKind","MAJOR"));return db.view(run);
+    });}
     IdempotencyService.Owner owner(StudentPrincipal student) {return new IdempotencyService.Owner(student.internalId(),null,"student:"+student.publicId());}
     <T>T write(StudentPrincipal student,String path,String key,Object request,Class<T> type,java.util.function.Supplier<T> action) {
         return idem.execute(owner(student),"POST","/api/app/v1"+path,key,request,type,()->{db.activeStudent(student);return action.get();}).data();
@@ -69,8 +82,10 @@ public class RunService {
             Long major=null,recommendation=null,decision=null;String kind=input.demoKey()==null?"MAJOR":"DEMO",demo=input.demoKey();
             if(kind.equals("DEMO")){if(!db.demoEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");content.currentDemo(demo);}
             else {var choices=db.jdbc().queryForList("SELECT d.id,d.recommendation_id,m.id AS major_id FROM mp_recommendation_decision d JOIN mp_major m ON m.code=d.selected_major_code WHERE d.public_id=? AND d.student_id=? AND m.status='ACTIVE'",input.decisionId(),student.internalId());if(choices.isEmpty())throw new ApiException(404,"RESOURCE_NOT_FOUND");var choice=choices.getFirst();major=n(choice,"major_id");decision=n(choice,"id");recommendation=n(choice,"recommendation_id");}
-            String lane=kind.equals("MAJOR")?"major:"+major:"demo:"+demo;
-            if(kind.equals("MAJOR")){
+            int edition=1;
+            if(kind.equals("MAJOR")){String majorCode=db.jdbc().queryForObject("SELECT code FROM mp_major WHERE id=?",String.class,major);try{if(com.ruoyi.majorpilot.learning.MethodGuide.enabled(content.currentMajor(majorCode).manifest()))edition=2;}catch(ApiException unavailable){if(unavailable.status!=404&&unavailable.status!=409)throw unavailable;}}
+            String lane=kind.equals("MAJOR")?"major:"+major+(edition>1?":edition:"+edition:""):"demo:"+demo;
+            if(kind.equals("MAJOR")&&edition==1){
                 var adopted=db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? AND r.major_id=? AND r.run_mode='REVIEW_PREVIEW' AND "+ProductEligibility.sql("r"),student.internalId(),major);
                 if(!adopted.isEmpty())return db.view(db.row(adopted.getFirst()));
             }
@@ -79,7 +94,7 @@ public class RunService {
                 if(run.status().equals("READY")&&run.origin()==null&&!Objects.equals(run.decisionId(),decision)){db.revision(run,input.expectedRevision());db.jdbc().update("UPDATE mp_experience_run SET source_decision_id=?,source_recommendation_id=?,row_version=row_version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=?",decision,recommendation,run.id());}
                 return db.view(db.internal(run.id()));
             }
-            String id=PublicIds.next();db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,demo_key,source_recommendation_id,source_decision_id) VALUES(?,?,?,?,?,?,?)",id,student.internalId(),kind,major,demo,recommendation,decision);
+            String id=PublicIds.next();db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,demo_key,source_recommendation_id,source_decision_id,experience_edition) VALUES(?,?,?,?,?,?,?,?)",id,student.internalId(),kind,major,demo,recommendation,decision,edition);
             var run=db.owned(student,id);db.event(run,"run.created",Map.of("contentKind",kind));return db.view(run);
         });
     }
@@ -98,7 +113,14 @@ public class RunService {
             if(operation.equals("start")) {
                 version=run.taskPublicId()!=null?pinned(run):run.kind().equals("DEMO")?content.currentDemo(run.demoKey()):content.currentMajor(run.majorCode());
                 var locked=db.jdbc().queryForList("SELECT status FROM mp_task_version WHERE id=? FOR UPDATE",version.internalId());
-                if(locked.isEmpty()||run.taskPublicId()==null&&!(local==null?"PUBLISHED".equals(s(locked.getFirst(),"status")):local.canStart(version.internalId())))throw new ApiException(409,"TASK_VERSION_UNAVAILABLE");
+                boolean freshStandardMajor=run.kind().equals("MAJOR")&&run.mode().equals("STANDARD")&&run.origin()==null;
+                if(locked.isEmpty()||(run.taskPublicId()==null||freshStandardMajor)&&!(local==null?"PUBLISHED".equals(s(locked.getFirst(),"status")):local.canStart(version.internalId())))throw new ApiException(409,"TASK_VERSION_UNAVAILABLE");
+                // A READY run has no pinned content or answers yet. Once it starts,
+                // fix its edition together with its Task Version; never migrate started work.
+                if(run.taskPublicId()==null&&com.ruoyi.majorpilot.learning.MethodGuide.enabled(version.manifest())){
+                    if(db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_experience_run WHERE student_id=? AND major_id=? AND experience_edition=2 AND status<>'REPLACED' AND id<>?",Integer.class,run.studentId(),run.majorId(),run.id())>0)throw new ApiException(409,"LEARNING_NEW_EDITION_EXISTS");
+                    db.jdbc().update("UPDATE mp_experience_run SET experience_edition=2 WHERE id=?",run.id());
+                }
                 if(profile==null){var profiles=run.kind().equals("DEMO")||run.mode().equals("REVIEW_PREVIEW")?db.jdbc().queryForList("SELECT id FROM mp_decision_profile WHERE student_id=? ORDER BY profile_version_no DESC LIMIT 1",student.internalId()):db.jdbc().queryForList("SELECT decision_profile_id AS id FROM mp_recommendation WHERE id=? AND student_id=?",run.recommendationId(),student.internalId());if(profiles.isEmpty())throw new ApiException(422,"DECISION_PROFILE_INVALID");profile=n(profiles.getFirst(),"id");}
             } else pinned(run);
             if(active!=null)pause(active);
@@ -153,6 +175,7 @@ public class RunService {
         if(ba(run)&&key.equals("b6-action"))checkActionSources(input.expectedSourceRevisions(),baSources(run));
         if(s(state,"status").equals("COMPLETED"))return db.view(run);
         ResponseRules.validate(definition.path("inputSchema"),response(state),true);
+        if(learning!=null)learning.requireCompletion(run,key,response(state),n(state,"current_revision"));
         if(ba(run)&&key.equals("b4-segment"))baPriority(response(state));
         if(ba(run)&&key.equals("b6-action")){
             var context=baContext(run);var action=db.mapper().createObjectNode();var answer=response(state);
@@ -239,7 +262,8 @@ public class RunService {
             var candidates=db.jdbc().queryForList(RunStore.SELECT+" WHERE r.public_id=?",id);if(candidates.isEmpty())throw new ApiException(404,"RESOURCE_NOT_FOUND");var run=db.row(candidates.getFirst());var account=db.jdbc().queryForMap("SELECT public_id,status FROM mp_student_account WHERE id=? FOR UPDATE",run.studentId());db.activeStudent(new StudentPrincipal(run.studentId(),s(account,"public_id"),s(account,"status")));run=db.internal(run.id());db.demoGate(run);db.revision(run,input.expectedRevision());
             if(Set.of("CLOSED","REPLACED").contains(run.status()))throw new ApiException(409,"RUN_STATE_INVALID");
             String newId=PublicIds.next();db.jdbc().update("UPDATE mp_experience_run SET status='REPLACED',paused_from_status=NULL,replaced_at=UTC_TIMESTAMP(3),row_version=row_version+1 WHERE id=?",run.id());
-            db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,demo_key,task_version_id,source_recommendation_id,source_decision_id,decision_profile_id,attempt_no,origin_run_id,created_reason,run_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,'OPERATOR_RECOVERY',?)",newId,run.studentId(),run.kind(),run.majorId(),run.demoKey(),run.taskId(),run.recommendationId(),run.decisionId(),run.profileId(),run.attempt()+1,run.id(),run.mode());
+            int edition=db.jdbc().queryForObject("SELECT experience_edition FROM mp_experience_run WHERE id=?",Integer.class,run.id());
+            db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,demo_key,task_version_id,source_recommendation_id,source_decision_id,decision_profile_id,attempt_no,origin_run_id,created_reason,run_mode,experience_edition) VALUES(?,?,?,?,?,?,?,?,?,?,?,'OPERATOR_RECOVERY',?,?)",newId,run.studentId(),run.kind(),run.majorId(),run.demoKey(),run.taskId(),run.recommendationId(),run.decisionId(),run.profileId(),run.attempt()+1,run.id(),run.mode(),edition);
             db.jdbc().update("INSERT INTO mp_sensitive_audit(public_id,operator_id,owner_student_id,action_code,target_type,target_public_id,reason_code,reason_text,before_summary_json,after_summary_json,correlation_id) VALUES(?,?,?,'EXPERIENCE_RECOVERY','EXPERIENCE_RUN',?,?,?,?,?,?)",PublicIds.next(),operator,run.studentId(),id,input.reasonCode(),input.reasonText(),db.json(map("status",run.status(),"revision",run.revision())),db.json(map("status","REPLACED","recoveryRunId",newId)),correlation);
             db.event(run,"run.replaced",Map.of("reasonCode",input.reasonCode()));return db.view(db.owned(new StudentPrincipal(run.studentId(),s(account,"public_id"),"ACTIVE"),newId));
         }).data();

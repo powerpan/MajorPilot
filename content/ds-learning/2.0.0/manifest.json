@@ -1,0 +1,936 @@
+{
+  "schemaVersion": "task-manifest-v5",
+  "taskVersionId": "01JD2000000000000000000001",
+  "contentKind": "MAJOR",
+  "majorCode": "DATA_SCIENCE",
+  "demoKey": null,
+  "versionCode": "2.0.0",
+  "title": "DS：早点开始学习，与完成课程有关吗？",
+  "scenario": "LumenLearn合成教学情境。你体验的是理解记录、处理数据、比较结果并限制结论。没有要求写代码或训练模型，也不能凭这份观察数据证明一个做法会让人完成课程。",
+  "goals": [
+    "先看数据靠不靠谱，再说它说明了什么",
+    "先看简短讲解，再提交自己的想法；需要时可以求助和修改",
+    "把本次表现、所获帮助和本人感受分开理解"
+  ],
+  "estimatedMinutes": {
+    "minimum": 45,
+    "maximum": 60
+  },
+  "assets": [
+    {
+      "assetKey": "learner-activity",
+      "path": "ds-learning/1.0.0/learner-activity.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06",
+      "byteLength": 137793
+    },
+    {
+      "assetKey": "learner-activity-csv",
+      "path": "ds-learning/1.0.0/learner-activity-csv.csv",
+      "visibility": "PUBLIC",
+      "mediaType": "text/csv",
+      "sha256": "0419aa91bf871af028c438c266d34faf5360b904006b0eddaf7322b8ab90755b",
+      "byteLength": 20645
+    },
+    {
+      "assetKey": "canonical-events-private",
+      "path": "ds-learning/1.0.0/canonical-events-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "9f09364c467d56256b66c9a2da25bf051f0c784bad22795418fd541a7f199cf6",
+      "byteLength": 249151
+    },
+    {
+      "assetKey": "data-dictionary",
+      "path": "ds-learning/1.0.0/data-dictionary.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "cfb9ea3c330f07b3de91d24682b18610f837b3926df372f31ce1f70da3e7deb3",
+      "byteLength": 4518
+    },
+    {
+      "assetKey": "python-examples",
+      "path": "ds-learning/1.0.0/python-examples.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "9035a15b1cd23d112473aaff9d56f6847f859c6d694e5e54d83c122eb9142e43",
+      "byteLength": 8024
+    },
+    {
+      "assetKey": "review-private",
+      "path": "ds-learning/1.0.0/review-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "a69792742bca904cf4af603dd63aae7e00bcf84c86c39c41d181301098aa2625",
+      "byteLength": 257
+    },
+    {
+      "assetKey": "golden-private",
+      "path": "ds-learning/1.0.0/golden-private.json",
+      "visibility": "PRIVATE",
+      "mediaType": "application/json",
+      "sha256": "e3647095720ae901c2a7c4891083b57f2a5a6e79d5a3438dde60fb90ea7e947e",
+      "byteLength": 69303
+    },
+    {
+      "assetKey": "method-guide",
+      "path": "ds-learning/2.0.0/method-guide.json",
+      "visibility": "PUBLIC",
+      "mediaType": "application/json",
+      "sha256": "922e8f9857f8ad3d2333b825a95032ede2bf637f3d02020321ab0008b158afd9",
+      "byteLength": 27303
+    }
+  ],
+  "steps": [
+    {
+      "stepKey": "d1-context",
+      "title": "先弄清一行是什么",
+      "instructions": "这里有360条合成学习记录，按学员记录学习开始时间及28天内是否完成。先下载Excel，并看“字段说明”。一行记录不等于一名新学员：重复行需要另外检查。课程、报名来源等字段已经在文件里。",
+      "dependencies": [],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "unit",
+          "question"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "learner-activity",
+        "data-dictionary"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "unit",
+        "question"
+      ],
+      "evidenceFields": [
+        "unit",
+        "question"
+      ]
+    },
+    {
+      "stepKey": "d2-quality",
+      "title": "重复、没开始、空白，不能一起删",
+      "instructions": "例子：同一学员的两行每个字段都一样，可以考虑保留一行；只看ID相同不能断定整行重复。开始天数为0表示当天开始，空白表示没有这个数值。“没有开始”的人和“开始了但没记天数”的人也不同。",
+      "dependencies": [
+        "d1-context"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cleaningReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "duplicatePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "REMOVE_EXACT",
+                      "KEEP_ALL"
+                    ]
+                  },
+                  "excludedRowIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 7
+                    },
+                    "minItems": 0,
+                    "maxItems": 360,
+                    "uniqueItems": true
+                  },
+                  "earlyThroughDay": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 27
+                  },
+                  "latestDay": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 28
+                  },
+                  "missingDaysPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "EXCLUDE_FROM_COMPARISON"
+                    ]
+                  },
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "CLEANING"
+                    ]
+                  }
+                },
+                "required": [
+                  "duplicatePolicy",
+                  "excludedRowIds",
+                  "earlyThroughDay",
+                  "latestDay",
+                  "missingDaysPolicy",
+                  "resultSet"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "retainedRows": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "uniqueLearners": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "duplicateRowsRemoved": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "retainedRows",
+                  "uniqueLearners",
+                  "duplicateRowsRemoved"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "cleaningReason",
+          "local"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "learner-activity",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先区分0、空白和没有开始；再看是否整行重复。"
+        },
+        {
+          "level": 2,
+          "text": "不要只按学员ID删重复。可先保留一份原始记录，对每种处理写出理由。"
+        },
+        {
+          "level": 3,
+          "text": "原始360行包含一条完全重复记录。只删除完全重复时保留359行；不自动丢掉未开始的人。"
+        }
+      ],
+      "hintContextFields": [
+        "cleaningReason"
+      ],
+      "evidenceFields": [
+        "cleaningReason",
+        "local"
+      ]
+    },
+    {
+      "stepKey": "d3-profile",
+      "title": "比较两组，先把人数算清楚",
+      "instructions": "本次基础比较只看已经开始、而且开始天数有效的人。默认把0–3天开始与4–28天开始分成两组。每组完成率=该组完成人数÷该组总人数；不是除以全部学员。你也可调整分界并说明理由。",
+      "dependencies": [
+        "d2-quality"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "comparisonReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "duplicatePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "REMOVE_EXACT",
+                      "KEEP_ALL"
+                    ]
+                  },
+                  "excludedRowIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 7
+                    },
+                    "minItems": 0,
+                    "maxItems": 360,
+                    "uniqueItems": true
+                  },
+                  "earlyThroughDay": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 27
+                  },
+                  "latestDay": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 28
+                  },
+                  "missingDaysPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "EXCLUDE_FROM_COMPARISON"
+                    ]
+                  },
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "COMPARISON"
+                    ]
+                  }
+                },
+                "required": [
+                  "duplicatePolicy",
+                  "excludedRowIds",
+                  "earlyThroughDay",
+                  "latestDay",
+                  "missingDaysPolicy",
+                  "resultSet"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "all.earlyCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.earlyCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.earlyPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.laterCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.laterCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.laterPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "all.earlyCount",
+                  "all.earlyCompleted",
+                  "all.earlyPercent",
+                  "all.laterCount",
+                  "all.laterCompleted",
+                  "all.laterPercent"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "comparisonReason",
+          "local"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "每一组分别数总人数与完成人数；比例是后者除以前者。"
+        },
+        {
+          "level": 2,
+          "text": "分组前先选已开始且天数有效的人。没有开始不属于“开始得晚”。"
+        },
+        {
+          "level": 3,
+          "text": "默认删除完全重复后，0–3天组100人中58人完成，4–28天组200人中93人完成。这个例子不是全部学员完成率。"
+        }
+      ],
+      "hintContextFields": [
+        "comparisonReason"
+      ],
+      "evidenceFields": [
+        "comparisonReason",
+        "local"
+      ]
+    },
+    {
+      "stepKey": "d4-relationship",
+      "title": "换到同一种课程里，还一样吗？",
+      "instructions": "两种课程的难度和学员可能不同。现在分别在基础课程、应用课程里面做刚才的比较。结果没有反转也完全正常；重点是看课程构成会不会影响整体解释。某组没有人时，比例无法计算，不是0%。",
+      "dependencies": [
+        "d3-profile"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "courseObservation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "duplicatePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "REMOVE_EXACT",
+                      "KEEP_ALL"
+                    ]
+                  },
+                  "excludedRowIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 7
+                    },
+                    "minItems": 0,
+                    "maxItems": 360,
+                    "uniqueItems": true
+                  },
+                  "earlyThroughDay": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 27
+                  },
+                  "latestDay": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 28
+                  },
+                  "missingDaysPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "EXCLUDE_FROM_COMPARISON"
+                    ]
+                  },
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "COURSE_CHECK"
+                    ]
+                  }
+                },
+                "required": [
+                  "duplicatePolicy",
+                  "excludedRowIds",
+                  "earlyThroughDay",
+                  "latestDay",
+                  "missingDaysPolicy",
+                  "resultSet"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "FOUNDATIONS.earlyCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "FOUNDATIONS.earlyCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "FOUNDATIONS.earlyPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "FOUNDATIONS.laterCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "FOUNDATIONS.laterCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "FOUNDATIONS.laterPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "APPLIED.earlyCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "APPLIED.earlyCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "APPLIED.earlyPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "APPLIED.laterCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "APPLIED.laterCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "APPLIED.laterPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "FOUNDATIONS.earlyCount",
+                  "FOUNDATIONS.earlyCompleted",
+                  "FOUNDATIONS.earlyPercent",
+                  "FOUNDATIONS.laterCount",
+                  "FOUNDATIONS.laterCompleted",
+                  "FOUNDATIONS.laterPercent",
+                  "APPLIED.earlyCount",
+                  "APPLIED.earlyCompleted",
+                  "APPLIED.earlyPercent",
+                  "APPLIED.laterCount",
+                  "APPLIED.laterCompleted",
+                  "APPLIED.laterPercent"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "courseObservation",
+          "local"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "courseObservation"
+      ],
+      "evidenceFields": [
+        "courseObservation",
+        "local"
+      ]
+    },
+    {
+      "stepKey": "d5-stratify",
+      "title": "看到关系，等于找到原因吗？",
+      "instructions": "即使早点开始的人完成率较高，也可能是他们本来更有时间、动机或准备。课程和来源已经在表里，可以继续比较；个人时间安排、动机等没有记录，不能假装知道。",
+      "dependencies": [
+        "d4-relationship"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "causalReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "nextQuestion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "causalReason",
+          "nextQuestion"
+        ]
+      },
+      "assetKeys": [
+        "method-guide",
+        "data-dictionary",
+        "python-examples"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "看到一起变化，不能知道换一个做法后一定怎样。"
+        },
+        {
+          "level": 2,
+          "text": "尝试说出一种同时影响开始早晚与完成情况的因素。"
+        },
+        {
+          "level": 3,
+          "text": "例如个人可支配时间可能同时影响开始时间和完成情况。课程和来源已在表里，不是未记录的因素。"
+        }
+      ],
+      "hintContextFields": [
+        "causalReason",
+        "nextQuestion"
+      ],
+      "evidenceFields": [
+        "causalReason",
+        "nextQuestion"
+      ]
+    },
+    {
+      "stepKey": "d6-conclusion",
+      "title": "写一份简短结论，再试一道新题",
+      "instructions": "新情境：论坛发帖较多的人完成率更高。这里只记录了发帖与完成情况，没有安排谁必须发帖。",
+      "dependencies": [
+        "d5-stratify"
+      ],
+      "required": true,
+      "responseSchemaVersion": "method-response-v1",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workProduct": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "transferMode": {
+            "type": "string",
+            "enum": [
+              "ANSWER",
+              "SKIP"
+            ]
+          },
+          "transfer": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "workProduct",
+          "transferMode",
+          "transfer"
+        ]
+      },
+      "assetKeys": [
+        "method-guide"
+      ],
+      "operationKey": null,
+      "hints": [
+        {
+          "level": 1,
+          "text": "先回看这一页的小例子。"
+        },
+        {
+          "level": 2,
+          "text": "可写出现在确定的部分和还不清楚的部分。"
+        },
+        {
+          "level": 3,
+          "text": "不要求专业术语；把你怎么想的说清楚即可。"
+        }
+      ],
+      "hintContextFields": [
+        "workProduct",
+        "transferMode",
+        "transfer"
+      ],
+      "evidenceFields": [
+        "workProduct",
+        "transferMode",
+        "transfer"
+      ]
+    }
+  ],
+  "operations": [],
+  "reflection": {
+    "questionSetVersion": "method-reflection-v1",
+    "instructions": "回想你刚才真正体验到的工作：哪些愿意继续、哪里觉得困难、帮助是否有用？不确定也可以。这些感受不由题目对错代替。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "interestingStepKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "d1-context",
+              "d2-quality",
+              "d3-profile",
+              "d4-relationship",
+              "d5-stratify",
+              "d6-conclusion",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "difficultySources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "KNOWLEDGE",
+              "TOOLS",
+              "TIME",
+              "WORK_STYLE",
+              "OTHER",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "continueSimilarWork": {
+          "type": "string",
+          "enum": [
+            "YES",
+            "UNSURE",
+            "NO"
+          ]
+        },
+        "reflectionNote": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "nextWorkStyle": {
+          "type": "string",
+          "enum": [
+            "MODEL_ITERATION",
+            "DATA_REASONING",
+            "BUSINESS_ACTION",
+            "UNSURE",
+            "SKIPPED"
+          ]
+        },
+        "aiFollowUp": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "interestingStepKeys",
+        "difficultySources",
+        "continueSimilarWork"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "review": {
+    "kind": "PROFESSIONAL",
+    "checkKeys": [
+      "PROFESSIONAL_CORE",
+      "BEGINNER_ACCESS",
+      "DATA_CORRECTNESS",
+      "EVIDENCE_SOURCES",
+      "HINT_NO_FINAL_ANSWER",
+      "FAIRNESS",
+      "CHROME_EDGE",
+      "TIMING_45_60",
+      "RECOVERY",
+      "VERSION_CONSISTENCY"
+    ],
+    "professionalReviewRequired": true
+  }
+}

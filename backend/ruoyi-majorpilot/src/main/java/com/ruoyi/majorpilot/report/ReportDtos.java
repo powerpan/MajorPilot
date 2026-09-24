@@ -10,7 +10,8 @@ public final class ReportDtos {
     public record Generation(String status,String phase,boolean retryable,String safeCode) {}
     public record Status(String reportId,String status,String currentVersionId,Generation generation,long revision) {}
     public record Summary(String reportId,String reportType,String majorCode,String status,String currentVersionId,
-                          Long versionNo,Generation generation,Instant readyAt,Instant firstReadyAt,long revision) {}
+                          Long versionNo,Generation generation,Instant readyAt,Instant firstReadyAt,long revision,
+                          @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String sourceRunId) {}
     public record Page(List<Summary> items,String nextCursor) {}
     public record MajorState(String majorCode,String status) {}
     public record Waiting(String state,String reason,List<MajorState> majors) {}

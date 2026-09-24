@@ -77,4 +77,12 @@ class P6HarnessBoundaryTest {
         for(String level:List.of("full","limited")){String name=P6HarnessOperators.username(level,"0123456789abcdef");assertTrue(name.length()<=20);assertTrue(name.startsWith("p6-"));assertNotEquals("admin",name);}
         assertThrows(IllegalStateException.class,()->P6HarnessOperators.username("admin","0123456789abcdef"));
     }
+    @Test void methodGatewayIsExplicitOfflineStructureForBothInitialAndReview()throws Exception {
+        var mapper=new com.fasterxml.jackson.databind.ObjectMapper();
+        var input=mapper.readTree("""
+            {"runs":[{"majorCode":"AI"}],"checkpoints":[{"checkpointId":"AI-C1","majorCode":"AI","title":"比例","supportConditions":[]}],"sources":[{"ref":"answer","majorCode":"AI","kind":"FINAL","checkpointId":"AI-C1","value":"分母是所有报名的人","studentText":true,"requiredFinding":true,"label":"我的回答"},{"ref":"feeling","majorCode":"AI","kind":"REFLECTION","checkpointId":"","value":"还想继续","studentText":false,"requiredFinding":false,"label":"感受"}]}
+            """);
+        var gateway=new P6HarnessMethodGateway(mapper,new MockEnvironment());
+        for(boolean review:List.of(false,true)){var result=gateway.call(input,null,review);assertNull(result.error());assertEquals("TEST_REPLAY",result.provider());assertEquals(0L,result.outputTokens());assertTrue(com.ruoyi.majorpilot.learning.MethodReportContract.validate(input,result.body()).isEmpty());assertTrue(result.body().path("summary").asText().contains("合成结构测试"));}
+    }
 }

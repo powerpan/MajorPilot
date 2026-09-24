@@ -116,6 +116,19 @@ _Avoid_: Prompt Context, Event Dump
 A single report statement classified as observed fact, Student self-report, bounded interpretation, limitation, or next step and linked to supporting evidence.
 _Avoid_: AI Insight, Assessment Result
 
+**Answer Analysis**:
+A bounded interpretation of a Student's particular answer against the task question, available results, and evaluation criteria. It distinguishes demonstrated reasoning, unsupported claims, and opportunities for improvement without judging stable ability or suitability for a Major.
+
+**Answer Excerpt**:
+An unchanged, contiguous passage of a Student's Step Response shown alongside an Answer Analysis. Its attribution establishes what the Student wrote, not whether the answer or its analysis is correct.
+
+**Analysis Refinement**:
+An independent review and rewrite of an unpublished Answer Analysis against its original task, answers, and evidence. It can correct an analysis but does not certify that every interpretation is factually correct.
+_Avoid_: Fact Certificate, AI Approval
+
+**Frozen Response Reference**:
+A traceable reference to an original answer or reflection preserved when an Experience Run closed. It establishes what the Student wrote, not whether the content is correct.
+
 **Experience Report**:
 A private, evidence-based report about one completed Major Experience that separates experience preference, current preparation, and observed task performance.
 _Avoid_: Fit Report, Assessment Report

@@ -83,6 +83,7 @@ export interface PreviewTask {
   warning: string;
 }
 export interface Run {
+  experienceEdition?: number;
   runMode: "STANDARD" | "REVIEW_PREVIEW";
   productEligible?: boolean;
   runId: string;

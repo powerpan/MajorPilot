@@ -9,6 +9,7 @@ const props = defineProps<{
   modelValue: Answer;
   schema: InputSchema;
   disabled?: boolean;
+  hideRationale?: boolean;
 }>();
 const emit = defineEmits<{ "update:modelValue": [value: Answer] }>();
 const names: Record<Label, string> = {
@@ -121,7 +122,7 @@ function toggle(id: string) {
         />自动路由</label
       >
     </fieldset>
-    <div class="classifier-rationale">
+    <div v-if="!hideRationale" class="classifier-rationale">
       <label
         v-for="item in [
           { key: 'modificationReason', label: '修改理由' },

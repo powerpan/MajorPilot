@@ -13,6 +13,7 @@ import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
 import DsWorkspace from "../components/workspace/DsWorkspace.vue";
 import BaWorkspace from "../components/workspace/BaWorkspace.vue";
 import WorkbookDownload from "../components/workspace/WorkbookDownload.vue";
+import GuidedWorkspace from "../components/workspace/GuidedWorkspace.vue";
 import { leaveRunObservation, observeRunStep } from '../lib/run-observations';
 import { answerIssue, taskIssue, attentionTarget, createAttention, type AttentionIssue } from '../lib/workspace-attention';
 import { actionIssue } from '../lib/ba-display';
@@ -26,6 +27,8 @@ const route = useRoute(),
 const help = ref<HTMLDialogElement | null>(null),
   copy = ref<HTMLDialogElement | null>(null),
   copied = ref(false);
+const guided = computed(() => !!workspace.manifest?.assets.some(a => a.assetKey === 'method-guide'));
+const guidedWorkspace = ref<InstanceType<typeof GuidedWorkspace> | null>(null);
 const wide = ref(window.innerWidth >= 1024);
 const observationCore = ref<HTMLElement | null>(null);
 const workspaceBody = ref<HTMLElement | null>(null);
@@ -45,7 +48,7 @@ async function readClosedReport() {
   try {
     const page = await api<ReportPage>('/api/app/v1/reports?limit=50', { signal: ticket.signal });
     if (!ticket.current() || issuedAt !== reportGeneration || workspace.run?.runId !== run.runId) return;
-    closedReport.value = page.items.find(item => item.reportType === 'EXPERIENCE' && item.majorCode === run.majorCode) || null;
+    closedReport.value = page.items.find(item => item.reportType === 'EXPERIENCE' && item.majorCode === run.majorCode && (!item.sourceRunId || item.sourceRunId===run.runId)) || null;
     reportError.value = '';
   } catch (cause) {
     if (!ticket.current() || issuedAt !== reportGeneration) return;
@@ -72,6 +75,7 @@ function contextIssue(): AttentionIssue | null {
   return null;
 }
 function businessIssue(): AttentionIssue | null {
+  if (guided.value) return null;
   if (workspace.selectedStep !== 'b6-action') return null;
   const message = actionIssue(workspace.answer, workspace.baActionContext);
   if (!message) return null;
@@ -83,6 +87,8 @@ async function guideFailure(complete = true) {
   if (issue) return guide(issue);
   const message = workspace.executionError || workspace.error;
   if (!message) return;
+  if (guided.value && /核对并保存|本地结果改过了/.test(message)) return guide({field:'local.check',message});
+  if (guided.value && /明确提交|最后一次提交/.test(message)) return guide({field:'learning',message});
   // Domain validation remains on the server; guide only to its relevant action.
   const field = /批次|基准期|两期/.test(message) ? 'baselineStartWeek' : /两轴|分层依据|分析分支/.test(message) ? (workspace.selectedStep === 'd5-stratify' ? 'stratifyBy' : 'relationshipMode') : /运行|计算|评估|参数/.test(message) && workspace.step?.definition.operationKey ? 'execution' : 'status';
   await guide({ field, message });
@@ -96,6 +102,7 @@ async function completeWithGuidance() {
     return;
   }
   const issuedAt = attentionGeneration;
+  if (guided.value && !workspace.reflectionMode && guidedWorkspace.value && !(await guidedWorkspace.value.ready())) return;
   await workspace.complete();
   if (issuedAt === attentionGeneration) await guideFailure();
 }
@@ -509,6 +516,7 @@ onBeforeUnmount(() => {
                 }}
               </h1>
               <button
+                v-if="!guided"
                 class="workspace-help-toggle workspace-outline"
                 @click="help?.showModal()"
               >
@@ -652,6 +660,7 @@ onBeforeUnmount(() => {
               :disabled="workspace.readOnly || workspace.busy"
               @update:model-value="workspace.edit"
             />
+            <GuidedWorkspace v-else-if="guided && !workspace.reflectionMode && workspace.step" :key="workspace.selectedStep" ref="guidedWorkspace" @execute="executeWithGuidance()" />
             <ClassifierConfig
               v-else-if="
                 workspace.selectedStep === 'a4-configure' &&
@@ -1087,14 +1096,14 @@ mean = total / count</code></pre>
       </main>
       <aside class="workspace-help">
         <HintPanel
-          v-if="!workspace.reflectionMode"
+          v-if="!workspace.reflectionMode && !guided"
           :hints="workspace.hints"
           :boundary="boundary"
           :busy="workspace.hintBusy"
           :disabled="workspace.readOnly"
           @request="workspace.hint"
         />
-        <div v-else class="reflection-aside">
+        <div v-else-if="workspace.reflectionMode" class="reflection-aside">
           <h2>把感受留给自己。</h2>
           <p>
             任务结果与体验偏好是两回事。诚实记录兴趣、困难与不确定，比选一个“正确答案”更有用。
@@ -1104,7 +1113,7 @@ mean = total / count</code></pre>
         </div>
       </aside>
     </div>
-    <dialog ref="help" class="workspace-help-drawer" aria-label="分层帮助">
+    <dialog v-if="!guided" ref="help" class="workspace-help-drawer" aria-label="分层帮助">
       <button class="plain-button text-link" @click="help?.close()">
         关闭提示 ×</button
       ><HintPanel

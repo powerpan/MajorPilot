@@ -36,6 +36,8 @@ for (const milestone of [2, 3, 4]) {
   const file = new URL(`./openapi-p${milestone}.json`, import.meta.url);
   const api = JSON.parse(readFileSync(file, 'utf8'));
   Object.assign(api.components.schemas, structuredClone(shared));
+  api.components.schemas.Run.properties.experienceEdition = {type:'integer',minimum:2,maximum:2};
+  api.components.schemas.PublicManifest.properties.schemaVersion.enum = ['task-manifest-v1','task-manifest-v2','task-manifest-v3','task-manifest-v4','task-manifest-v5'];
   // Post-P7 owner-authorized local product flow is an additive wire change.
   // Historical receipts may omit it; explicit null also means no affirmative grant.
   api.components.schemas.Run.properties.productEligible = {

@@ -15,10 +15,18 @@ export function productInstructions(run: Run | null | undefined, text: string | 
 }
 
 export function productRun(runs: Run[], code: MajorCode): Run | undefined {
-  const eligible = runs.filter((run) => isProductRun(run) &&
+  let eligible = runs.filter((run) => isProductRun(run) &&
     run.majorCode === code && run.status !== "REPLACED");
+  const edition=Math.max(1,...eligible.map(run=>run.experienceEdition||1));
+  eligible=eligible.filter(run=>(run.experienceEdition||1)===edition);
   // A completed experience is not an invitation to silently start it again.
   return [...eligible].reverse().find((run) => run.status === "CLOSED") || eligible.at(-1);
+}
+
+/** Keep old unfinished work reachable after explicitly creating a new edition. */
+export function historicalProductRuns(runs: Run[]): Run[] {
+  return runs.filter(run => isProductRun(run) && run.status !== "REPLACED" && !!run.taskVersionId &&
+    (run.experienceEdition || 1) < (productRun(runs, run.majorCode as MajorCode)?.experienceEdition || 1));
 }
 
 export function currentDecisionFor(decision: Decision | null | undefined,
@@ -35,6 +43,13 @@ export function productAction(run: Run | undefined, report: ReportSummary | unde
   if (run?.status === "IN_PROGRESS") return `继续 ${short} 体验`;
   if (run || available) return `开始 ${short} 体验`;
   return "了解这个方向";
+}
+
+/** Resolve the exact source run, not the latest run for the same major. */
+export function reportEditionLabel(report: ReportSummary, runs: Run[]): string {
+  const source = report.sourceRunId ? runs.find(run => run.runId === report.sourceRunId) : undefined;
+  if (!source) return "";
+  return (source.experienceEdition || 1) >= 2 ? "方法引导版体验" : "旧版体验 · 原记录保留";
 }
 
 export const runStatusLabel: Record<Run["status"], string> = {

@@ -96,7 +96,10 @@ public final class LearningTimeline {
                 if (event.kind() == Kind.ATTEMPT_SUBMITTED) command = new Command(event.kind(), event.checkpointId(), Role.valueOf(payload.path("role").asText()), payload.path("answer"), payload.path("responseStepKey").asText(), payload.path("responseRevision").asLong(), payload.path("responseSha256").asText(), null);
                 else command = new Command(event.kind(), event.checkpointId(), null, null, null, null, null, event.kind() == Kind.CONTINUE_WITH_SUPPORT ? null : payload.path("supportId").asText());
                 Event recreated = create(binding, definition, prefix, command, event.acceptedAt());
-                if (!recreated.equals(event)) throw sourceInvalid();
+                // MySQL JSON normalizes integral nodes (LongNode -> IntNode). Compare the
+                // complete canonical wire representation, including both chain hashes,
+                // rather than Jackson's implementation-specific numeric node classes.
+                if (!hash(eventNodes(List.of(recreated))).equals(hash(eventNodes(List.of(event))))) throw sourceInvalid();
                 prefix.add(event);
             } catch (RuntimeException invalid) { throw sourceInvalid(); }
         }

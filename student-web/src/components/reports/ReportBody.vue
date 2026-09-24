@@ -3,6 +3,7 @@ import type { Report } from "../../types/reports";
 import { major } from "../../data/majors";
 import ReportClaimRow from "./ReportClaimRow.vue";
 import ReportDimensions from "./ReportDimensions.vue";
+import MethodReport from './MethodReport.vue';
 defineProps<{ report: Report; printing?: boolean }>();
 const grouped = new Set([
   "WORK_COMPLETED",
@@ -11,6 +12,7 @@ const grouped = new Set([
 ]);
 </script>
 <template>
+  <MethodReport v-if="report.schemaVersion==='method-report-v1' && report.methodAnalysis" :report="report" :printing="printing"><template #next><slot name="next"/></template></MethodReport>
   <section
     v-for="(section, index) in report.sections"
     :id="`section-${section.sectionKey}`"

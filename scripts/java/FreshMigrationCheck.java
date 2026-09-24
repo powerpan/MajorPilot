@@ -23,7 +23,7 @@ public final class FreshMigrationCheck {
             require(expected!=null&&expected.matches("[1-9][0-9]{0,2}"));
             int expectedVersion=Integer.parseInt(expected);
             String from=System.getenv("MP_MIGRATION_FROM_VERSION");
-            require(from==null||((from.equals("6")||from.equals("7")||from.equals("8"))&&expectedVersion>Integer.parseInt(from)));
+            require(from==null||((from.equals("6")||from.equals("7")||from.equals("8")||from.equals("9"))&&expectedVersion>Integer.parseInt(from)));
             boolean upgrade=from!=null;
             int fromVersion=upgrade?Integer.parseInt(from):0;
             String url="jdbc:mysql://127.0.0.1:13306/"+schema+"?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC";
@@ -74,6 +74,7 @@ public final class FreshMigrationCheck {
             boolean studentJobOwnership=false,p0QueuePreserved=false,existingStudentPreserved=false,existingJobPreserved=false,existingRoleGrantsPreserved=false;
             Map<String,Object> p7=new LinkedHashMap<>();
             Map<String,Object> productAuthorization=new LinkedHashMap<>();
+            Map<String,Object> methodLearning=new LinkedHashMap<>();
             boolean existingTaskPreserved=false,existingPreviewPreserved=false;
             try(Connection connection=DriverManager.getConnection(url,account,password)) {
                 after=tableCount(connection);
@@ -110,6 +111,7 @@ public final class FreshMigrationCheck {
                     p7=checkP7(connection);
                 }
                 if(expectedVersion>=9) productAuthorization=checkProductAuthorization(connection);
+                if(expectedVersion>=12) methodLearning=checkMethodLearning(connection);
                 if(upgrade){
                     existingStudentPreserved=originalStudent.equals(studentSnapshot(connection));require(existingStudentPreserved);
                     existingJobPreserved=originalJob.equals(jobSnapshot(connection));require(existingJobPreserved);
@@ -127,6 +129,7 @@ public final class FreshMigrationCheck {
             Map<String,Object> result=new LinkedHashMap<>();result.put("result","PASS");result.put("emptyTableCount",before);result.put("migratedTableCount",after);result.put("p1TableCount",keyTables);result.put("p2TableCount",p2Tables);result.put("p3TableCount",p3Tables);result.put("studentJobOwnership",studentJobOwnership);result.put("p0QueuePreserved",p0QueuePreserved);result.put("expectedVersion",expectedVersion);result.put("firstMigrationsExecuted",first.migrationsExecuted);result.put("secondMigrationsExecuted",second.migrationsExecuted);result.put("validated",true);result.put("history",history);
             result.put("migrationPath",upgrade?"V1-V"+fromVersion+" plus existing rows, then upgrade":"empty V1-latest");result.put("upgradeFromVersion",upgrade?fromVersion:null);result.put("existingStudentPreserved",existingStudentPreserved);result.put("existingJobPreserved",existingJobPreserved);result.put("existingRoleGrantsPreserved",existingRoleGrantsPreserved);result.put("p6TableCount",p6Tables);result.put("p6ForeignKeyCount",p6ForeignKeys);result.put("p7TableCount",p7Tables);result.put("p7Checks",p7);
             result.put("productAuthorizationChecks",productAuthorization);result.put("existingTaskPreserved",existingTaskPreserved);result.put("existingPreviewPreserved",existingPreviewPreserved);
+            result.put("methodLearningChecks",methodLearning);
             System.out.println("MAJORPILOT_MIGRATION_RESULT="+new ObjectMapper().writeValueAsString(result));
         } catch(Exception failure) {
             // JDBC/Flyway diagnostics can contain connection identity or SQL. Do not log them.
@@ -216,6 +219,26 @@ public final class FreshMigrationCheck {
         require(scalar(connection,"SELECT COUNT(*) FROM mp_background_job WHERE business_key LIKE 'migration-owner-probe:%'")==0);
         result.put("validJobOwnerCases",accepted);result.put("invalidJobOwnerCases",rejected);result.put("ownerProbeRolledBack",true);
         return result;
+    }
+    private static Map<String,Object> checkMethodLearning(Connection connection)throws Exception {
+        require(scalar(connection,"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='mp_experience_run' AND column_name IN ('experience_edition','learning_events_json','local_results_json')")==3);
+        require(scalar(connection,"SELECT COUNT(*) FROM mp_experience_run WHERE experience_edition<>1 OR learning_events_json IS NOT NULL OR local_results_json IS NOT NULL")==0);
+        require(scalar(connection,"SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name='mp_experience_run' AND constraint_name='ck_experience_edition' AND constraint_type='CHECK' AND enforced='YES'")==1);
+        connection.setAutoCommit(false);int accepted=0,rejected=0;
+        try {
+            try(var statement=connection.createStatement()){statement.executeUpdate("INSERT INTO mp_student_account(public_id,email_normalized,email_display,status) VALUES('01JF1200000000000000000001','method-migration@example.invalid','Migration TEST_FIXTURE','LOCKED')");}
+            long student=scalar(connection,"SELECT id FROM mp_student_account WHERE public_id='01JF1200000000000000000001'"),operator=scalar(connection,"SELECT MIN(user_id) FROM sys_user");
+            for(int owners=0;owners<4;owners++)try(var insert=connection.prepareStatement("INSERT INTO mp_background_job(public_id,job_type,business_key,owner_student_id,owner_operator_id,target_type,target_id) VALUES(?,'METHOD_REPORT',?,?,?,'MIGRATION_TEST_FIXTURE',1)")){
+                insert.setString(1,String.format("01JF12%020d",owners));insert.setString(2,"method-owner-probe:"+owners);
+                if((owners&1)!=0)insert.setLong(3,student);else insert.setNull(3,Types.BIGINT);
+                if((owners&2)!=0)insert.setLong(4,operator);else insert.setNull(4,Types.BIGINT);
+                try{require(insert.executeUpdate()==1);require(owners==1);accepted++;}
+                catch(SQLException invalid){require(owners!=1&&invalid.getErrorCode()==3819);rejected++;}
+            }
+            require(accepted==1&&rejected==3);
+        } finally {connection.rollback();connection.setAutoCommit(true);}
+        require(scalar(connection,"SELECT COUNT(*) FROM mp_student_account WHERE public_id='01JF1200000000000000000001'")==0);
+        return Map.of("legacyEditionOne",true,"legacyHasNoInventedLearningRecords",true,"learningColumns",3,"editionConstraint",true,"methodJobOwnerCases",accepted,"invalidMethodJobOwners",rejected,"probeRolledBack",true);
     }
     private static void require(boolean value){if(!value)throw new IllegalStateException("Migration assertion failed");}
 }

@@ -5,9 +5,9 @@ import java.util.*;
 
 /** Closed, local-only schema vocabulary used by the two report contracts. No remote refs. */
 public final class ReportSchema {
-    private final JsonNode output,proposal;
-    public ReportSchema(ObjectMapper mapper){try{output=mapper.readTree(ReportSchema.class.getResourceAsStream("/report-schemas/report-v1.json"));proposal=mapper.readTree(ReportSchema.class.getResourceAsStream("/report-schemas/report-proposal-v1.json"));if(output==null||proposal==null)throw new IllegalArgumentException();}catch(Exception invalid){throw new ReportInputException("REPORT_CATALOG_INVALID");}}
-    public boolean output(JsonNode value){return matches(output,value,0);}
+    private final JsonNode output,proposal,methodOutput;
+    public ReportSchema(ObjectMapper mapper){try{output=mapper.readTree(ReportSchema.class.getResourceAsStream("/report-schemas/report-v1.json"));proposal=mapper.readTree(ReportSchema.class.getResourceAsStream("/report-schemas/report-proposal-v1.json"));methodOutput=mapper.readTree(ReportSchema.class.getResourceAsStream("/report-schemas/method-report-v1.json"));if(output==null||proposal==null||methodOutput==null)throw new IllegalArgumentException();}catch(Exception invalid){throw new ReportInputException("REPORT_CATALOG_INVALID");}}
+    public boolean output(JsonNode value){return matches(value!=null&&value.path("schemaVersion").asText().equals("method-report-v1")?methodOutput:output,value,0);}
     public boolean proposal(JsonNode value){return matches(proposal,value,0);}
     private boolean matches(JsonNode schema,JsonNode value,int depth){if(depth>20||value==null)return false;if(schema.has("anyOf")){for(var branch:schema.path("anyOf"))if(matches(branch,value,depth+1))return true;return false;}if(schema.has("const")&&!schema.get("const").equals(value))return false;if(schema.has("enum")){boolean found=false;for(var option:schema.get("enum"))if(option.equals(value))found=true;if(!found)return false;}String type=schema.path("type").asText("");
         if(type.equals("null"))return value.isNull();

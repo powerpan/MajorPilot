@@ -8,6 +8,16 @@ interface ApiErrorBody {
   };
 }
 const messages: Record<string, string> = {
+  LEARNING_SUBMISSION_REQUIRED: "这份草稿还没有明确提交。请在本页提交这一小步；若次数已用完，可恢复最后一次提交后继续。",
+  LEARNING_SEQUENCE_CONFLICT: "另一页面新增了学习记录，请重新读取记录后重试，草稿仍保留。",
+  LOCAL_RESULT_CHECK_REQUIRED: "本地结果改过了，请重新点击“核对并保存”，再提交。",
+  LOCAL_RESULT_INVALID: "请检查数值、比例单位和计算范围；没有对应数据时请在说明中写清。",
+  LOCAL_RESULT_LIMIT: "这次体验的核对次数已用完，请保留现有记录并联系支持。",
+  LEARNING_ATTEMPT_LIMIT: "本检查点的明确提交次数已经用完，可恢复最后一次提交继续。",
+  LEARNING_TRANSFER_REQUIRED: "请填写新情境回答，或明确选择这次不作答。",
+  LEARNING_NEW_EDITION_EXISTS: "你已创建新版体验，请回个人主页打开它；原有记录仍保留。",
+  LEARNING_SUPPORT_REQUIRED: "请先打开一份提示，再选择带着这份帮助继续。",
+  LEARNING_SOURCE_INVALID: "这份过程记录暂时无法核对。请保留页面并联系支持，不必重新填写。",
   AUTH_REQUIRED:
     "登录状态已失效，或这份填写凭证已失效。请登录恢复已保存的资料。",
   SESSION_EXPIRED: "登录已过期，请重新登录。",

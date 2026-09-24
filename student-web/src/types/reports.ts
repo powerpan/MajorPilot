@@ -74,7 +74,10 @@ export interface ReportNext {
 }
 /** Immutable public body. No internal evidence IDs, HTML, or dynamic navigation state. */
 export interface Report {
-  schemaVersion: "report-v1";
+  schemaVersion: "report-v1" | "method-report-v1";
+  methodAnalysis?: MethodAnalysis;
+  professionConnections?: { majorCode: MajorCode; methodName: string; scope: string }[];
+  calculationConditions?: {majorCode:MajorCode;stepTitle:string;verificationStatus:'MATCHED'|'MISMATCHED'|'NOT_REPRODUCIBLE'|'VERSION_MISMATCH'|'NOT_CHECKED';description:string}[];
   reportId: string;
   reportVersionId: string;
   versionNo: number;
@@ -86,6 +89,14 @@ export interface Report {
   limitations: string[];
   sources: ReportSource[];
   nextRecommendation: ReportNext;
+}
+export interface MethodAnalysis {
+  summary: string;
+  highlights: { title: string; explanation: string }[];
+  nodes: { checkpointId: string; title: string; majorCode: MajorCode; assessment: string; reasoning: string; nextStep: string; example: string; quotes: { label: string; quote: string }[]; supportConditions: string[]; change: {state: string; explanation: string}; dependency: {explanation: string} }[];
+  answers: { label: string; answerQuote: string; majorCode: MajorCode; assessment: string; explanation: string; nextStep: string }[];
+  preference: string;
+  comparison: {text: string}[];
 }
 export interface ReportGeneration {
   status: string;
@@ -101,6 +112,7 @@ export interface ReportStatus {
   revision: number;
 }
 export interface ReportSummary extends ReportStatus {
+  sourceRunId?: string;
   reportType: "EXPERIENCE" | "COMPARISON";
   majorCode: MajorCode | null;
   versionNo: number | null;

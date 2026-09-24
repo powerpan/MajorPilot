@@ -34,7 +34,7 @@ test('reproducible BA asset generation, frozen source SHA and all 72 independent
   assert.equal(rows.filter(r => r.enrolled_count === 0).length, 1);
   assert.equal(source.records.filter(c => c.events.week_one_active && c.row.days_to_first_lesson > 7).length, 40);
   const assets = new Map(manifest.assets.map(a => [a.assetKey, readFileSync(new URL(`../../content/${a.path}`, import.meta.url))]));
-  validateBaAssets(assets, sourceBytes); validateManifest(manifest); assert.equal(checkContent().bundles.length, 5);
+  validateBaAssets(assets, sourceBytes); validateManifest(manifest); assert.equal(checkContent().bundles.length, 8);
   assert.throws(() => validateBaAssets(assets, Buffer.from('{}')));
   assert.match(execFileSync(process.execPath, ['scripts/generate-ba-content.mjs', '--check'], { cwd: new URL('../../', import.meta.url), encoding: 'utf8' }), /"result":"PASS"/);
 });

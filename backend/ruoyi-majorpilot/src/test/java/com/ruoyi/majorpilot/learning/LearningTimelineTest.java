@@ -107,6 +107,14 @@ class LearningTimelineTest {
         var history=new ArrayList<Event>();add(history,support(1,SupportKind.BASIC));add(history,attempt(1,Role.INITIAL,1,"只有第一步"));
         assertThrows(ApiException.class,()->freeze(binding(d),d,history));
     }
+    @Test void persistedIntegralNodeTypesDoNotInvalidateTheChainButExtraFieldsStillDo() throws Exception {
+        var history=initials();var restored=new ArrayList<Event>();
+        for(var e:history)restored.add(new Event(e.sequence(),e.kind(),e.checkpointId(),e.acceptedAt(),json.readTree(json.writeValueAsString(e.payload())),e.previousSha256(),e.sha256()));
+        var d=definition();assertEquals(freeze(binding(d),d,history).sha256(),freeze(binding(d),d,restored).sha256());
+        var e=restored.getFirst();var payload=(ObjectNode)e.payload();payload.put("invented",true);
+        restored.set(0,new Event(e.sequence(),e.kind(),e.checkpointId(),e.acceptedAt(),payload,e.previousSha256(),e.sha256()));
+        assertThrows(ApiException.class,()->freeze(binding(d),d,restored));
+    }
     @Test void changingRubricSupportOrQuestionDefinitionChangesItsPin() {
         var d=definition();var first=d.checkpoints().getFirst();var supports=new ArrayList<>(first.supports());var original=supports.getFirst();
         supports.set(0,new Support(original.supportId(),original.version(),"f".repeat(64),original.kind()));

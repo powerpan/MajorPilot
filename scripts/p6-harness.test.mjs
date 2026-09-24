@@ -4,7 +4,7 @@ import { mkdtempSync,writeFileSync,readFileSync,symlinkSync,unlinkSync,rmdirSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { acquireTestLock,releaseTestLock,readTestLock } from './integration.mjs';
-import { fixtureManifest,validateTestSecrets,exactHarnessGrants } from './p6-harness.mjs';
+import { fixtureManifest,fixtureWorkbooks,validateTestSecrets,exactHarnessGrants } from './p6-harness.mjs';
 
 test('harness grant treats the database underscore literally, not as a wildcard',()=>{
   const usage='GRANT USAGE ON *.* TO `majorpilot_p6_test`@`127.0.0.1`';
@@ -49,4 +49,12 @@ test('secret validation rejects extra provider keys without printing their value
   assert.throws(()=>validateTestSecrets({...values,MP_DB_PASSWORD:secret}),error=>!error.message.includes(secret));
   assert.throws(()=>validateTestSecrets({...values,BAILIAN_API_KEY:secret}),error=>!error.message.includes(secret));
   assert.throws(()=>validateTestSecrets({...values,MP_CSRF_SECRET:values.MP_ADMIN_TOKEN_SECRET}));
+});
+test('harness workbook catalog binds only the selected immutable fixture manifests',()=>{
+  const catalog={schemaVersion:'workbook-catalog-v1',workbooks:[{taskVersionId:'old',manifestSha256:'old-hash',sha256:'bytes'},{taskVersionId:'new',manifestSha256:'new-hash',sha256:'same-bytes'}]};
+  const result=fixtureWorkbooks(catalog,[{sourceId:'new',taskVersionId:'test',manifestSha256:'fixture-hash'}]);
+  assert.deepEqual(result.workbooks,[{taskVersionId:'test',manifestSha256:'fixture-hash',sha256:'same-bytes'}]);
+  assert.equal(catalog.workbooks[1].taskVersionId,'new');
+  assert.throws(()=>fixtureWorkbooks(catalog,[{sourceId:'missing'}]));
+  assert.throws(()=>fixtureWorkbooks({...catalog,workbooks:[catalog.workbooks[0],catalog.workbooks[0]]},[{sourceId:'old'}]));
 });

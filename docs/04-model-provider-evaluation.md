@@ -5,6 +5,10 @@
 > 信息时点：2026-09-20，模型、价格和区域能力后续可能变化  
 > 关联文档：[技术约束与架构边界](./03-mvp-technical-constraints.md) · [RuoYi 基线选型](./05-ruoyi-baseline-selection.md)
 
+> 2026-09-21 最新授权：报告以分析质量为首要目标，不为节约费用主动选择轻量模型。新的完整上下文、推理配置与真实质量验收见 [报告 v2](./37-report-answer-analysis-v2.md)；初次推荐的规则解释不因此改为模型排名。下列早期成本型对照建议不覆盖这一最新选择。
+
+> 2026-09-25 更新：报告 v2 工作副本已归档。当前实现以 [40 方法过程报告](./40-learning-evidence-and-report-design.md) 为准，具体型号、调用边界与语义检查记录见 [45 本轮验收](./45-method-led-release-verification.md)。高级模型请求成功不等于内容质量通过。
+
 ## 1. 结论
 
 MVP 已确认优先接入 **阿里云百炼 Model Studio** 作为首个开发服务，但暂不把具体 Qwen 模型永久写死。DeepSeek 进入离线对照评测；只有在百炼和 DeepSeek 都不能满足要求时，再加入 OpenAI 对照。MVP 运行时不同时路由多个供应商。

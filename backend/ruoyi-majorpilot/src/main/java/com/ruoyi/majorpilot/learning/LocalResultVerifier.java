@@ -154,7 +154,10 @@ public final class LocalResultVerifier {
         }
     }
     private static Map<String, Metric> ba(JsonNode spec, JsonNode rows) {
-        fields(spec, "baselineStartWeek", "baselineEndWeek", "comparisonStartWeek", "comparisonEndWeek", "courseTrack", "signupSource", "numerator", "denominator");
+        if(spec.has("resultSet")) {
+            fields(spec, "baselineStartWeek", "baselineEndWeek", "comparisonStartWeek", "comparisonEndWeek", "courseTrack", "signupSource", "numerator", "denominator", "resultSet");
+            if(!spec.path("resultSet").asText().equals("FOCUS"))throw invalid();
+        } else fields(spec, "baselineStartWeek", "baselineEndWeek", "comparisonStartWeek", "comparisonEndWeek", "courseTrack", "signupSource", "numerator", "denominator");
         int b1 = integer(spec, "baselineStartWeek", 1, 12), b2 = integer(spec, "baselineEndWeek", b1, 12);
         int c1 = integer(spec, "comparisonStartWeek", 1, 12), c2 = integer(spec, "comparisonEndWeek", c1, 12);
         if (!(b2 < c1 || c2 < b1)) throw invalid();
@@ -189,6 +192,7 @@ public final class LocalResultVerifier {
         // Undefined when either period lacks a denominator or the baseline proportion is zero.
         BigInteger relativeDenominator = counts[0][1] == 0 ? BigInteger.ZERO : BigInteger.valueOf(counts[0][0]).multiply(BigInteger.valueOf(counts[1][1]));
         output.put("relativeChangePercent", new Metric(difference, relativeDenominator, Unit.PERCENT));
+        if(spec.has("resultSet"))output.keySet().retainAll(Set.of("baselineNumerator","baselineDenominator","baselinePercent","comparisonNumerator","comparisonDenominator","comparisonPercent"));
         return output;
     }
     private static void requireDsRow(JsonNode row) {

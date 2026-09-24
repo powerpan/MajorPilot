@@ -109,8 +109,15 @@ export function fixtureManifest(original,definition){
   const manifest=structuredClone(original);
   assert.equal(manifest.contentKind,'MAJOR');
   assert.ok(['AI','DATA_SCIENCE','BUSINESS_ANALYTICS'].includes(manifest.majorCode));
-  manifest.taskVersionId=definition.id;manifest.versionCode='9.6.0';manifest.title=`TEST_FIXTURE · ${manifest.title}`;
+  manifest.taskVersionId=definition.id;manifest.versionCode=definition.method?'2.0.0':'9.6.0';manifest.title=`TEST_FIXTURE · ${manifest.title}`;
   return manifest;
+}
+export function fixtureWorkbooks(catalog,bindings){
+  assert.equal(catalog.schemaVersion,'workbook-catalog-v1');
+  return {schemaVersion:catalog.schemaVersion,workbooks:bindings.map(binding=>{
+    const entries=catalog.workbooks.filter(book=>book.taskVersionId===binding.sourceId);assert.equal(entries.length,1,'Workbook fixture requires exactly one pinned source');
+    return {...structuredClone(entries[0]),taskVersionId:binding.taskVersionId,manifestSha256:binding.manifestSha256};
+  })};
 }
 function writeControl(file,bytes){
   if(existsSync(file))checkedFile(file);
@@ -122,7 +129,7 @@ function inventory(folder){
   function walk(at){for(const entry of readdirSync(at,{withFileTypes:true})){const file=path.join(at,entry.name);assert.ok(!entry.isSymbolicLink(),'Symlink in harness artifact');if(entry.isDirectory())walk(file);else if(entry.isFile())files.push({path:path.relative(folder,file),sha256:hash(readFileSync(file))});}}
   walk(folder);return files.sort((a,b)=>a.path.localeCompare(b.path));
 }
-export function prepareHarness(){
+export function prepareHarness({method=false}={}){
   assert.ok(processInspectionAvailable(),'Process inspection required before harness preparation');
   assert.ok(!record('p6-test-backend')&&!record('p6-test-student'),'Stop harness before materializing another version');
   mkdirSync(directory,{recursive:true,mode:0o700});checkedDirectory(directory);testSecrets({create:true});
@@ -137,16 +144,21 @@ export function prepareHarness(){
   const bundled=readdirSync(path.join(temporary,'BOOT-INF/lib')).filter(name=>/^ruoyi-majorpilot-[\w.-]+\.jar$/.test(name));
   assert.equal(bundled.length,1,'Expected one frozen domain module');
   const frozenSources=path.join(temporary,'frozen-source');mkdirSync(frozenSources,{mode:0o700});
-  execFileSync(path.join(JAVA_HOME,'bin/jar'),['--extract','--file',path.join(temporary,'BOOT-INF/lib',bundled[0]),...fixtureDefinitions.map(item=>`task-content/${item.source}`)],{cwd:frozenSources,stdio:['ignore','pipe','pipe'],timeout:10000});
+  const definitions=fixtureDefinitions.map(item=>({...item,method,source:method?item.source.replace('/1.0.0/','/2.0.0/'):item.source}));
+  execFileSync(path.join(JAVA_HOME,'bin/jar'),['--extract','--file',path.join(temporary,'BOOT-INF/lib',bundled[0]),'task-content/workbooks/catalog.json',...definitions.map(item=>`task-content/${item.source}`)],{cwd:frozenSources,stdio:['ignore','pipe','pipe'],timeout:10000});
   const resources=path.join(temporary,'fixture-resources/task-content');mkdirSync(resources,{recursive:true,mode:0o700});
-  const fixturePins=[];
-  for(const definition of fixtureDefinitions){
-    const manifest=fixtureManifest(JSON.parse(readFileSync(path.join(frozenSources,'task-content',definition.source),'utf8')),definition);
+  const fixturePins=[],workbookBindings=[];
+  for(const definition of definitions){
+    const original=JSON.parse(readFileSync(path.join(frozenSources,'task-content',definition.source),'utf8'));
+    const manifest=fixtureManifest(original,definition);
     const relative=`p6-fixtures/${definition.key}/manifest.json`,file=path.join(resources,relative),bytes=JSON.stringify(manifest,null,2)+'\n';
     mkdirSync(path.dirname(file),{recursive:true,mode:0o700});writeFileSync(file,bytes,{flag:'wx',mode:0o600});
     fixturePins.push({majorCode:manifest.majorCode,taskVersionId:definition.id,manifestPath:relative,manifestSha256:hash(bytes)});
+    workbookBindings.push({sourceId:original.taskVersionId,taskVersionId:definition.id,manifestSha256:hash(bytes)});
   }
   writeFileSync(path.join(resources,'catalog.json'),JSON.stringify({schemaVersion:'content-catalog-v1',manifests:fixturePins.map(item=>item.manifestPath)})+'\n',{flag:'wx',mode:0o600});
+  mkdirSync(path.join(resources,'workbooks'),{mode:0o700});
+  writeFileSync(path.join(resources,'workbooks/catalog.json'),JSON.stringify(fixtureWorkbooks(JSON.parse(readFileSync(path.join(frozenSources,'task-content/workbooks/catalog.json'),'utf8')),workbookBindings))+'\n',{flag:'wx',mode:0o600});
   const jar=path.join(temporary,'p6-test-only.jar');
   const classes=path.join(temporary,'harness-classes');mkdirSync(path.join(classes,'majorpilot/harness'),{recursive:true,mode:0o700});
   for(const entry of readdirSync(path.join(testClasses,'majorpilot/harness')).filter(name=>name.endsWith('.class')&&!/Test(?:\$|\.)/.test(name)))
@@ -248,9 +260,9 @@ export function cleanupHarness(){
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
   const [command,...extra]=process.argv.slice(2);assert.equal(extra.length,0,'Unexpected harness arguments');
-  if(command==='prepare')prepareHarness();
+  if(command==='prepare'||command==='prepare-method')prepareHarness({method:command==='prepare-method'});
   else if(command==='start'||command==='start-backend')await startHarness({backendOnly:command==='start-backend'});
   else if(command==='stop'||command==='stop-backend')await stopHarness({backendOnly:command==='stop-backend'});
   else if(command==='cleanup')cleanupHarness();
-  else throw new Error('Use prepare, start, stop, start-backend, stop-backend or cleanup');
+  else throw new Error('Use prepare, prepare-method, start, stop, start-backend, stop-backend or cleanup');
 }

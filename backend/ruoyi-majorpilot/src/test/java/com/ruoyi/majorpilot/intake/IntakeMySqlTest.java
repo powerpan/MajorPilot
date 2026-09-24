@@ -66,8 +66,18 @@ class IntakeMySqlTest {
         var created=create();var input=submission(0);String key=key();
         try(var workers=Executors.newFixedThreadPool(2)) {
             var outcomes=workers.invokeAll(List.<Callable<RecommendationView>>of(()->transaction(()->intakes.submit(publicId(created),hash(created),key,input)),()->transaction(()->intakes.submit(publicId(created),hash(created),key,input))));
-            assertEquals(outcomes.get(0).get().recommendationId(),outcomes.get(1).get().recommendationId());
-            var replay=transaction(()->intakes.submit(publicId(created),hash(created),key(),input));assertEquals(outcomes.getFirst().get().recommendationId(),replay.recommendationId());
+            // GET_LOCK(...,0) deliberately returns a transient 409 while the other
+            // transaction's afterCompletion is releasing its advisory lock.
+            // invokeAll has joined both transactions: replay the SAME key now,
+            // without accepting any other failure or repeating the business action.
+            var completed=new ArrayList<RecommendationView>();int inProgress=0;
+            for(var outcome:outcomes)try{completed.add(outcome.get());}catch(ExecutionException failure){
+                var error=assertInstanceOf(ApiException.class,failure.getCause());assertEquals(409,error.status);assertEquals("REQUEST_IN_PROGRESS",error.code);inProgress++;
+            }
+            assertFalse(completed.isEmpty());assertTrue(inProgress<=1);
+            var sameKey=transaction(()->intakes.submit(publicId(created),hash(created),key,input));
+            for(var value:completed)assertEquals(value.recommendationId(),sameKey.recommendationId());
+            var replay=transaction(()->intakes.submit(publicId(created),hash(created),key(),input));assertEquals(sameKey.recommendationId(),replay.recommendationId());
         }
         assertEquals(1,count("mp_decision_profile","intake_session_id",internal(created)));assertEquals(13,jdbc.queryForObject("SELECT COUNT(*) FROM mp_decision_answer a JOIN mp_decision_profile p ON p.id=a.decision_profile_id WHERE p.intake_session_id=?",Integer.class,internal(created)));
         assertEquals(1L,jdbc.queryForObject("SELECT row_version FROM mp_intake_session WHERE id=?",Long.class,internal(created)));

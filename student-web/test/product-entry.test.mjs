@@ -12,6 +12,20 @@ const compiled = compile(compileScript(descriptor, { id: "product-entry" }).cont
 const major = (code) => ({ short: code === "BUSINESS_ANALYTICS" ? "BA" : code === "DATA_SCIENCE" ? "DS" : "AI", name: code });
 const run = (values = {}) => ({ runId: "run-1", contentKind: "MAJOR", majorCode: "BUSINESS_ANALYTICS", runMode: "STANDARD", status: "READY", revision: 1, ...values });
 const plain = (value) => JSON.parse(JSON.stringify(value));
+test("historical report labels use their exact source, never the latest edition for that major", () => {
+  const runs = [run({runId:'old',experienceEdition:1}),run({runId:'new',experienceEdition:2})];
+  assert.equal(entries.reportEditionLabel({sourceRunId:'old'},runs),'旧版体验 · 原记录保留');
+  assert.equal(entries.reportEditionLabel({sourceRunId:'new'},runs),'方法引导版体验');
+  assert.equal(entries.reportEditionLabel({sourceRunId:'missing'},runs),'');
+  assert.equal(entries.reportEditionLabel({},runs),'');
+});
+test("creating a new edition keeps old unfinished and closed experiences reachable without mutations",()=>{
+  const old=run({runId:'old',experienceEdition:1,status:'PAUSED',taskVersionId:'old-task'}),fresh=run({runId:'new',experienceEdition:2,taskVersionId:'new-task'});
+  const rows=[old,fresh,run({runId:'replaced',experienceEdition:1,status:'REPLACED',taskVersionId:'old-task'}),run({runId:'foreign-preview',experienceEdition:1,runMode:'REVIEW_PREVIEW',taskVersionId:'old-task'})],before=JSON.stringify(rows);
+  assert.deepEqual(plain(entries.historicalProductRuns(rows)).map(r=>r.runId),['old']);
+  assert.equal(entries.historicalProductRuns([old]).length,0);assert.equal(JSON.stringify(rows),before);
+  assert.equal(entries.historicalProductRuns([{...old,status:'CLOSED'},fresh])[0].status,'CLOSED');
+});
 test("product instructions remove the obsolete preview label without rewriting pinned content or claiming review", () => {
   const manifest = JSON.parse(readFileSync(new URL("../../content/ai-support/1.0.0/manifest.json", import.meta.url), "utf8"));
   const original = JSON.stringify(manifest), text = manifest.steps[0].instructions;
@@ -143,6 +157,12 @@ test("mobile can read introduction or saved progress but cannot create or resume
     assert.deepEqual(h.navigation, [existing ? "/app/runs/run-1" : "/app/experiences/BUSINESS_ANALYTICS"]);
     assert.equal(h.calls.filter((call) => call.options.method === "POST").length, 0);
   }
+});
+test("the explicit new-edition entry also preserves the mobile read-only task boundary", async () => {
+  const old = run({experienceEdition:1,status:'CLOSED'}),h = harness({width:390,initialRuns:[old]});
+  await h.mount();await h.state.startEdition(old);
+  assert.equal(h.calls.filter(call=>call.options.method==='POST').length,0);
+  assert.deepEqual(h.navigation,[]);
 });
 test("a failed run-list read cannot leave a misleading start button backed by an empty run list", async () => {
   const h = harness({ hold: async (path) => { if (path === "/api/app/v1/experience-runs") throw new Error("run read failed"); return false; } });

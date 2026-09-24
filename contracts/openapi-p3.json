@@ -4602,6 +4602,11 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "experienceEdition": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 2
+          },
           "runId": {
             "type": "string",
             "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"

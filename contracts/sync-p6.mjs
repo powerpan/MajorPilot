@@ -22,11 +22,13 @@ function importP1(value){
   return value;
 }
 for(const [key,schema] of Object.entries(p1.components.schemas))schemas[`P1${key}`]=importP1(schema);
-const report=read('./schemas/report-v1.json');delete report.$id;delete report.$schema;schemas.Report=report;
+const report=read('./schemas/report-v1.json');delete report.$id;delete report.$schema;
+const methodReport=read('./schemas/method-report-v1.json');delete methodReport.$id;delete methodReport.$schema;
+schemas.Report={oneOf:[report,methodReport]};
 Object.assign(schemas,{
-  Generation:object({status:{enum:['GENERATING','READY','FAILED','SUPERSEDED']},phase:{enum:['WAITING_EVIDENCE','PREPARED','INITIAL_REQUESTED','REPAIR_REQUESTED','FALLBACK_PENDING','VALIDATED','PUBLISHED']},retryable:{type:'boolean'},safeCode:nullable(text(100))}),
+  Generation:object({status:{enum:['GENERATING','READY','FAILED','SUPERSEDED']},phase:{enum:['WAITING_EVIDENCE','PREPARED','INITIAL_REQUESTED','REPAIR_REQUESTED','DRAFT_READY','REVIEW_REQUESTED','FALLBACK_PENDING','VALIDATED','PUBLISHED']},retryable:{type:'boolean'},safeCode:nullable(text(100))}),
   ReportStatus:object({reportId:id,status:{enum:['PENDING','GENERATING','READY','FAILED']},currentVersionId:nullable(id),generation:nullable(ref('Generation')),revision}),
-  ReportSummary:object({reportId:id,reportType:{enum:['EXPERIENCE','COMPARISON']},majorCode:nullable(major),status:{enum:['PENDING','GENERATING','READY','FAILED']},currentVersionId:nullable(id),versionNo:nullable({type:'integer',minimum:1}),generation:nullable(ref('Generation')),readyAt:nullable(instant),firstReadyAt:nullable(instant),revision}),
+  ReportSummary:{...object({reportId:id,reportType:{enum:['EXPERIENCE','COMPARISON']},majorCode:nullable(major),status:{enum:['PENDING','GENERATING','READY','FAILED']},currentVersionId:nullable(id),versionNo:nullable({type:'integer',minimum:1}),generation:nullable(ref('Generation')),readyAt:nullable(instant),firstReadyAt:nullable(instant),revision}),properties:{...object({reportId:id,reportType:{enum:['EXPERIENCE','COMPARISON']},majorCode:nullable(major),status:{enum:['PENDING','GENERATING','READY','FAILED']},currentVersionId:nullable(id),versionNo:nullable({type:'integer',minimum:1}),generation:nullable(ref('Generation')),readyAt:nullable(instant),firstReadyAt:nullable(instant),revision}).properties,sourceRunId:id}},
   ReportPage:object({items:array(ref('ReportSummary')),nextCursor:nullable(id)}),
   ComparisonWaiting:object({state:{const:'WAITING'},reason:{enum:['NEED_TWO_MAJORS','WAITING_SOURCE_REPORTS','SOURCE_REPORT_FAILED','COMPARISON_GENERATING','COMPARISON_FAILED']},majors:array(object({majorCode:major,status:{enum:['NOT_REQUESTED','PENDING','GENERATING','READY','FAILED']}}),3,3)}),
   ComparisonReady:object({state:{const:'READY'},report:ref('Report'),generation:nullable(ref('Generation'))}),

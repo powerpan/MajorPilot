@@ -1,0 +1,817 @@
+{
+  "schemaVersion": "method-guide-v1",
+  "methodVersion": "method-led-v1",
+  "methodName": "探索性数据分析",
+  "scope": "你体验的是理解记录、处理数据、比较结果并限制结论。没有要求写代码或训练模型，也不能凭这份观察数据证明一个做法会让人完成课程。",
+  "steps": [
+    {
+      "stepKey": "d1-context",
+      "title": "先弄清一行是什么",
+      "introduction": "这里有360条合成学习记录，按学员记录学习开始时间及28天内是否完成。先下载Excel，并看“字段说明”。一行记录不等于一名新学员：重复行需要另外检查。课程、报名来源等字段已经在文件里。",
+      "fields": [
+        {
+          "key": "unit",
+          "label": "一行在记录什么？用哪个字段辨认学员？",
+          "help": ""
+        },
+        {
+          "key": "question",
+          "label": "你希望通过比较回答什么问题？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "d2-quality",
+      "title": "重复、没开始、空白，不能一起删",
+      "introduction": "例子：同一学员的两行每个字段都一样，可以考虑保留一行；只看ID相同不能断定整行重复。开始天数为0表示当天开始，空白表示没有这个数值。“没有开始”的人和“开始了但没记天数”的人也不同。",
+      "fields": [
+        {
+          "key": "cleaningReason",
+          "label": "你怎样区分这些情况，为什么这样处理？",
+          "help": ""
+        }
+      ],
+      "checkpointId": "DS-C1",
+      "transferCheckpointId": null,
+      "local": {
+        "major": "DATA_SCIENCE",
+        "resultSet": "CLEANING",
+        "specificationSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "duplicatePolicy": {
+              "type": "string",
+              "enum": [
+                "REMOVE_EXACT",
+                "KEEP_ALL"
+              ]
+            },
+            "excludedRowIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 7
+              },
+              "minItems": 0,
+              "maxItems": 360,
+              "uniqueItems": true
+            },
+            "earlyThroughDay": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 27
+            },
+            "latestDay": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 28
+            },
+            "missingDaysPolicy": {
+              "type": "string",
+              "enum": [
+                "EXCLUDE_FROM_COMPARISON"
+              ]
+            },
+            "resultSet": {
+              "type": "string",
+              "enum": [
+                "CLEANING"
+              ]
+            }
+          },
+          "required": [
+            "duplicatePolicy",
+            "excludedRowIds",
+            "earlyThroughDay",
+            "latestDay",
+            "missingDaysPolicy",
+            "resultSet"
+          ]
+        },
+        "valueKeys": [
+          "retainedRows",
+          "uniqueLearners",
+          "duplicateRowsRemoved"
+        ],
+        "defaultSpecification": {
+          "duplicatePolicy": "REMOVE_EXACT",
+          "excludedRowIds": [],
+          "earlyThroughDay": 3,
+          "latestDay": 28,
+          "missingDaysPolicy": "EXCLUDE_FROM_COMPARISON",
+          "resultSet": "CLEANING"
+        }
+      }
+    },
+    {
+      "stepKey": "d3-profile",
+      "title": "比较两组，先把人数算清楚",
+      "introduction": "本次基础比较只看已经开始、而且开始天数有效的人。默认把0–3天开始与4–28天开始分成两组。每组完成率=该组完成人数÷该组总人数；不是除以全部学员。你也可调整分界并说明理由。",
+      "fields": [
+        {
+          "key": "comparisonReason",
+          "label": "你看到什么差异？这个结论只包括哪些人？",
+          "help": ""
+        }
+      ],
+      "checkpointId": "DS-C2",
+      "transferCheckpointId": null,
+      "local": {
+        "major": "DATA_SCIENCE",
+        "resultSet": "COMPARISON",
+        "specificationSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "duplicatePolicy": {
+              "type": "string",
+              "enum": [
+                "REMOVE_EXACT",
+                "KEEP_ALL"
+              ]
+            },
+            "excludedRowIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 7
+              },
+              "minItems": 0,
+              "maxItems": 360,
+              "uniqueItems": true
+            },
+            "earlyThroughDay": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 27
+            },
+            "latestDay": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 28
+            },
+            "missingDaysPolicy": {
+              "type": "string",
+              "enum": [
+                "EXCLUDE_FROM_COMPARISON"
+              ]
+            },
+            "resultSet": {
+              "type": "string",
+              "enum": [
+                "COMPARISON"
+              ]
+            }
+          },
+          "required": [
+            "duplicatePolicy",
+            "excludedRowIds",
+            "earlyThroughDay",
+            "latestDay",
+            "missingDaysPolicy",
+            "resultSet"
+          ]
+        },
+        "valueKeys": [
+          "all.earlyCount",
+          "all.earlyCompleted",
+          "all.earlyPercent",
+          "all.laterCount",
+          "all.laterCompleted",
+          "all.laterPercent"
+        ],
+        "defaultSpecification": {
+          "duplicatePolicy": "REMOVE_EXACT",
+          "excludedRowIds": [],
+          "earlyThroughDay": 3,
+          "latestDay": 28,
+          "missingDaysPolicy": "EXCLUDE_FROM_COMPARISON",
+          "resultSet": "COMPARISON"
+        }
+      }
+    },
+    {
+      "stepKey": "d4-relationship",
+      "title": "换到同一种课程里，还一样吗？",
+      "introduction": "两种课程的难度和学员可能不同。现在分别在基础课程、应用课程里面做刚才的比较。结果没有反转也完全正常；重点是看课程构成会不会影响整体解释。某组没有人时，比例无法计算，不是0%。",
+      "fields": [
+        {
+          "key": "courseObservation",
+          "label": "分开课程以后，你会怎样补充或调整刚才的解释？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": null,
+      "local": {
+        "major": "DATA_SCIENCE",
+        "resultSet": "COURSE_CHECK",
+        "specificationSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "duplicatePolicy": {
+              "type": "string",
+              "enum": [
+                "REMOVE_EXACT",
+                "KEEP_ALL"
+              ]
+            },
+            "excludedRowIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 7
+              },
+              "minItems": 0,
+              "maxItems": 360,
+              "uniqueItems": true
+            },
+            "earlyThroughDay": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 27
+            },
+            "latestDay": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 28
+            },
+            "missingDaysPolicy": {
+              "type": "string",
+              "enum": [
+                "EXCLUDE_FROM_COMPARISON"
+              ]
+            },
+            "resultSet": {
+              "type": "string",
+              "enum": [
+                "COURSE_CHECK"
+              ]
+            }
+          },
+          "required": [
+            "duplicatePolicy",
+            "excludedRowIds",
+            "earlyThroughDay",
+            "latestDay",
+            "missingDaysPolicy",
+            "resultSet"
+          ]
+        },
+        "valueKeys": [
+          "FOUNDATIONS.earlyCount",
+          "FOUNDATIONS.earlyCompleted",
+          "FOUNDATIONS.earlyPercent",
+          "FOUNDATIONS.laterCount",
+          "FOUNDATIONS.laterCompleted",
+          "FOUNDATIONS.laterPercent",
+          "APPLIED.earlyCount",
+          "APPLIED.earlyCompleted",
+          "APPLIED.earlyPercent",
+          "APPLIED.laterCount",
+          "APPLIED.laterCompleted",
+          "APPLIED.laterPercent"
+        ],
+        "defaultSpecification": {
+          "duplicatePolicy": "REMOVE_EXACT",
+          "excludedRowIds": [],
+          "earlyThroughDay": 3,
+          "latestDay": 28,
+          "missingDaysPolicy": "EXCLUDE_FROM_COMPARISON",
+          "resultSet": "COURSE_CHECK"
+        }
+      }
+    },
+    {
+      "stepKey": "d5-stratify",
+      "title": "看到关系，等于找到原因吗？",
+      "introduction": "即使早点开始的人完成率较高，也可能是他们本来更有时间、动机或准备。课程和来源已经在表里，可以继续比较；个人时间安排、动机等没有记录，不能假装知道。",
+      "fields": [
+        {
+          "key": "causalReason",
+          "label": "能否据此保证“让大家提前开始就会提高完成率”？为什么？",
+          "help": ""
+        },
+        {
+          "key": "nextQuestion",
+          "label": "还想弄清什么？先说明它是已有字段，还是要另外收集。",
+          "help": ""
+        }
+      ],
+      "checkpointId": "DS-C3",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "d6-conclusion",
+      "title": "写一份简短结论，再试一道新题",
+      "introduction": "新情境：论坛发帖较多的人完成率更高。这里只记录了发帖与完成情况，没有安排谁必须发帖。",
+      "fields": [
+        {
+          "key": "workProduct",
+          "label": "你处理了什么、发现了什么、还有什么不能确定？",
+          "help": ""
+        },
+        {
+          "key": "transferMode",
+          "label": "这道新情境小题（可选）",
+          "help": "",
+          "options": {
+            "ANSWER": "尝试回答",
+            "SKIP": "这次先不回答，保留为未作答"
+          }
+        },
+        {
+          "key": "transfer",
+          "label": "如果要求每个人多发帖，就一定能提高完成率吗？为什么？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": "DS-C3",
+      "local": null
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpointId": "DS-C1",
+      "stepKey": "d2-quality",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cleaningReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "duplicatePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "REMOVE_EXACT",
+                      "KEEP_ALL"
+                    ]
+                  },
+                  "excludedRowIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 7
+                    },
+                    "minItems": 0,
+                    "maxItems": 360,
+                    "uniqueItems": true
+                  },
+                  "earlyThroughDay": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 27
+                  },
+                  "latestDay": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 28
+                  },
+                  "missingDaysPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "EXCLUDE_FROM_COMPARISON"
+                    ]
+                  },
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "CLEANING"
+                    ]
+                  }
+                },
+                "required": [
+                  "duplicatePolicy",
+                  "excludedRowIds",
+                  "earlyThroughDay",
+                  "latestDay",
+                  "missingDaysPolicy",
+                  "resultSet"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "retainedRows": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "uniqueLearners": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "duplicateRowsRemoved": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "retainedRows",
+                  "uniqueLearners",
+                  "duplicateRowsRemoved"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "cleaningReason",
+          "local"
+        ]
+      },
+      "transferQuestionId": null,
+      "transferStepKey": null,
+      "transferSchema": null,
+      "supports": [
+        {
+          "supportId": "ds-c1-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "例子：同一学员的两行每个字段都一样，可以考虑保留一行；只看ID相同不能断定整行重复。开始天数为0表示当天开始，空白表示没有这个数值。“没有开始”的人和“开始了但没记天数”的人也不同。",
+          "sha256": "ccbc5f67984df120992d4edc66bd3c20c2e6942bba6b7468420b099eee73d200"
+        },
+        {
+          "supportId": "ds-c1-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "先区分0、空白和没有开始；再看是否整行重复。",
+          "sha256": "31880a36534b9288209b214147640729ec578afe207e43ef87048b8b76418c88"
+        },
+        {
+          "supportId": "ds-c1-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "不要只按学员ID删重复。可先保留一份原始记录，对每种处理写出理由。",
+          "sha256": "6415d2f721fc085d540aaa473ab55964d03686e39554c0e0e136e9e0bbab840c"
+        },
+        {
+          "supportId": "ds-c1-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "原始360行包含一条完全重复记录。只删除完全重复时保留359行；不自动丢掉未开始的人。",
+          "sha256": "50c4251db9fd42a29aa5043f93fa9b8386b7cadc4e9b60ceeb242b6e349758b2"
+        },
+        {
+          "supportId": "ds-c1-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可采用“只删完全重复、比较时排除未开始及开始天数缺失”的系统基线。后续计数按你明确选择的规则另行计算。",
+          "sha256": "2fe82d77c55ee8667d50b0421a74ecd6196de52947f1ba69a0f642b266b8888a"
+        }
+      ],
+      "criteria": [
+        "精确重复不等于重复ID；保留未开始者用于总体描述。0为当天，未开始的天数不适用与开始但缺失分开。选择保留重复或排除行可有合理解释，不强制唯一处理法。"
+      ],
+      "dependencies": []
+    },
+    {
+      "checkpointId": "DS-C2",
+      "stepKey": "d3-profile",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "comparisonReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "local": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workbookVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              },
+              "workbookSha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "OTHER"
+                ]
+              },
+              "specification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "duplicatePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "REMOVE_EXACT",
+                      "KEEP_ALL"
+                    ]
+                  },
+                  "excludedRowIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 7
+                    },
+                    "minItems": 0,
+                    "maxItems": 360,
+                    "uniqueItems": true
+                  },
+                  "earlyThroughDay": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 27
+                  },
+                  "latestDay": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 28
+                  },
+                  "missingDaysPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "EXCLUDE_FROM_COMPARISON"
+                    ]
+                  },
+                  "resultSet": {
+                    "type": "string",
+                    "enum": [
+                      "COMPARISON"
+                    ]
+                  }
+                },
+                "required": [
+                  "duplicatePolicy",
+                  "excludedRowIds",
+                  "earlyThroughDay",
+                  "latestDay",
+                  "missingDaysPolicy",
+                  "resultSet"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "all.earlyCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.earlyCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.earlyPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.laterCount": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.laterCompleted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "all.laterPercent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "all.earlyCount",
+                  "all.earlyCompleted",
+                  "all.earlyPercent",
+                  "all.laterCount",
+                  "all.laterCompleted",
+                  "all.laterPercent"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1600
+              }
+            },
+            "required": [
+              "workbookVersion",
+              "workbookSha256",
+              "method",
+              "specification",
+              "values",
+              "reason"
+            ]
+          }
+        },
+        "required": [
+          "comparisonReason",
+          "local"
+        ]
+      },
+      "transferQuestionId": null,
+      "transferStepKey": null,
+      "transferSchema": null,
+      "supports": [
+        {
+          "supportId": "ds-c2-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "本次基础比较只看已经开始、而且开始天数有效的人。默认把0–3天开始与4–28天开始分成两组。每组完成率=该组完成人数÷该组总人数；不是除以全部学员。你也可调整分界并说明理由。",
+          "sha256": "b49e4e4ed058bc012b583f38000676f612d85333a2d19effb5063d5ee4f73789"
+        },
+        {
+          "supportId": "ds-c2-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "每一组分别数总人数与完成人数；比例是后者除以前者。",
+          "sha256": "d2056da25498c8311ea8e6b173e99dab383667a64a203758f319accda5514d62"
+        },
+        {
+          "supportId": "ds-c2-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "分组前先选已开始且天数有效的人。没有开始不属于“开始得晚”。",
+          "sha256": "9db433f945042323552c952c256cf38d10089dfafb451df2a8cb0075b7a89f65"
+        },
+        {
+          "supportId": "ds-c2-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "默认删除完全重复后，0–3天组100人中58人完成，4–28天组200人中93人完成。这个例子不是全部学员完成率。",
+          "sha256": "4dd73f0f22bf7c34aa2178fc1005bca9d2d03902ece779f9a30ebdbd8b51e98a"
+        },
+        {
+          "supportId": "ds-c2-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可采用已核对的默认两组结果继续：58/100与93/200。它只涵盖已开始且天数有效的人。",
+          "sha256": "9153d3a844ff48d4cdc58f02aa606e484b7bfe2472bd08a1c8d0cddc8504b050"
+        }
+      ],
+      "criteria": [
+        "同时考虑各组人数、完成人数与百分比。分母是该组已开始且天数有效的人，不代表未开始和缺失天数者。边界和排除规则依学生选择复算，不强迫特定方向。"
+      ],
+      "dependencies": [
+        "DS-C1"
+      ]
+    },
+    {
+      "checkpointId": "DS-C3",
+      "stepKey": "d5-stratify",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "causalReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "nextQuestion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "causalReason",
+          "nextQuestion"
+        ]
+      },
+      "transferQuestionId": "ds-transfer-1",
+      "transferStepKey": "d6-conclusion",
+      "transferSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workProduct": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "transferMode": {
+            "type": "string",
+            "enum": [
+              "ANSWER",
+              "SKIP"
+            ]
+          },
+          "transfer": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "workProduct",
+          "transferMode",
+          "transfer"
+        ]
+      },
+      "supports": [
+        {
+          "supportId": "ds-c3-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "即使早点开始的人完成率较高，也可能是他们本来更有时间、动机或准备。课程和来源已经在表里，可以继续比较；个人时间安排、动机等没有记录，不能假装知道。",
+          "sha256": "9358b3bba35114c1357145a41c0e944f1aca86bfc39bba29c292d49fc0793539"
+        },
+        {
+          "supportId": "ds-c3-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "看到一起变化，不能知道换一个做法后一定怎样。",
+          "sha256": "12f359c2e5a1d9de2f5dd6e1e0c590e1c89dc90fe808c489c5f7fe30fbc2139d"
+        },
+        {
+          "supportId": "ds-c3-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "尝试说出一种同时影响开始早晚与完成情况的因素。",
+          "sha256": "6e84c5104dc7a483e590ad8c3284400aed5f36f8841091ed8e57022d4152f7af"
+        },
+        {
+          "supportId": "ds-c3-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "例如个人可支配时间可能同时影响开始时间和完成情况。课程和来源已在表里，不是未记录的因素。",
+          "sha256": "53ab5e568928d1a3403bb59b034f32fbdbafc268cb53e511799bc99012cc9ea9"
+        },
+        {
+          "supportId": "ds-c3-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可在系统说明下继续：这是一份观察数据，关系不证明强制提前开始有效；后面新题仍请写你自己的想法。",
+          "sha256": "74d582f151ed7857b5dec792ca8d35e33041e0cc327c2c15c7da6c9b81fe78be"
+        }
+      ],
+      "criteria": [
+        "区分观察关系与干预效果，具体指出其他可能解释及尚未记录的信息。不把课程和来源误说成原始文件没有的信息。"
+      ],
+      "dependencies": [
+        "DS-C1",
+        "DS-C2"
+      ]
+    }
+  ]
+}

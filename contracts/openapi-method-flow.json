@@ -1,0 +1,2925 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MajorPilot method-led experience edition",
+    "version": "7.3.0",
+    "description": "Additive post-P7 quality revision; old runs remain pinned. No public deployment or expert review implied."
+  },
+  "paths": {
+    "/api/app/v1/experience-editions": {
+      "get": {
+        "operationId": "listAvailableMethodEditions",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Owned active Student; no-store; source-bound immutable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Edition"
+                      },
+                      "maxItems": 3
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/experience-runs/{id}/new-edition": {
+      "post": {
+        "operationId": "startSeparateMethodEdition",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Owned active Student; no-store; source-bound immutable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Run"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/experience-runs/{id}/learning": {
+      "get": {
+        "operationId": "readOwnedLearningState",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned active Student; no-store; source-bound immutable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LearningState"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/experience-runs/{id}/learning/events": {
+      "post": {
+        "operationId": "appendExplicitLearningEvent",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned active Student; no-store; source-bound immutable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LearningState"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearningChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/experience-runs/{id}/learning/local-results": {
+      "post": {
+        "operationId": "checkOwnedLocalResults",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned active Student; no-store; source-bound immutable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LocalCheckResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe error; original draft remains available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalCheck"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "JsonObject": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "apiVersion": {
+            "const": "v1"
+          }
+        },
+        "required": [
+          "requestId",
+          "apiVersion"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "fieldErrors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "code": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "code"
+                  ]
+                }
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "currentRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "activeRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "replacementRunId": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "currentSourceRevisions": {
+                    "$ref": "#/components/schemas/SourceRevisions"
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fieldErrors",
+              "retryable"
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "requestId"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "DemoTask": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "demoKey": {
+            "enum": [
+              "DEMO_TABLE",
+              "DEMO_COMPARE"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "contentKind": {
+            "const": "DEMO"
+          },
+          "versionCode": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "availability": {
+            "const": "AVAILABLE"
+          }
+        },
+        "required": [
+          "demoKey",
+          "title",
+          "contentKind",
+          "versionCode",
+          "availability"
+        ]
+      },
+      "CreateRun": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "demoKey": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DEMO_TABLE",
+                  "DEMO_COMPARE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": []
+      },
+      "Transition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pauseActiveRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedActiveRunRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ]
+      },
+      "Revision": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ]
+      },
+      "Save": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "responseSchemaVersion": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "response": {
+            "$ref": "#/components/schemas/JsonObject"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "responseSchemaVersion",
+          "response"
+        ]
+      },
+      "Execute": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operationKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "inputRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "inputSha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions",
+            "description": "Required for task-manifest-v3 (including empty object); optional for v1/v2. Must exactly equal saved ancestor revisions. Current-step revision remains inputRevision."
+          },
+          "observedResult": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "operationKey",
+          "inputRevision",
+          "parameters"
+        ]
+      },
+      "Hint": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "hintLevel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          }
+        },
+        "required": [
+          "stepKey",
+          "hintLevel"
+        ]
+      },
+      "ReflectionSave": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "questionSetVersion": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "answers": {
+            "$ref": "#/components/schemas/JsonObject"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "questionSetVersion",
+          "answers"
+        ]
+      },
+      "Recovery": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reasonCode": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "reasonCode",
+          "reasonText"
+        ]
+      },
+      "StepSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "status": {
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "stepKey",
+          "status",
+          "revision"
+        ]
+      },
+      "Run": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "experienceEdition": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 2
+          },
+          "runId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "contentKind": {
+            "enum": [
+              "DEMO",
+              "MAJOR"
+            ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "DATA_SCIENCE",
+                  "BUSINESS_ANALYTICS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "demoKey": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DEMO_TABLE",
+                  "DEMO_COMPARE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "READY",
+              "IN_PROGRESS",
+              "TASK_COMPLETED",
+              "PAUSED",
+              "CLOSED",
+              "REPLACED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "taskVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentStepKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,79}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pausedFromStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "IN_PROGRESS",
+                  "TASK_COMPLETED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activeRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "replacementRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepSummary"
+            }
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reportStatus": {
+            "enum": [
+              "NOT_APPLICABLE",
+              "NOT_REQUESTED",
+              "PENDING",
+              "GENERATING",
+              "READY",
+              "FAILED"
+            ]
+          },
+          "runMode": {
+            "enum": [
+              "STANDARD",
+              "REVIEW_PREVIEW"
+            ]
+          },
+          "productEligible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Server-derived product eligibility. Optional for legacy receipts; only true admits a historical REVIEW_PREVIEW to the product report flow. Does not rewrite runMode or prove expert review/public release."
+          }
+        },
+        "required": [
+          "runId",
+          "contentKind",
+          "majorCode",
+          "demoKey",
+          "status",
+          "revision",
+          "taskVersionId",
+          "currentStepKey",
+          "pausedFromStatus",
+          "activeRunId",
+          "replacementRunId",
+          "readOnly",
+          "steps",
+          "startedAt",
+          "closedAt",
+          "reportStatus",
+          "runMode"
+        ]
+      },
+      "Execution": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "executionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "operationKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "inputRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "SUCCEEDED",
+              "FAILED",
+              "TIMED_OUT",
+              "CANCELLED"
+            ]
+          },
+          "trustLevel": {
+            "enum": [
+              "SERVER_VERIFIED",
+              "CLIENT_OBSERVED"
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reused": {
+            "type": "boolean"
+          },
+          "remainingEvaluations": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "appliedToRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions"
+          },
+          "appliedSourceRevisions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceRevisions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "executionId",
+          "operationKey",
+          "stepKey",
+          "inputRevision",
+          "status",
+          "trustLevel",
+          "result",
+          "errorCode",
+          "durationMs",
+          "reused",
+          "remainingEvaluations",
+          "appliedToRevision",
+          "sourceRevisions",
+          "appliedSourceRevisions"
+        ]
+      },
+      "PublicStep": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,79}$"
+            }
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "responseSchemaVersion": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "inputSchema": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "assetKeys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,79}$"
+            }
+          },
+          "operationKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,79}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "stepKey",
+          "title",
+          "instructions",
+          "dependencies",
+          "required",
+          "responseSchemaVersion",
+          "inputSchema",
+          "assetKeys",
+          "operationKey"
+        ]
+      },
+      "Step": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "status": {
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "responseSchemaVersion": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "definition": {
+            "$ref": "#/components/schemas/PublicStep"
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "savedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "executions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Execution"
+            }
+          },
+          "inputBindings": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/InputBinding"
+            }
+          },
+          "baActionContext": {
+            "$ref": "#/components/schemas/BaActionContext"
+          }
+        },
+        "required": [
+          "stepKey",
+          "status",
+          "revision",
+          "responseSchemaVersion",
+          "response",
+          "definition",
+          "readOnly",
+          "savedAt",
+          "executions",
+          "inputBindings"
+        ]
+      },
+      "Saved": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "runRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "savedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validationStatus": {
+            "enum": [
+              "VALID",
+              "INCOMPLETE"
+            ]
+          },
+          "invalidatedStepKeys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,79}$"
+            }
+          }
+        },
+        "required": [
+          "stepKey",
+          "revision",
+          "runRevision",
+          "savedAt",
+          "validationStatus",
+          "invalidatedStepKeys"
+        ]
+      },
+      "HintPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": "hint-result-v1"
+          },
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "hintLevel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "hintText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "taskVersionId",
+          "stepKey",
+          "hintLevel",
+          "hintText"
+        ]
+      },
+      "HintResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hintId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "hintLevel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "SUCCEEDED",
+              "FALLBACK",
+              "FAILED"
+            ]
+          },
+          "response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HintPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "promptVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "hintId",
+          "stepKey",
+          "hintLevel",
+          "status",
+          "response",
+          "promptVersion"
+        ]
+      },
+      "ReflectionDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionSetVersion": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "inputSchema": {
+            "$ref": "#/components/schemas/JsonObject"
+          }
+        },
+        "required": [
+          "questionSetVersion",
+          "instructions",
+          "inputSchema"
+        ]
+      },
+      "Reflection": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reflectionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "questionSetVersion": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "SUBMITTED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/ReflectionDefinition"
+          },
+          "followUp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readOnly": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reflectionId",
+          "questionSetVersion",
+          "status",
+          "revision",
+          "answers",
+          "definition",
+          "followUp",
+          "readOnly"
+        ]
+      },
+      "PublicManifest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "enum": [
+              "task-manifest-v1",
+              "task-manifest-v2",
+              "task-manifest-v3",
+              "task-manifest-v4"
+            ]
+          },
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "contentKind": {
+            "enum": [
+              "DEMO",
+              "MAJOR"
+            ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "DATA_SCIENCE",
+                  "BUSINESS_ANALYTICS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "demoKey": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DEMO_TABLE",
+                  "DEMO_COMPARE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionCode": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "scenario": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "goals": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "estimatedMinutes": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "minimum": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maximum": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "minimum",
+              "maximum"
+            ]
+          },
+          "reflection": {
+            "$ref": "#/components/schemas/ReflectionDefinition"
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "assetKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,79}$"
+                },
+                "mediaType": {
+                  "enum": [
+                    "application/json",
+                    "text/csv",
+                    "text/plain"
+                  ]
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "byteLength": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "assetKey",
+                "mediaType",
+                "sha256",
+                "byteLength"
+              ]
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicStep"
+            }
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "operationKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,79}$"
+                },
+                "stepKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,79}$"
+                },
+                "parametersSchema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                },
+                "resultSchema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                },
+                "ownResponseBindings": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "parameterKey": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+                      },
+                      "sourceField": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+                      }
+                    },
+                    "required": [
+                      "parameterKey",
+                      "sourceField"
+                    ]
+                  }
+                },
+                "maxEvaluations": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "inputBindings": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "parameterKey": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+                      },
+                      "sourceStepKey": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,79}$"
+                      },
+                      "sourceField": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+                      }
+                    },
+                    "required": [
+                      "parameterKey",
+                      "sourceStepKey",
+                      "sourceField"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "operationKey",
+                "stepKey",
+                "parametersSchema",
+                "resultSchema",
+                "maxEvaluations"
+              ]
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "taskVersionId",
+          "contentKind",
+          "majorCode",
+          "demoKey",
+          "versionCode",
+          "title",
+          "scenario",
+          "goals",
+          "estimatedMinutes",
+          "reflection",
+          "assets",
+          "steps",
+          "operations"
+        ]
+      },
+      "ValidateContent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "manifestPath": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9./-]{0,200}$"
+          }
+        },
+        "required": [
+          "manifestPath"
+        ]
+      },
+      "PublishContent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reviewChecks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "reviewChecks",
+          "reasonText"
+        ]
+      },
+      "RetireContent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reasonText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "reasonText"
+        ]
+      },
+      "ContentStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "REVIEW",
+              "PUBLISHED",
+              "RETIRED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "manifestSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "taskVersionId",
+          "status",
+          "revision",
+          "manifestSha256"
+        ]
+      },
+      "ContentListItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "contentKind": {
+            "enum": [
+              "DEMO",
+              "MAJOR"
+            ]
+          },
+          "demoKey": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DEMO_TABLE",
+                  "DEMO_COMPARE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionCode": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "REVIEW",
+              "PUBLISHED",
+              "RETIRED"
+            ]
+          },
+          "manifestSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "taskVersionId",
+          "contentKind",
+          "demoKey",
+          "versionCode",
+          "status",
+          "manifestSha256",
+          "revision"
+        ]
+      },
+      "FollowUp": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "PENDING",
+              "SUCCEEDED",
+              "FAILED"
+            ]
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "question"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canSkip": {
+            "const": true
+          }
+        },
+        "required": [
+          "status",
+          "response",
+          "canSkip"
+        ]
+      },
+      "InputBinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "parameterKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+          },
+          "sourceStepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "sourceField": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9]{0,79}$"
+          },
+          "sourceRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "value": {}
+        },
+        "required": [
+          "parameterKey",
+          "sourceStepKey",
+          "sourceField",
+          "sourceRevision",
+          "value"
+        ]
+      },
+      "SourceRevisions": {
+        "type": "object",
+        "maxProperties": 20,
+        "propertyNames": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,79}$"
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "PreviewTask": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "majorCode": {
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "versionCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "runMode": {
+            "const": "REVIEW_PREVIEW"
+          },
+          "reviewStatus": {
+            "const": "REVIEW"
+          },
+          "warning": {
+            "const": "工程预览；尚待专业审核与真实用户计时"
+          }
+        },
+        "required": [
+          "taskVersionId",
+          "majorCode",
+          "title",
+          "versionCode",
+          "runMode",
+          "reviewStatus",
+          "warning"
+        ]
+      },
+      "CreatePreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          }
+        },
+        "required": [
+          "taskVersionId"
+        ]
+      },
+      "ExecuteDS": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operationKey": {
+            "enum": [
+              "ds-quality-clean",
+              "ds-profile",
+              "ds-relationship",
+              "ds-stratify"
+            ]
+          },
+          "inputRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {},
+            "required": []
+          },
+          "inputSha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions",
+            "description": "Required for task-manifest-v3 (including empty object); optional for v1/v2. Must exactly equal saved ancestor revisions. Current-step revision remains inputRevision."
+          },
+          "observedResult": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "operationKey",
+          "inputRevision",
+          "parameters",
+          "expectedSourceRevisions"
+        ],
+        "description": "Strict v3 DS request; the shared endpoint still accepts legacy v1/v2 Execute. Server validates the task-specific source contract."
+      },
+      "BaParameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "numerator": {
+            "const": "completed_count"
+          },
+          "denominator": {
+            "enum": [
+              "enrolled_count",
+              "first_lesson_count"
+            ]
+          },
+          "baselineStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "baselineEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonStartWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "comparisonEndWeek": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "focusTransitionKey": {
+            "enum": [
+              "ENROLLED_TO_FIRST_LESSON",
+              "FIRST_LESSON_TO_WEEK_ONE_ACTIVE",
+              "WEEK_ONE_ACTIVE_TO_ASSIGNMENT_STARTED",
+              "ASSIGNMENT_STARTED_TO_ASSIGNMENT_SUBMITTED",
+              "ASSIGNMENT_SUBMITTED_TO_COMPLETED"
+            ]
+          },
+          "segmentBy": {
+            "enum": [
+              "course_track",
+              "signup_source"
+            ]
+          }
+        },
+        "required": [
+          "numerator",
+          "denominator",
+          "baselineStartWeek",
+          "baselineEndWeek",
+          "comparisonStartWeek",
+          "comparisonEndWeek",
+          "focusTransitionKey",
+          "segmentBy"
+        ]
+      },
+      "BaRatio": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "numeratorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "denominatorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "numeratorCount",
+          "denominatorCount",
+          "rate"
+        ]
+      },
+      "BaTransition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "numeratorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "denominatorCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lossCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "numeratorCount",
+          "denominatorCount",
+          "conversionRate",
+          "lossCount"
+        ]
+      },
+      "BaSegmentPeriod": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stageCounts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enrolled_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "first_lesson_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "week_one_active_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "assignment_started_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "assignment_submitted_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "completed_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "enrolled_count",
+              "first_lesson_count",
+              "week_one_active_count",
+              "assignment_started_count",
+              "assignment_submitted_count",
+              "completed_count"
+            ]
+          },
+          "enrolledShare": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metric": {
+            "$ref": "#/components/schemas/BaRatio"
+          },
+          "focusTransition": {
+            "$ref": "#/components/schemas/BaTransition"
+          },
+          "supportContactCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "supportContactsPer100Enrolled": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "stageCounts",
+          "enrolledShare",
+          "metric",
+          "focusTransition",
+          "supportContactCount",
+          "supportContactsPer100Enrolled"
+        ]
+      },
+      "BaActionSourceRevisions": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "b2-metric": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "b3-funnel": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "b4-segment": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "b2-metric",
+          "b3-funnel",
+          "b4-segment"
+        ]
+      },
+      "BaActionContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "parameters": {
+            "$ref": "#/components/schemas/BaParameters"
+          },
+          "prioritySegmentKey": {
+            "enum": [
+              "FOUNDATIONS",
+              "APPLIED",
+              "ORGANIC",
+              "PARTNER",
+              "CAMPAIGN"
+            ]
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/BaSegmentPeriod"
+          },
+          "sourceRevisions": {
+            "$ref": "#/components/schemas/BaActionSourceRevisions"
+          }
+        },
+        "required": [
+          "parameters",
+          "prioritySegmentKey",
+          "comparison",
+          "sourceRevisions"
+        ]
+      },
+      "StepCompletion": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions"
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ]
+      },
+      "ExecuteBA": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operationKey": {
+            "enum": [
+              "ba-metric",
+              "ba-funnel",
+              "ba-segments"
+            ]
+          },
+          "inputRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {},
+            "required": []
+          },
+          "inputSha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/SourceRevisions",
+            "description": "Required for v4, including {} when there are no ancestors. Exactly the saved source revisions consumed by this operation."
+          },
+          "observedResult": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "operationKey",
+          "inputRevision",
+          "parameters",
+          "expectedSourceRevisions"
+        ],
+        "description": "Strict v4 BA execution. Saved bindings are authoritative; an empty own binding list is valid for ba-funnel. The shared endpoint preserves legacy request compatibility."
+      },
+      "CompleteBAAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expectedSourceRevisions": {
+            "$ref": "#/components/schemas/BaActionSourceRevisions"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "expectedSourceRevisions"
+        ]
+      },
+      "WorkbookMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assetKey",
+          "filename",
+          "workbookVersion",
+          "mediaType",
+          "byteLength",
+          "rowCount",
+          "sha256",
+          "taskVersionId"
+        ],
+        "properties": {
+          "assetKey": {
+            "type": "string",
+            "const": "materials"
+          },
+          "filename": {
+            "type": "string",
+            "pattern": "^[^/\\\\\\r\\n]+\\.xlsx$",
+            "maxLength": 105
+          },
+          "workbookVersion": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+          },
+          "mediaType": {
+            "type": "string",
+            "const": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          },
+          "byteLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5242880
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          }
+        }
+      },
+      "Edition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "majorCode": {
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "experienceEdition": {
+            "const": 2
+          },
+          "taskVersionId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "versionCode": {
+            "const": "2.0.0"
+          }
+        },
+        "required": [
+          "majorCode",
+          "experienceEdition",
+          "taskVersionId",
+          "versionCode"
+        ]
+      },
+      "LearningChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 28
+          },
+          "expectedStepRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "kind": {
+            "enum": [
+              "SUPPORT_PROVIDED",
+              "ATTEMPT_SUBMITTED",
+              "BASELINE_SELECTED",
+              "CONTINUE_WITH_SUPPORT"
+            ]
+          },
+          "checkpointId": {
+            "type": "string",
+            "pattern": "^(AI|DS|BA)-C[1-3]$"
+          },
+          "supportId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "role": {
+            "enum": [
+              "INITIAL",
+              "REVISION",
+              "TRANSFER"
+            ]
+          }
+        },
+        "required": [
+          "expectedSequence",
+          "stepKey",
+          "kind",
+          "checkpointId"
+        ]
+      },
+      "LocalCheck": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "expectedStepRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assistance": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stepKey",
+          "expectedStepRevision",
+          "assistance"
+        ]
+      },
+      "LearningEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "kind": {
+            "enum": [
+              "SUPPORT_PROVIDED",
+              "ATTEMPT_SUBMITTED",
+              "BASELINE_SELECTED",
+              "CONTINUE_WITH_SUPPORT"
+            ]
+          },
+          "checkpointId": {
+            "type": "string",
+            "pattern": "^(AI|DS|BA)-C[1-3]$"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "previousSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "sequence",
+          "kind",
+          "checkpointId",
+          "acceptedAt",
+          "payload",
+          "previousSha256",
+          "sha256"
+        ]
+      },
+      "LearningState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "guide": {
+            "type": "object",
+            "description": "Immutable method-guide-v1 bound to the pinned task; supports and schemas are PUBLIC teaching content."
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 28
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningEvent"
+            },
+            "maxItems": 28
+          },
+          "localResults": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 40
+          },
+          "workbooks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkbookMetadata"
+            },
+            "maxItems": 1
+          }
+        },
+        "required": [
+          "guide",
+          "sequence",
+          "events",
+          "localResults",
+          "workbooks"
+        ]
+      },
+      "LocalCheckResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "record": {
+            "type": "object",
+            "description": "Immutable server-generated local-result record, not a client score or proof of Excel activity."
+          }
+        },
+        "required": [
+          "record"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "StudentSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_SESSION"
+      },
+      "CsrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      },
+      "AdminBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "Origin": {
+        "name": "Origin",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "const": "http://localhost:15173",
+          "type": "string"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{16,128}$"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,651 @@
+{
+  "schemaVersion": "method-guide-v1",
+  "methodVersion": "method-led-v1",
+  "methodName": "学习流程分析与行动验证",
+  "scope": "你体验的是用人数和比例确定值得先处理的问题、区分现象与原因、设计下一步。它不是统计考试，也不要求商科背景；商业分析还有财务、定价等本案例没有覆盖的工作。",
+  "steps": [
+    {
+      "stepKey": "b1-context",
+      "title": "先弄清比例在回答什么",
+      "introduction": "小例子：100人报名，80人开始，40人完成。40÷100回答“报名的人中多少完成”，40÷80回答“开始的人中多少完成”。主案例有第1–6批与第7–12批，每个人都观察报名后28天；这是不同批次的人，不是同一批人的前后变化。",
+      "fields": [
+        {
+          "key": "enrollmentRate",
+          "label": "40÷100在说什么？",
+          "help": ""
+        },
+        {
+          "key": "starterRate",
+          "label": "40÷80在说什么？",
+          "help": ""
+        },
+        {
+          "key": "cohortMeaning",
+          "label": "为什么不能把两批完成率差异直接解释为同一个人变差了？",
+          "help": ""
+        }
+      ],
+      "checkpointId": "BA-C1",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "b2-metric",
+      "title": "沿着学习流程找一个值得先处理的地方",
+      "introduction": "Excel给出报名、首课、首周活跃、开始作业、提交作业、完成的人数。选相邻两步：后一步人数÷前一步人数。再看有多少人没有继续。先加总人数再算比例，不平均小组的百分比；也别把比例最低直接当作原因。",
+      "fields": [
+        {
+          "key": "focusReason",
+          "label": "你选择先关注哪一步，为什么？",
+          "help": ""
+        },
+        {
+          "key": "otherTransition",
+          "label": "再比较至少一个其他环节：写出两期人数和比例，为什么不先选它？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": null,
+      "local": {
+        "major": "BUSINESS_ANALYTICS",
+        "resultSet": "FUNNEL",
+        "specificationSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "resultSet": {
+              "type": "string",
+              "enum": [
+                "FOCUS"
+              ]
+            },
+            "baselineStartWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "baselineEndWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "comparisonStartWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "comparisonEndWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "courseTrack": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "FOUNDATIONS",
+                "APPLIED"
+              ]
+            },
+            "signupSource": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "ORGANIC",
+                "PARTNER",
+                "CAMPAIGN"
+              ]
+            },
+            "numerator": {
+              "type": "string",
+              "enum": [
+                "first_lesson_count",
+                "week_one_active_count",
+                "assignment_started_count",
+                "assignment_submitted_count",
+                "completed_count"
+              ]
+            },
+            "denominator": {
+              "type": "string",
+              "enum": [
+                "enrolled_count",
+                "first_lesson_count",
+                "week_one_active_count",
+                "assignment_started_count",
+                "assignment_submitted_count"
+              ]
+            }
+          },
+          "required": [
+            "resultSet",
+            "baselineStartWeek",
+            "baselineEndWeek",
+            "comparisonStartWeek",
+            "comparisonEndWeek",
+            "courseTrack",
+            "signupSource",
+            "numerator",
+            "denominator"
+          ]
+        },
+        "valueKeys": [
+          "baselineNumerator",
+          "baselineDenominator",
+          "baselinePercent",
+          "comparisonNumerator",
+          "comparisonDenominator",
+          "comparisonPercent"
+        ],
+        "defaultSpecification": {
+          "resultSet": "FOCUS",
+          "baselineStartWeek": 1,
+          "baselineEndWeek": 6,
+          "comparisonStartWeek": 7,
+          "comparisonEndWeek": 12,
+          "courseTrack": "ALL",
+          "signupSource": "ALL",
+          "numerator": "first_lesson_count",
+          "denominator": "enrolled_count"
+        }
+      }
+    },
+    {
+      "stepKey": "b3-funnel",
+      "title": "先帮助谁？数字之外还缺什么？",
+      "introduction": "按课程或来源缩小范围，比较人数规模与当前问题。可以选择规模较小但值得先试的群体；请解释，不必一律选跌得最多的。表里没有团队预算、真实联系渠道或未启动原因，不要把自己的猜测写成事实。",
+      "fields": [
+        {
+          "key": "priorityReason",
+          "label": "先关注哪个群体？结合人数、比例和你准备做的事解释。",
+          "help": ""
+        },
+        {
+          "key": "feasibility",
+          "label": "落实之前还要向团队确认什么？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": null,
+      "local": {
+        "major": "BUSINESS_ANALYTICS",
+        "resultSet": "SEGMENT",
+        "specificationSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "resultSet": {
+              "type": "string",
+              "enum": [
+                "FOCUS"
+              ]
+            },
+            "baselineStartWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "baselineEndWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "comparisonStartWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "comparisonEndWeek": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "courseTrack": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "FOUNDATIONS",
+                "APPLIED"
+              ]
+            },
+            "signupSource": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "ORGANIC",
+                "PARTNER",
+                "CAMPAIGN"
+              ]
+            },
+            "numerator": {
+              "type": "string",
+              "enum": [
+                "first_lesson_count",
+                "week_one_active_count",
+                "assignment_started_count",
+                "assignment_submitted_count",
+                "completed_count"
+              ]
+            },
+            "denominator": {
+              "type": "string",
+              "enum": [
+                "enrolled_count",
+                "first_lesson_count",
+                "week_one_active_count",
+                "assignment_started_count",
+                "assignment_submitted_count"
+              ]
+            }
+          },
+          "required": [
+            "resultSet",
+            "baselineStartWeek",
+            "baselineEndWeek",
+            "comparisonStartWeek",
+            "comparisonEndWeek",
+            "courseTrack",
+            "signupSource",
+            "numerator",
+            "denominator"
+          ]
+        },
+        "valueKeys": [
+          "baselineNumerator",
+          "baselineDenominator",
+          "baselinePercent",
+          "comparisonNumerator",
+          "comparisonDenominator",
+          "comparisonPercent"
+        ],
+        "defaultSpecification": {
+          "resultSet": "FOCUS",
+          "baselineStartWeek": 1,
+          "baselineEndWeek": 6,
+          "comparisonStartWeek": 7,
+          "comparisonEndWeek": 12,
+          "courseTrack": "ALL",
+          "signupSource": "ALL",
+          "numerator": "first_lesson_count",
+          "denominator": "enrolled_count"
+        }
+      }
+    },
+    {
+      "stepKey": "b4-segment",
+      "title": "我们知道发生了什么，但知道原因了吗？",
+      "introduction": "“首课人数少了”是观察；“提醒没有送达”是一种解释；“这些人是否收到并看懂提醒”是还需查的信息。课程和来源人数已经在表里，不能当成完全未知。几个主动反馈的人，也不能代表所有人。",
+      "fields": [
+        {
+          "key": "observed",
+          "label": "目前数据能确认什么？",
+          "help": ""
+        },
+        {
+          "key": "possibleReason",
+          "label": "你怀疑的一个原因是什么？为什么还不能确定？",
+          "help": ""
+        },
+        {
+          "key": "needToKnow",
+          "label": "接下来查什么，才能支持或推翻这个解释？",
+          "help": ""
+        }
+      ],
+      "checkpointId": "BA-C2",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "b5-hypothesis",
+      "title": "先试一个办法：怎么看有没有用？",
+      "introduction": "可先补信息，也可试一个小改动。补信息时想清楚问谁、问什么、怎样避免只听到积极回应。小试验时最好同一时期留一组没有额外改动的人比较，并让两组分母与观察时间一致。A/B测试只是可选方法，不要求复杂统计或虚构预算。",
+      "fields": [
+        {
+          "key": "planType",
+          "label": "这一步你选择",
+          "help": "",
+          "options": {
+            "INFORMATION": "先补充信息",
+            "SMALL_TRIAL": "小范围试一个办法"
+          }
+        },
+        {
+          "key": "target",
+          "label": "找谁参与，在什么环节接触？",
+          "help": ""
+        },
+        {
+          "key": "action",
+          "label": "具体问什么，或具体改什么？",
+          "help": ""
+        },
+        {
+          "key": "comparison",
+          "label": "怎样覆盖不同情况并记录，或怎样安排比较？",
+          "help": ""
+        },
+        {
+          "key": "decisionRule",
+          "label": "得到什么结果会让你继续、调整或放弃？",
+          "help": "希望达到的目标不是已经发生的效果；不知道资源上限可写先向团队确认。"
+        },
+        {
+          "key": "negativeImpact",
+          "label": "怎样发现可能带来的麻烦？",
+          "help": "例如给用户添打扰、给支持人员增加工作。联系次数可以多于人数，不能把每100人联系次数叫作人数百分比。"
+        }
+      ],
+      "checkpointId": "BA-C3",
+      "transferCheckpointId": null,
+      "local": null
+    },
+    {
+      "stepKey": "b6-action",
+      "title": "交付一页行动建议，再换个问题",
+      "introduction": "新情境：上个月没发提醒，这个月发了提醒，开课比例上升。两个月参与的人可能不同，也可能有其他变化。",
+      "fields": [
+        {
+          "key": "workProduct",
+          "label": "用几句话说明优先问题、打算做什么、怎样决定下一步。",
+          "help": ""
+        },
+        {
+          "key": "transferMode",
+          "label": "这道新情境小题（可选）",
+          "help": "",
+          "options": {
+            "ANSWER": "尝试回答",
+            "SKIP": "这次先不回答，保留为未作答"
+          }
+        },
+        {
+          "key": "transfer",
+          "label": "能否仅据此说“提醒造成了上升”？你还会怎样检查？",
+          "help": ""
+        }
+      ],
+      "checkpointId": null,
+      "transferCheckpointId": "BA-C3",
+      "local": null
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpointId": "BA-C1",
+      "stepKey": "b1-context",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enrollmentRate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "starterRate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "cohortMeaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "enrollmentRate",
+          "starterRate",
+          "cohortMeaning"
+        ]
+      },
+      "transferQuestionId": null,
+      "transferStepKey": null,
+      "transferSchema": null,
+      "supports": [
+        {
+          "supportId": "ba-c1-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "小例子：100人报名，80人开始，40人完成。40÷100回答“报名的人中多少完成”，40÷80回答“开始的人中多少完成”。主案例有第1–6批与第7–12批，每个人都观察报名后28天；这是不同批次的人，不是同一批人的前后变化。",
+          "sha256": "5cc91dd24154ca01c49a87f9b2099732ad3767c70ba932efabf37d560dd0be7c"
+        },
+        {
+          "supportId": "ba-c1-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "先用一句话说分母这群人是谁。",
+          "sha256": "cf07943148917db069a8cb1947dd4d59782bacfe3f5a3659add67a83c201a3d0"
+        },
+        {
+          "supportId": "ba-c1-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "报名者含尚未开始的人；已开始者只是其中一部分。",
+          "sha256": "8c198153e61d398538bdcf8e85978dbbb28db344e9745015bed9196380ff0165"
+        },
+        {
+          "supportId": "ba-c1-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "40/100=40%表示报名者的完成率；40/80=50%表示已开始者的完成率，两句话都可能正确但回答不同问题。",
+          "sha256": "ba441a57efa5823dc6a4155e3246fc1a2c99677b867f1166dd0da148531ba6d0"
+        },
+        {
+          "supportId": "ba-c1-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可用系统核对的小例子继续：40%与50%的区别在分母。主案例两期是不同人，每人观察28天。",
+          "sha256": "f7bc95e6da59202fd1fb160aa5ab38a1264d331209dd7ca93d1768d6caf9d5b8"
+        }
+      ],
+      "criteria": [
+        "区分报名分母与首课分母；不同批次且每人28天，不是个人纵向变化。错误分母可能影响后续比率，但不必据此否定所有行动想法。"
+      ],
+      "dependencies": []
+    },
+    {
+      "checkpointId": "BA-C2",
+      "stepKey": "b4-segment",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "observed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "possibleReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "needToKnow": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "observed",
+          "possibleReason",
+          "needToKnow"
+        ]
+      },
+      "transferQuestionId": null,
+      "transferStepKey": null,
+      "transferSchema": null,
+      "supports": [
+        {
+          "supportId": "ba-c2-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "“首课人数少了”是观察；“提醒没有送达”是一种解释；“这些人是否收到并看懂提醒”是还需查的信息。课程和来源人数已经在表里，不能当成完全未知。几个主动反馈的人，也不能代表所有人。",
+          "sha256": "037ebcf874c1b486c300dcea8e35a8bdef4b5a114c3e09eb85c6321ce1df3870"
+        },
+        {
+          "supportId": "ba-c2-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "把你写的句子分成“已经看到”和“可能因为”。",
+          "sha256": "d08a1725f5b8c1849b5ce46396e3cc6be42f4c0a241e7f7dd6be800e6553b947"
+        },
+        {
+          "supportId": "ba-c2-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "问自己：表格真的记录了原因，还是只记录了人数与行为？",
+          "sha256": "a17001462538404cc41e36dbf3bc30cf9762effd3ab8ba745c81c2396269ae4d"
+        },
+        {
+          "supportId": "ba-c2-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "“首课人数减少”与“提醒没送达”不是同一种证据。可以先向未开始及已开始的人分别了解是否收到、是否理解。",
+          "sha256": "c77454ddbe85416f5139375d5fbb720f51e6348da02695c78d9d4fefed054a5c"
+        },
+        {
+          "supportId": "ba-c2-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可以接受系统中间说明继续：当前计数能描述变化，不能独自证明具体原因；原因需要另查。",
+          "sha256": "c151636c64e29211559b4dadd3975a7c6385acab733d26d3ab773dccb8da24ea"
+        }
+      ],
+      "criteria": [
+        "观察有数据依据，原因保留待验证；已有课程与来源交叉计数不应被当成缺失。所需信息与原因假设有关。允许不同合理假设。"
+      ],
+      "dependencies": [
+        "BA-C1"
+      ]
+    },
+    {
+      "checkpointId": "BA-C3",
+      "stepKey": "b5-hypothesis",
+      "answerSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "planType": {
+            "type": "string",
+            "enum": [
+              "INFORMATION",
+              "SMALL_TRIAL"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "comparison": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "decisionRule": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "negativeImpact": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "planType",
+          "target",
+          "action",
+          "comparison",
+          "decisionRule",
+          "negativeImpact"
+        ]
+      },
+      "transferQuestionId": "ba-transfer-1",
+      "transferStepKey": "b6-action",
+      "transferSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workProduct": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1600
+          },
+          "transferMode": {
+            "type": "string",
+            "enum": [
+              "ANSWER",
+              "SKIP"
+            ]
+          },
+          "transfer": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "workProduct",
+          "transferMode",
+          "transfer"
+        ]
+      },
+      "supports": [
+        {
+          "supportId": "ba-c3-basic",
+          "version": "support-v1",
+          "kind": "BASIC",
+          "text": "可先补信息，也可试一个小改动。补信息时想清楚问谁、问什么、怎样避免只听到积极回应。小试验时最好同一时期留一组没有额外改动的人比较，并让两组分母与观察时间一致。A/B测试只是可选方法，不要求复杂统计或虚构预算。",
+          "sha256": "5c4ae14534dad15ce08cbef8bd817ce5901e9bda1c8940ce6d7b9a6d543b12ad"
+        },
+        {
+          "supportId": "ba-c3-hint-1",
+          "version": "support-v1",
+          "kind": "HINT_1",
+          "text": "你是要先了解原因，还是先试一个改动？两种选择的检查办法不同。",
+          "sha256": "e39f479df22d5dbc92fc4015360c65e0deac99f30769a0d15f907047c0bf77f5"
+        },
+        {
+          "supportId": "ba-c3-hint-2",
+          "version": "support-v1",
+          "kind": "HINT_2",
+          "text": "补信息要避免只问主动回应的人；试改动要想同一时期如果没做这个改动会怎样。",
+          "sha256": "f41d5ea39b0263949fe839f81aecee66a1b564a61740352f911870ba72f169db"
+        },
+        {
+          "supportId": "ba-c3-hint-3",
+          "version": "support-v1",
+          "kind": "HINT_3",
+          "text": "小试验可比较同批符合条件的人，一组额外提醒，一组沿用原安排；统一观察报名后28天，并留意打扰和支持负荷。这只是例子。",
+          "sha256": "856dcf7f364131e1525f13545e2df9d0457d7cbdd6e56d63405b248c56fa5ea3"
+        },
+        {
+          "supportId": "ba-c3-recovery",
+          "version": "support-v1",
+          "kind": "RECOVERY",
+          "text": "可参考系统给出的比较思路继续：不把“之后变好了”直接当成改动有效；具体方案仍由你选择。",
+          "sha256": "b4716716d801c2a97cd77903541b27c73e2cefe88439b58344b81081afc0e16c"
+        }
+      ],
+      "criteria": [
+        "按学生选择的信息收集或小试验评价，不能把访谈当实验强制要求随机对照。信息路径需覆盖不同情况、记录与改变决策的依据，不捏造已访谈。试验路径需可解释比较、同分母及每人28天、目标与负面影响；非随机仍可合理但须有限制。无须样本量功效或虚构精确预算阈值。"
+      ],
+      "dependencies": [
+        "BA-C1",
+        "BA-C2"
+      ]
+    }
+  ]
+}

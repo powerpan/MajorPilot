@@ -18,6 +18,7 @@ import static org.mockito.Mockito.*;
 class PersonalExportWriterTest {
     @Test void adoptedPreviewExportPreservesOriginalModeAndOnlySafePersonalProvenance()throws Exception{
         var run=new LinkedHashMap<String,Object>();run.put("id",9L);run.put("public_id","00000000000000000000000009");run.put("run_mode","REVIEW_PREVIEW");run.put("content_kind","MAJOR");run.put("task_public_id","00000000000000000000000010");run.put("profile_public_id","00000000000000000000000011");run.put("manifest_json","{\"title\":\"SYNTHETIC\"}");
+        when(db.queryForMap(startsWith("SELECT experience_edition,learning_events_json,local_results_json"),eq(9L),eq(7L))).thenReturn(Map.of("experience_edition",1));
         when(db.queryForList(startsWith("SELECT r.id,r.public_id,r.content_kind"),eq(7L))).thenReturn(List.of(run));
         var proof=new LinkedHashMap<String,Object>();proof.put("public_id","00000000000000000000000012");proof.put("original_run_mode","REVIEW_PREVIEW");proof.put("authority_code","PROJECT_OWNER_REQUEST");proof.put("authorized_at",Instant.parse("2026-09-21T00:00:00Z"));proof.put("authorized_by_operator_id",777L);proof.put("reason_text","PRIVATE_OPERATOR_REASON");proof.put("authorization_reference","PRIVATE_AUTHORIZATION_REFERENCE");proof.put("closed_input_sha256","PRIVATE_HASH");
         when(db.queryForList(startsWith("SELECT a.* FROM mp_run_product_adoption"),eq(7L),eq(9L))).thenReturn(List.of(proof));

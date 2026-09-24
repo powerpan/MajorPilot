@@ -12,8 +12,11 @@ import type { ReportPage, ComparisonResponse } from "../types/reports";
 import { waitingLabels } from "../lib/report-display";
 import NextRecommendationPanel from "../components/reports/NextRecommendationPanel.vue";
 import ArrowIcon from "../components/ArrowIcon.vue";
-import { isProductRun, productRun, productAction, currentDecisionFor, runStatusLabel } from "../lib/product-entry";
+import { isProductRun, productRun, historicalProductRuns, productAction, reportEditionLabel, currentDecisionFor, runStatusLabel } from "../lib/product-entry";
 const formalRuns = ref<Run[]>([]), decisionDialog = ref<HTMLDialogElement | null>(null);
+const editions=ref<{majorCode:MajorCode;experienceEdition:number;taskVersionId:string;versionCode:string}[]>([]);
+const editionCandidates=computed(()=>editions.value.map(edition=>({edition,previous:productRun(formalRuns.value,edition.majorCode)})).filter(item=>item.previous?.taskVersionId&&(item.previous.experienceEdition||1)<item.edition.experienceEdition));
+const historicalRuns=computed(()=>historicalProductRuns(formalRuns.value));
 const auth = useAuth(),
   router = useRouter(),
   dashboard = ref<Dashboard | null>(null),
@@ -39,7 +42,7 @@ const activeRecommendation = computed(
 );
 const runFor = (code: MajorCode) => productRun(formalRuns.value, code);
 const reportFor = (code: MajorCode) => reportPage.value?.items.find(
-  (item) => item.reportType === "EXPERIENCE" && item.majorCode === code,
+  (item) => item.reportType === "EXPERIENCE" && item.majorCode === code && (!item.sourceRunId || item.sourceRunId===runFor(code)?.runId),
 );
 const available = (code: MajorCode) => dashboard.value?.majors.find(
   (item) => item.majorCode === code,
@@ -49,6 +52,7 @@ const unsubscribe = onIdentityChange(() => {
   epoch++;
   dashboard.value = null;
   formalRuns.value = [];
+  editions.value = [];
   reportPage.value = null;
   comparison.value = null;
   reportError.value = "";
@@ -97,6 +101,7 @@ async function load() {
     if (issued !== epoch) return;
     dashboard.value = nextDashboard;
     formalRuns.value = runs.filter(isProductRun);
+    editions.value=await request<typeof editions.value>('/api/app/v1/experience-editions').catch(()=>[]);
     if (
       dashboard.value.recommendation &&
       !dashboard.value.nextRecommendation &&
@@ -140,6 +145,7 @@ async function logout() {
     busy.value = false;
   }
 }
+async function startEdition(run:Run){if(busy.value||window.innerWidth<1024)return;const issued=epoch;busy.value=true;error.value='';try{const body={expectedRevision:run.revision};const fresh=await request<Run>(`/api/app/v1/experience-runs/${run.runId}/new-edition`,{method:'POST',body,key:operation({runId:run.runId,...body})});if(issued===epoch)await router.push(`/app/runs/${fresh.runId}`);}catch(cause){if(issued===epoch)error.value=errorText(cause);}finally{if(issued===epoch)busy.value=false;}}
 async function choose(code: MajorCode) {
   if (busy.value) return;
   choosing.value = code;
@@ -409,6 +415,20 @@ onBeforeUnmount(() => {
           >打开工作区上手演示 →</RouterLink
         >
       </section>
+      <section v-if="editionCandidates.length" class="dashboard-reports" aria-label="新版方法体验">
+        <h2 class="serif">用新的路线，再试一次。</h2>
+        <p>新版先讲清思路，再记录你的尝试与修改。旧进度和旧报告原样保留，不会被覆盖。</p>
+        <p class="mobile-entry-action">请在电脑或宽屏平板上开始新版体验；手机仍可查看旧进度和报告。</p>
+        <article v-for="item in editionCandidates" :key="item.edition.majorCode" class="dashboard-demo-link"><h3>{{major(item.edition.majorCode).name}} · 方法引导版</h3><button class="workspace-outline edition-start-action" :disabled="busy" @click="startEdition(item.previous!)">开始新版体验</button> <RouterLink :to="`/app/runs/${item.previous!.runId}`" class="text-link">查看旧体验</RouterLink></article>
+      </section>
+      <section v-if="historicalRuns.length" class="dashboard-reports" aria-label="保留的旧版体验">
+        <h2 class="serif">以前的体验，还在这里。</h2>
+        <p>新版不会替换旧版的回答。旧版尚未完成时，也可以回到原来的进度；切换仍需你明确确认。</p>
+        <article v-for="run in historicalRuns" :key="run.runId" class="dashboard-demo-link">
+          <h3>{{major(run.majorCode!).name}} · 旧版体验</h3><p>{{runStatusLabel[run.status]}}</p>
+          <RouterLink :to="`/app/runs/${run.runId}`" class="text-link">查看旧体验与进度 →</RouterLink>
+        </article>
+      </section>
       <dialog
         ref="decisionDialog"
         class="workspace-dialog product-decision-dialog"
@@ -482,6 +502,7 @@ onBeforeUnmount(() => {
               <h3>
                 {{ item.majorCode ? major(item.majorCode).name : "体验" }} 报告
               </h3>
+              <p v-if="reportEditionLabel(item, formalRuns)" class="report-edition-label">{{ reportEditionLabel(item, formalRuns) }}</p>
               <p>
                 {{
                   item.currentVersionId
@@ -538,6 +559,7 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 1023px) {
   .mobile-entry-action { display: inline-flex; }
+  .edition-start-action { display: none; }
 }
 @media (max-width: 700px) {
   .dashboard-recommendation { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 20px; row-gap: 18px; }
