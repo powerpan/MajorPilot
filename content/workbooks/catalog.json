@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "workbook-catalog-v1",
+  "generatorVersion": "artifact-tool-workbooks-v1",
+  "workbooks": [
+    {
+      "taskVersionId": "01JA1000000000000000000001",
+      "manifestSha256": "813d1ba169586ed56a09fef86caf514c407497668e1f8bb5114a82391cc8e06f",
+      "assetKey": "materials",
+      "workbookVersion": "1.0.0",
+      "filename": "消息分类练习材料-1.0.0.xlsx",
+      "path": "workbooks/1.0.0/ai-support.xlsx",
+      "mediaType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "sha256": "ef22d6aca4c0ba4460f57f5aed5058ee18c872b1733e7623e87b9e2329304b47",
+      "byteLength": 9539,
+      "rowCount": 24,
+      "sources": [
+        {
+          "assetKey": "practice-public",
+          "sha256": "e0c38f6da40a68b594f8d973cdc13d455dc7abe77f048eb7bc004c518c3d9666"
+        },
+        {
+          "assetKey": "example-pool",
+          "sha256": "30e3332d70c38b639df2373ee3e53a3468e85bf4180ee5d2d655f77aef80e0e1"
+        }
+      ]
+    },
+    {
+      "taskVersionId": "01JD1000000000000000000001",
+      "manifestSha256": "0e3fad47b7b5e4b15c0666429a5cd163eb4b1115524e00d4140c8bc89132c8c2",
+      "assetKey": "materials",
+      "workbookVersion": "1.0.0",
+      "filename": "学习记录原始数据-1.0.0.xlsx",
+      "path": "workbooks/1.0.0/ds-learning.xlsx",
+      "mediaType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "sha256": "2fd4d0893ee08afd9995f110f863f156b708d1e65183808f52aabb1c3402f61a",
+      "byteLength": 30346,
+      "rowCount": 360,
+      "sources": [
+        {
+          "assetKey": "learner-activity",
+          "sha256": "18fbd558ad5d3940cb0062b982c66704a3a2f75e89c3fc30c1c6196184660a06"
+        },
+        {
+          "assetKey": "data-dictionary",
+          "sha256": "cfb9ea3c330f07b3de91d24682b18610f837b3926df372f31ce1f70da3e7deb3"
+        }
+      ]
+    },
+    {
+      "taskVersionId": "01JB1000000000000000000001",
+      "manifestSha256": "ba81c1c6cc8600a54d38bc164539f163493d6ae11be5a8354827747cf480d8a3",
+      "assetKey": "materials",
+      "workbookVersion": "1.0.0",
+      "filename": "学习环节聚合数据-1.0.0.xlsx",
+      "path": "workbooks/1.0.0/ba-learning.xlsx",
+      "mediaType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "sha256": "f275adccecc31acc825867688943aed015496f290880dddb53f5f7e66621f736",
+      "byteLength": 12120,
+      "rowCount": 72,
+      "sources": [
+        {
+          "assetKey": "weekly-funnel",
+          "sha256": "60ae1da5a75cb1153672a5be0a7756e490371e4fbfc4461bbc3fe7d12dc505b1"
+        },
+        {
+          "assetKey": "data-dictionary",
+          "sha256": "2a9f9404c8f44ac27ef21d80773d20b254e89a74501dd36fc9cc8195fece8379"
+        }
+      ]
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import ClassifierErrors from "../components/workspace/ClassifierErrors.vue";
 import ClassifierMetrics from "../components/workspace/ClassifierMetrics.vue";
 import DsWorkspace from "../components/workspace/DsWorkspace.vue";
 import BaWorkspace from "../components/workspace/BaWorkspace.vue";
+import WorkbookDownload from "../components/workspace/WorkbookDownload.vue";
 import { leaveRunObservation, observeRunStep } from '../lib/run-observations';
 import { answerIssue, taskIssue, attentionTarget, createAttention, type AttentionIssue } from '../lib/workspace-attention';
 import { actionIssue } from '../lib/ba-display';
@@ -521,6 +522,11 @@ onBeforeUnmount(() => {
                   : productInstructions(workspace.run, workspace.step?.definition.instructions)
               }}
             </p>
+            <WorkbookDownload
+              v-if="isMajor && !workspace.reflectionMode && workspace.run?.taskVersionId"
+              :run-id="workspace.run.runId"
+              :task-version-id="workspace.run.taskVersionId"
+            />
             <div
               v-if="workspace.iterationNotice"
               class="workspace-notice"

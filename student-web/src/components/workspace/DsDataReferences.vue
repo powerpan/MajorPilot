@@ -2,7 +2,6 @@
 import { computed } from "vue";
 import type { LearnerRow } from "../../../../shared/ds/ds-stats-v1.mjs";
 import type { DsDictionary } from "../../lib/ds-display";
-import { label } from "../../lib/ds-display";
 const props = defineProps<{
   dictionary?: DsDictionary;
   rows?: LearnerRow[];
@@ -16,16 +15,6 @@ const summary = computed(() => ({
     (props.rows?.length ?? 0) -
     new Set(props.rows?.map((row) => JSON.stringify(row))).size,
 }));
-function cell(row: LearnerRow, field: string) {
-  const value = row[field as keyof LearnerRow];
-  if (value === null)
-    return row.lessons_started === 0 &&
-      ["avg_session_minutes", "days_to_first_lesson"].includes(field)
-      ? "不适用"
-      : "记录缺失";
-  if (typeof value === "boolean") return value ? "是" : "否";
-  return label(value);
-}
 </script>
 <template>
   <section
@@ -79,35 +68,6 @@ function cell(row: LearnerRow, field: string) {
                 {{ field.label }}<small>{{ field.fieldKey }}</small>
               </th>
               <td>{{ field.description }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </details>
-    <details v-if="rows" class="ds-details">
-      <summary>
-        查看原始合成记录（{{ rows.length }}条，未经当前方案处理）
-      </summary>
-      <div
-        class="ds-table-scroll ds-raw-table"
-        tabindex="0"
-        aria-label="可横向滚动的完整原始合成记录"
-      >
-        <table>
-          <thead>
-            <tr>
-              <th>原始行号</th>
-              <th v-for="field in dictionary.fields" :key="field.fieldKey">
-                {{ field.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, index) in rows" :key="index">
-              <th>{{ index + 1 }}</th>
-              <td v-for="field in dictionary.fields" :key="field.fieldKey">
-                {{ cell(row, field.fieldKey) }}
-              </td>
             </tr>
           </tbody>
         </table>

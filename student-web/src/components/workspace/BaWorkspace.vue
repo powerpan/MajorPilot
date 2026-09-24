@@ -29,8 +29,6 @@ const sources = computed(() =>
     ),
   ].join("、"),
 );
-const rawValue = (row: unknown, key: string) =>
-  (row as Record<string, unknown>)[key];
 </script>
 <template>
   <div v-if="workspace.step" class="ba-workspace">
@@ -55,7 +53,7 @@ const rawValue = (row: unknown, key: string) =>
         </details>
       </section>
       <details v-if="workspace.baDictionary" class="ba-details">
-        <summary>查看数据字典与72行合成业务表</summary>
+        <summary>查看字段含义与单位</summary>
         <p>
           每行是入学批次 × 课程方向 ×
           来源渠道。所有12批次都已成熟，观察每人入组后的前28天。支持联系是事件次数，不是人数，也不是漏斗阶段。
@@ -79,33 +77,6 @@ const rawValue = (row: unknown, key: string) =>
                 </th>
                 <td>{{ field.description }}</td>
                 <td>{{ field.unit }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="ba-table-scroll">
-          <table class="ba-raw-table">
-            <caption>
-              72个聚合组合，含真实0；全部数据合成
-            </caption>
-            <thead>
-              <tr>
-                <th
-                  v-for="field in workspace.baDictionary.fields"
-                  :key="field.fieldKey"
-                >
-                  {{ field.label }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in workspace.baRows" :key="index">
-                <td
-                  v-for="field in workspace.baDictionary.fields"
-                  :key="field.fieldKey"
-                >
-                  {{ rawValue(row, field.fieldKey) }}
-                </td>
               </tr>
             </tbody>
           </table>
