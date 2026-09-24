@@ -196,6 +196,21 @@ for (const channel of ["chrome", "msedge"]) {
           .waitFor();
         await page.screenshot({ path: `${out}/${channel}-waiting-1536.png` });
         assert.equal(await page.locator(".report-claim").count(), 0);
+        assert.ok(
+          (await page.locator(".report-document").boundingBox()).width > 600,
+          "Waiting content must not occupy the absent chapter sidebar",
+        );
+        await page.getByRole("button", { name: "刷新状态", exact: true }).click();
+        await page
+          .getByText("体验已完成，正在等待各专业报告准备就绪。", { exact: true })
+          .waitFor();
+        await page.setViewportSize({ width: 390, height: 844 });
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+          true,
+        );
+        assert.ok((await page.locator(".report-document").boundingBox()).width > 300);
+        await page.screenshot({ path: `${out}/${channel}-waiting-390.png` });
       } else {
         await page.locator(".report-section").first().waitFor();
         if (scenario === "experience") {

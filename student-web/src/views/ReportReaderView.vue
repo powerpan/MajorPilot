@@ -150,7 +150,7 @@ const ordinaryLink = computed(() =>
         </button>
       </nav>
     </header>
-    <main class="report-layout">
+    <main class="report-layout" :class="{ 'report-layout-solo': !reader.report }">
       <nav
         v-if="reader.report && !printing"
         class="report-chapters"
