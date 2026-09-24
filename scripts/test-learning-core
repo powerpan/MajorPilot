@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+# Pure domain tests only: no database, account data, browser, paid API or service restart.
+unset MP_RUN_LIVE_REPORT_TESTS MP_RUN_BAILIAN_TEST MP_RUN_MYSQL_TESTS MP_REPORT_ANALYSIS_LIVE MP_REPORT_ANALYSIS_LIVE_CONFIRM MP_REPORT_ANALYSIS_LIVE_CASES
+cd backend
+JAVA_HOME="${MP_JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}" MAVEN_USER_HOME="../data/maven-user" ./mvnw -q -Dmaven.repo.local=../.local/m2 -pl ruoyi-majorpilot -am -Dtest=LocalResultVerifierTest,LearningTimelineTest -Dsurefire.failIfNoSpecifiedTests=false test

@@ -8,7 +8,7 @@
 2. [39 三专业案例脚本与理解检查](./39-guided-major-case-specifications.md)：AI错误分析、DS探索性分析、BA漏斗诊断与行动验证。
 3. [40 过程证据与新手可读报告](./40-learning-evidence-and-report-design.md)：支持条件、前后尝试、卡点定位、生成与验收。
 4. [41 原始数据Excel下载与结果回填](./41-excel-download-and-local-results.md)：下载链接、工作簿内容、核对和隐私边界。
-5. [42 改版实施台账](./42-method-led-implementation-ledger.md)、[43 Excel 下载先行交付](./43-workbook-download-delivery.md)：逐批工程结果与未完成门禁。
+5. [42 改版实施台账](./42-method-led-implementation-ledger.md)、[43 Excel 下载先行交付](./43-workbook-download-delivery.md)、[44 过程与核对内核](./44-learning-core-implementation.md)：逐批工程结果与未完成门禁。
 
 该专题是新版本实施入口。09、10、25–32 的旧正文位于独立归档目录，原路径只保留回溯指针；未修改的身份、版本、数据责任和安全边界继续有效。
 
