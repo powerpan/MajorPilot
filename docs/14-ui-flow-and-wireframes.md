@@ -1,5 +1,7 @@
 # MajorPilot MVP 页面状态与低保真线框
 
+> 2026-09-24 新版本页面调整见[方法体验总则](./38-method-led-experience-redesign.md)、[报告阅读结构](./40-learning-evidence-and-report-design.md)和[Excel下载与回填](./41-excel-download-and-local-results.md)。原始全量大表替换为明确下载链接，网站保留引导、少量教学示例、结果摘要和回填；本地Excel操作不受网站观察。这里记录待实施设计，不表示当前页面已替换。
+
 > 状态：详细设计修订稿 v0.2  
 > 更新日期：2026-09-20  
 > 适用范围：学生端、管理端关键页面结构、状态、响应式和可访问性  

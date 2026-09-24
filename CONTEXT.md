@@ -127,3 +127,33 @@ _Avoid_: Ranking Report, Final Recommendation
 **Report Version**:
 An immutable generated snapshot of an Experience Report or Comparison Report and the evidence and generation rules it used.
 _Avoid_: Report Update
+
+## Guided experience design
+
+**Method Path**:
+The explicit sequence of reasoning moves that connects a Major Experience's question, learning support, Student decisions, and final work. It represents one professional approach, not the entirety of a Major or a mandatory named framework.
+_Avoid_: Ability Ladder, Major Syllabus
+
+**Understanding Checkpoint**:
+A bounded opportunity within a Method Path to demonstrate one specified idea through a choice, explanation, or application. A response supports interpretation of that instance, not a diagnosis of stable ability.
+_Avoid_: Ability Test, Mastery Score
+
+**Learning Attempt**:
+A Student's explicitly submitted response to an Understanding Checkpoint, preserved together with the task and support conditions at submission. Later corrections do not replace earlier attempts.
+_Avoid_: Keystroke History, Final Answer Only
+
+**Learning Support**:
+A versioned explanation, worked example, or hint made available for a particular part of a Major Experience. Its recorded delivery establishes availability, not that the Student read, understood, or learned from it.
+_Avoid_: Proof of Learning, Ability Penalty
+
+**Recovery Baseline**:
+A disclosed, verified intermediate result a Student may use to continue a Major Experience after an upstream difficulty. It is supplied support, not a Student-produced result.
+_Avoid_: Corrected Student Answer, Retake
+
+**Workbook Asset**:
+A downloadable, version-bound spreadsheet containing the public materials for local exploration in a Major Experience. A copy on the Student's device is outside the platform's observation and is not automatically report evidence.
+_Avoid_: Uploaded Evidence, Verified Student Work
+
+**Local Result Submission**:
+A Student's submitted description of local data processing, selected results, and reasoning, linked to the relevant Workbook Asset. Reproducing a result can corroborate a calculation but does not verify the Student's local editing process.
+_Avoid_: Observed Excel Activity, Verified Workbook

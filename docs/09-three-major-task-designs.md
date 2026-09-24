@@ -1,5 +1,7 @@
 # MajorPilot MVP 三个专业体验任务设计
 
+> 2026-09-24 新版内容设计：[方法总则](./38-method-led-experience-redesign.md)、[三专业案例脚本](./39-guided-major-case-specifications.md)。后续新Task Version以该设计的方法引入、三个理解检查点、支持后修订和新情境检查为目标；原始大表改为[Excel下载与回填](./41-excel-download-and-local-results.md)。这是设计修订，不原地更改当前1.0.0内容或历史Run；下文保留旧任务和现有执行机制的参照。
+
 > 状态：详细设计修订稿 v0.2  
 > 更新日期：2026-09-20  
 > 适用范围：AI、Data Science、Business Analytics 首批固定任务  
