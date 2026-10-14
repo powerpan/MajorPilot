@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
-@RestController @Profile("local") @RequestMapping("/api/app/v1/experience-runs/{id}/learning")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/app/v1/experience-runs/{id}/learning")
 public class GuidedLearningController {
     private final RunService runs; private final GuidedLearning learning;
     public GuidedLearningController(RunService runs,GuidedLearning learning){this.runs=runs;this.learning=learning;}

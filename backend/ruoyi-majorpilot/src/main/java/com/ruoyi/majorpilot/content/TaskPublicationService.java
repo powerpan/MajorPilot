@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public final class TaskPublicationService {
     public record Validate(String manifestPath) {}
     public record Publish(Long expectedRevision,Map<String,Boolean> reviewChecks,String reasonText) {}

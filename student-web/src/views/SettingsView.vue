@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { pilotMode } from "../lib/pilot";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { onIdentityChange, useAuth } from "../stores/auth";
@@ -58,7 +59,7 @@ onBeforeUnmount(() => { disposed = true; clearInterval(timer); unlisten(); clear
       <div class="privacy-sections">
         <p v-if="notice" class="success-notice" role="status">{{ notice }}</p><p v-if="privacy.error && !modal" class="error-notice" role="alert">{{ privacy.error }} <button type="button" class="text-link" @click="privacy.load().catch(() => {})">重新读取</button></p>
         <section id="account-security"><div class="privacy-section-heading"><span>01</span><h2>账户安全</h2></div>
-          <div class="privacy-row"><div><h3>登录邮箱</h3><p>{{ auth.me?.email || '正在读取账户…' }}</p><small v-if="auth.me">{{ auth.me.emailVerified ? '已验证' : '尚未验证；不影响使用账户与隐私设置' }}</small></div><button class="quiet-button" :disabled="privacy.busy || !auth.me" @click="open('email')">更换邮箱</button></div>
+          <div class="privacy-row"><div><h3>{{pilotMode?'测试账户':'登录邮箱'}}</h3><p>{{ auth.me?.email || '正在读取账户…' }}</p><small v-if="auth.me">{{pilotMode?'这是测试用登录标识，不是真实邮箱，无需验证。':auth.me.emailVerified ? '已验证' : '尚未验证；不影响使用账户与隐私设置' }}</small></div><button v-if="!pilotMode" class="quiet-button" :disabled="privacy.busy || !auth.me" @click="open('email')">更换邮箱</button></div>
           <div class="privacy-row"><div><h3>密码</h3><p>{{ auth.me ? '已设置' : '正在读取账户…' }}</p><small>修改成功后，所有设备将退出登录。</small></div><button class="quiet-button" :disabled="privacy.busy || !auth.me" @click="open('password')">修改密码</button></div>
         </section>
         <section id="research-consent"><div class="privacy-section-heading"><span>02</span><h2>可选产品研究授权</h2></div><p>研究授权独立于核心服务，拒绝或撤回都不会影响你的体验、报告或必要运行统计。</p>

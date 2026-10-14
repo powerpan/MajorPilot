@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-@RestController @Profile("local") @RequestMapping("/api/app/v1")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/app/v1")
 public class RunController {
     private final RunService runs;private final ExecutionService execution;private final HintService hints;private final ReflectionService reflections;private final FollowUpService followUps;
     public RunController(RunService runs,ExecutionService execution,HintService hints,ReflectionService reflections,FollowUpService followUps){this.runs=runs;this.execution=execution;this.hints=hints;this.reflections=reflections;this.followUps=followUps;}

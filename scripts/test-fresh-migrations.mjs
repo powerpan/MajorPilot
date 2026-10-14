@@ -14,10 +14,10 @@ import { mysqlCommand } from './infra.mjs';
 export function parseMigrationArguments(arguments_) {
   const options = arguments_.filter(argument => argument.startsWith('--'));
   const artifacts = arguments_.filter(argument => !argument.startsWith('--'));
-  assert.ok(options.every(option => ['--upgrade-from-v6', '--upgrade-from-v7', '--upgrade-from-v8', '--upgrade-from-v9'].includes(option)), 'Unknown migration option');
+  assert.ok(options.every(option => ['--upgrade-from-v6', '--upgrade-from-v7', '--upgrade-from-v8', '--upgrade-from-v9', '--upgrade-from-v12'].includes(option)), 'Unknown migration option');
   assert.ok(options.length <= 1, 'Select at most one upgrade baseline');
   assert.ok(artifacts.length <= 1, 'Select at most one validated build JAR');
-  return { artifactArgument: artifacts[0] ?? null, fromVersion: options.length ? Number(options[0].slice(-1)) : null };
+  return { artifactArgument: artifacts[0] ?? null, fromVersion: options.length ? Number(options[0].match(/v([0-9]+)$/)[1]) : null };
 }
 
 function main() {
@@ -44,7 +44,7 @@ assert.ok(entries.every(entry => !entry.startsWith('/') && !entry.split('/').inc
 assert.ok(entries.some(entry => entry.startsWith('BOOT-INF/lib/ruoyi-majorpilot-')), 'MajorPilot module missing from artifact');
 command(jar, ['--extract', '--file', artifact, 'BOOT-INF/lib'], 'Dependency extraction');
 const classpath = path.join(scratch, 'BOOT-INF/lib/*');
-command(javac, ['--release', '21', '-cp', classpath, '-d', classes, path.join(ROOT, 'scripts/java/FreshMigrationCheck.java')], 'Standalone checker compilation');
+command(javac, ['--release', '21', '-cp', classpath, '-d', classes, path.join(ROOT, 'scripts/java/FreshMigrationCheck.java'), path.join(ROOT, 'scripts/java/PilotBootstrapCheck.java')], 'Standalone checker compilation');
 
 // Verify the socket-owned instance before creating any resource. Never use shell
 // defaults, a global database service, majorpilot, or majorpilot_test as a target.

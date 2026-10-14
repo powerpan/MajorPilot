@@ -4,7 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 /** Bounded retention of expired security metadata, never account erasure. */
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public class AuthRetention {
     private final JdbcTemplate jdbc;
     public AuthRetention(JdbcTemplate jdbc) { this.jdbc=jdbc; }

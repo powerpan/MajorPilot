@@ -3,7 +3,7 @@ import com.ruoyi.majorpilot.shared.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class SecurityEvents {
     private final JdbcTemplate jdbc;private final Secrets secrets;
     public SecurityEvents(JdbcTemplate jdbc,Secrets secrets) { this.jdbc=jdbc;this.secrets=secrets; }

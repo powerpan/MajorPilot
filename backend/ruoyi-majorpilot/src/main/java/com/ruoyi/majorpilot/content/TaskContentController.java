@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-@RestController @Profile("local") @RequestMapping("/api/admin/v1/majorpilot/task-versions")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/admin/v1/majorpilot/task-versions")
 public class TaskContentController {
     private final TaskPublicationService service;
     public TaskContentController(TaskPublicationService service){this.service=service;}

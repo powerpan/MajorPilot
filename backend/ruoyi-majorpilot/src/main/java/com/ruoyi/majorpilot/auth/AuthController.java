@@ -6,7 +6,7 @@ import java.util.Map;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-@RestController @Profile("local")
+@RestController @Profile({"local","pilot"})
 public class AuthController {
     private final AuthService auth;private final StudentSessions sessions;private final CsrfService csrf;
     public AuthController(AuthService auth,StudentSessions sessions,CsrfService csrf) { this.auth=auth;this.sessions=sessions;this.csrf=csrf; }

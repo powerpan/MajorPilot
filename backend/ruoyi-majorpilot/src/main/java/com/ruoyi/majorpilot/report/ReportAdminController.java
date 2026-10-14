@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-@RestController @Profile("local") @RequestMapping("/api/admin/v1/majorpilot/reports")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/admin/v1/majorpilot/reports")
 public class ReportAdminController {
     private final ReportService service;public ReportAdminController(ReportService service){this.service=service;}
     @GetMapping @PreAuthorize("@ss.hasPermi('majorpilot:report:view')") Object list(HttpServletRequest req){return ApiResponses.success(req,service.adminList());}

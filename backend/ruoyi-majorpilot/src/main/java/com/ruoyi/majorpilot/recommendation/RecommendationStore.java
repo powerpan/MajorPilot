@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /** Writes immutable profile/recommendation snapshots inside the caller's domain transaction. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class RecommendationStore {
     public record Created(long profileInternalId,long recommendationInternalId,RecommendationView view) {}
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final ProductEvents events;

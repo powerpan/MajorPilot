@@ -1,0 +1,20 @@
+[Unit]
+Description=MajorPilot private Redis
+After=network.target
+[Service]
+Type=simple
+User=majorpilot-redis
+Group=majorpilot-redis
+Slice=majorpilot.slice
+ExecStart=/opt/majorpilot/runtime/redis/redis-server /opt/majorpilot/config/redis.conf
+Restart=on-failure
+RestartSec=10
+UMask=0077
+MemoryMax=80M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/majorpilot/data/redis
+[Install]
+WantedBy=multi-user.target

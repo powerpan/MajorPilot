@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Bounded, repeatable cleanup. Object keys remain tracked until every associated delete succeeds. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class RetentionService {
     private final JdbcTemplate db;private final TransactionTemplate tx;private final ObjectMapper mapper;private final PrivateObjectStore files;
     public RetentionService(JdbcTemplate db,TransactionTemplate tx,ObjectMapper mapper,PrivateObjectStore files){this.db=db;this.tx=tx;this.mapper=mapper;this.files=files;}

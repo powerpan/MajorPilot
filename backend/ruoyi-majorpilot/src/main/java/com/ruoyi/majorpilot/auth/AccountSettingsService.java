@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Secrets remain in memory/hashed token rows, never idempotency responses or events. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AccountSettingsService {
     private final JdbcTemplate jdbc;private final TransactionTemplate tx;private final StudentPasswords passwords;
     private final StudentSessions sessions;private final RateLimits limits;private final AuthMailGateway mail;

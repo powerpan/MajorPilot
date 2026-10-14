@@ -9,7 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /** Current publication availability is a projection, never a rewrite of historical ranking. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class MajorCatalog {
     private final JdbcTemplate db;
     private LocalProductAccess local;

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import static com.ruoyi.majorpilot.operations.OperationsDtos.*;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class OperationsService {
     final JdbcTemplate db;final TransactionTemplate tx;final ObjectMapper mapper;final OperationsAudit audit;private final IdempotencyService idem;private final Secrets secrets;
     public OperationsService(JdbcTemplate db,TransactionTemplate tx,ObjectMapper mapper,OperationsAudit audit,IdempotencyService idem,Secrets secrets){this.db=db;this.tx=tx;this.mapper=mapper;this.audit=audit;this.idem=idem;this.secrets=secrets;}

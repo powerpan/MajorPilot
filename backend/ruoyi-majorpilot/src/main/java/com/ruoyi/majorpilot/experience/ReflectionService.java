@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class ReflectionService {
     private final RunService runs;private final RunStore db;private final ClosurePipeline closure;
     @Autowired public ReflectionService(RunService runs,ClosurePipeline closure){this.runs=runs;this.db=runs.store();this.closure=closure;}

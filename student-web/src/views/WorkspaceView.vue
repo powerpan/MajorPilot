@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { pilotMode } from "../lib/pilot";
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspace } from "../stores/workspace";
@@ -808,7 +809,7 @@ onBeforeUnmount(() => {
               @update:model-value="workspace.edit"
             />
             <section
-              v-if="workspace.reflectionMode && isMajor && workspace.reflection"
+              v-if="!pilotMode && workspace.reflectionMode && isMajor && workspace.reflection"
               class="reflection-optional classifier-followup"
             >
               <h2>一个可选的追问</h2>

@@ -31,6 +31,10 @@ function clearLocalDraft() {
   // Only our exact namespaces; never clear the browser's whole storage.
   try {
     sessionStorage.removeItem("mp:intake-draft:v1");
+    for(let index=sessionStorage.length-1;index>=0;index--){
+      const key=sessionStorage.key(index);
+      if(key?.startsWith("mp:pilot-intake:"))sessionStorage.removeItem(key);
+    }
   } catch {
     /* Storage denied. */
   }

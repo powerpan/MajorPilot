@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.privacy.PrivacyStore.*;
 
 /** Request-side privacy transactions. No file generation, model call or deletion runs in an HTTP request. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class PrivacyService {
     private final PrivacyStore store;private final IdempotencyService idem;private final RateLimits limits;
     private final StudentPasswords passwords;private final StudentSessions sessions;private final PrivateObjectStore files;

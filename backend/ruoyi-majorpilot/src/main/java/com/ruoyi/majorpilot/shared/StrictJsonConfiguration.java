@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 /** Formal DTOs accept their JSON schema types, never truncation or scalar aliases. */
-@Configuration @Profile("local")
+@Configuration @Profile({"local","pilot"})
 public class StrictJsonConfiguration {
     @Bean public Jackson2ObjectMapperBuilderCustomizer p1StrictJson() {
         return builder->builder

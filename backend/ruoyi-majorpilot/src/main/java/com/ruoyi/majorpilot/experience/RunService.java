@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class RunService {
     private final RunStore db;private final TaskContentProvider content;private final IdempotencyService idem;private final TransactionTemplate tx;
     private LocalProductAccess local;

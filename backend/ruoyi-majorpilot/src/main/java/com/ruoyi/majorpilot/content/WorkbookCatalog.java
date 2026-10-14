@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /** Version-bound, public-only derived assets. Does not modify historical task manifests. */
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public final class WorkbookCatalog {
     public static final String MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final int MAX_BYTES = 5 * 1024 * 1024;

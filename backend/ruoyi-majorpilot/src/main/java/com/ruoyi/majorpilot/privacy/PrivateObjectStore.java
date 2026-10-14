@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /** Local private export storage. Keys are server-generated, never filesystem paths from a request. */
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public class PrivateObjectStore {
     public record Stored(String key,String sha256,long size) {}
     private static final long MAX_BYTES=64L*1024*1024;

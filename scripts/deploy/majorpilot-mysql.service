@@ -1,0 +1,21 @@
+[Unit]
+Description=MajorPilot private MySQL
+After=network.target
+[Service]
+Type=simple
+User=majorpilot-db
+Group=majorpilot-db
+Slice=majorpilot.slice
+ExecStart=/opt/majorpilot/runtime/mysql/bin/mysqld --defaults-file=/opt/majorpilot/config/mysql.cnf
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=120
+UMask=0077
+MemoryMax=480M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/majorpilot/data/mysql /opt/majorpilot/run/mysql /opt/majorpilot/logs/mysql
+[Install]
+WantedBy=multi-user.target

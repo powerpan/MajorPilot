@@ -8,6 +8,10 @@ interface ApiErrorBody {
   };
 }
 const messages: Record<string, string> = {
+  PILOT_REPORT_LIMIT: "本轮对应的报告生成次数已用完。作答已保存，已有报告仍可阅读；如需更多次数，请联系负责人。",
+  PILOT_FEATURE_DISABLED: "这项功能未在邀请测试版开放，请联系负责人。",
+  PILOT_EMAIL_DISABLED: "测试版无需邮箱验证，账号问题请联系负责人。",
+  PILOT_ACCOUNT_REQUIRED: "此账户不在本轮测试名单中，请联系负责人。",
   LEARNING_SUBMISSION_REQUIRED: "这份草稿还没有明确提交。请在本页提交这一小步；若次数已用完，可恢复最后一次提交后继续。",
   LEARNING_SEQUENCE_CONFLICT: "另一页面新增了学习记录，请重新读取记录后重试，草稿仍保留。",
   LOCAL_RESULT_CHECK_REQUIRED: "本地结果改过了，请重新点击“核对并保存”，再提交。",

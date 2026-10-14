@@ -8,7 +8,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import static com.ruoyi.majorpilot.privacy.PrivacyStore.*;
 
 /** Physical deletion topology through V9. Shared content releases and Operator accounts are never deleted. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AccountDeletionStages {
     private final PrivacyStore store;private final PrivateObjectStore files;private final AccountDeletionOwnershipGuard ownership;
     public AccountDeletionStages(PrivacyStore store,PrivateObjectStore files,AccountDeletionOwnershipGuard ownership){this.store=store;this.files=files;this.ownership=ownership;}
@@ -72,6 +72,8 @@ public class AccountDeletionStages {
         store.db.update("DELETE FROM mp_background_job WHERE owner_student_id=? AND job_type='STUDENT_EXPORT'",student);
     }
     private void metadata(long student){
+        // A deleted pilot slot stays unavailable, but its per-report metadata is erased.
+        store.db.update("DELETE FROM mp_pilot_report_usage WHERE student_id=?",student);
         // This is Student-owned provenance; shared task-release authorization is not.
         store.db.update("DELETE FROM mp_run_product_adoption WHERE student_id=?",student);
         store.db.update("DELETE e FROM mp_product_event e LEFT JOIN mp_intake_session i ON i.id=e.intake_session_id WHERE e.student_id=? OR i.claimed_student_id=?",student,student);

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 
 /** Durable, bounded evidence worker. Source reads happen outside the short lease/publication transactions. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class EvidenceJobs {
     public record Lease(long job,long student,long run,long version,String worker,long snapshot,String closedSha,String mode,String rule) {}
     public record Item(String key,String type,String sourceType,long sourceId,JsonNode value,String summary,List<String> claims,Instant observedAt) {}

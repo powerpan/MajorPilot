@@ -8,7 +8,7 @@ import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local") @RequestMapping("/api/admin/v1/majorpilot/exports")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/admin/v1/majorpilot/exports")
 @PreAuthorize("@ss.hasPermi('majorpilot:export:create')")
 public class AdminExportController {
     private final AdminExportService service;public AdminExportController(AdminExportService service){this.service=service;}

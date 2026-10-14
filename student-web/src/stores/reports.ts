@@ -237,7 +237,7 @@ export const useReports = defineStore("reports", () => {
       accept(body, issuedAt);
     }
     if (!report.value && value.status === "FAILED")
-      throw new ApiError(409, "REPORT_GENERATION_FAILED");
+      throw new ApiError(409, value.generation?.safeCode === "PILOT_REPORT_LIMIT" ? "PILOT_REPORT_LIMIT" : "REPORT_GENERATION_FAILED");
   }
   async function refreshStatus() {
     if (!target || refreshing.value || loading.value || target.kind === "print")

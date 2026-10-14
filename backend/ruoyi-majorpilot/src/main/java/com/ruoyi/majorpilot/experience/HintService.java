@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class HintService {
     private final RunService runs;private final RunStore db;private final HintProvider provider;private final RateLimits limits;
     public HintService(RunService runs,HintProvider provider,RateLimits limits){this.runs=runs;this.db=runs.store();this.provider=provider;this.limits=limits;}

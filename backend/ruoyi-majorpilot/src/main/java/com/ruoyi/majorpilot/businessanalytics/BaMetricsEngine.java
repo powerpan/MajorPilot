@@ -5,7 +5,7 @@ import com.ruoyi.majorpilot.shared.ApiException;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public final class BaMetricsEngine {
     private final TaskContentRepository repository;private final ObjectMapper mapper;
     public BaMetricsEngine(TaskContentRepository repository,ObjectMapper mapper){this.repository=repository;this.mapper=mapper;}

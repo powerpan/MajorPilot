@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { pilotMode } from "../lib/pilot";
+import PilotAllowance from "../components/PilotAllowance.vue";
 import { computed, ref, watch, nextTick, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useReports } from "../stores/reports";
@@ -169,6 +171,7 @@ const ordinaryLink = computed(() =>
         >
       </nav>
       <article class="report-document">
+        <PilotAllowance v-if="pilotMode && !printing && auth.me" />
         <p v-if="reader.loading" class="loading-state" role="status">
           正在加载报告…
         </p>
@@ -235,7 +238,7 @@ const ordinaryLink = computed(() =>
                 读取新版本
               </button></template
             ><template v-else-if="reader.generation?.status === 'FAILED'"
-              >更新准备异常；当前已发布报告仍可阅读。</template
+              >{{ reader.generation.safeCode === 'PILOT_REPORT_LIMIT' ? '本轮报告生成次数已用完；当前已发布报告仍可阅读。' : '更新准备异常；当前已发布报告仍可阅读。' }}</template
             ><template v-else-if="reader.generation?.status === 'GENERATING'"
               >新版本正在准备；当前已发布报告仍可阅读。</template
             >

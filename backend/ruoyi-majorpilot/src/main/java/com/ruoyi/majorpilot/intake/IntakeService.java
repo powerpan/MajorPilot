@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class IntakeService implements IntakeClaimPort {
     public record View(String intakeSessionId,String questionnaireVersion,String status,long revision,Instant expiresAt,String lastStepKey,ObjectNode answers,String recommendationId) {}
     public record Created(View view,String newSecret) {}

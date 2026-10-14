@@ -1,0 +1,9 @@
+[Unit]
+Description=MajorPilot bounded invitation test
+[Slice]
+CPUAccounting=true
+MemoryAccounting=true
+CPUQuota=100%
+MemoryHigh=1100M
+MemoryMax=1250M
+TasksMax=256

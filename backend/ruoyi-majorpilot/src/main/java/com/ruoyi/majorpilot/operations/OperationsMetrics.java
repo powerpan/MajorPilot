@@ -12,7 +12,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static com.ruoyi.majorpilot.operations.OperationsService.*;
 
 /** Reads one consistent fact snapshot, deliberately independent of admin pagination. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class OperationsMetrics {
     private final OperationsService ops;private final TransactionTemplate read;
     public OperationsMetrics(OperationsService ops){this.ops=ops;read=new TransactionTemplate(ops.tx.getTransactionManager());read.setReadOnly(true);read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);}

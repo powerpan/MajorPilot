@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-@RestController @Profile("local") @RequestMapping("/api/admin/v1/majorpilot")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/admin/v1/majorpilot")
 public class RunAdminController {
     private final RunService runs;public RunAdminController(RunService runs){this.runs=runs;}
     @PostMapping("/experience-runs/{id}/recovery-runs") @PreAuthorize("@ss.hasPermi('majorpilot:recovery:create')")

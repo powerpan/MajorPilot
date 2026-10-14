@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Dedicated system queue. It can neither claim Student nor Operator work. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class RetentionJobs {
     public record Lease(long id,long generation,String worker,RetentionPolicy policy,Instant asOf,int batch){}
     private final JdbcTemplate db;private final TransactionTemplate tx;private final ObjectMapper mapper;private final RetentionService service;private final Clock clock;

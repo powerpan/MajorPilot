@@ -17,25 +17,34 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
-@Configuration @Profile("local")
+@Configuration @Profile({"local","pilot"})
 public class StudentSecurityConfig {
-    @Bean @Order(1) SecurityFilterChain productPublic(HttpSecurity http,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,@Value("${MP_STUDENT_ORIGIN:http://localhost:15173}")String origin) throws Exception { return base(http,mapper).securityMatcher("/api/public/v1/**").authorizeHttpRequests(a->a.anyRequest().permitAll()).addFilterBefore(new Boundary(false,sessions,csrf,mapper,origin),UsernamePasswordAuthenticationFilter.class).build(); }
-    @Bean @Order(2) SecurityFilterChain productStudent(HttpSecurity http,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,@Value("${MP_STUDENT_ORIGIN:http://localhost:15173}")String origin) throws Exception { return base(http,mapper).securityMatcher("/api/app/v1/**").authorizeHttpRequests(a->a.anyRequest().hasAuthority("STUDENT")).addFilterBefore(new Boundary(true,sessions,csrf,mapper,origin),UsernamePasswordAuthenticationFilter.class).build(); }
+    @org.springframework.beans.factory.annotation.Autowired(required=false) private com.ruoyi.majorpilot.pilot.PilotAccess pilot;
+    @Bean @Order(1) SecurityFilterChain productPublic(HttpSecurity http,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,@Value("${MP_STUDENT_ORIGIN:http://localhost:15173}")String origin) throws Exception { return base(http,mapper).securityMatcher("/api/public/v1/**").authorizeHttpRequests(a->a.anyRequest().permitAll()).addFilterBefore(new Boundary(false,sessions,csrf,mapper,origin,pilot),UsernamePasswordAuthenticationFilter.class).build(); }
+    @Bean @Order(2) SecurityFilterChain productStudent(HttpSecurity http,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,@Value("${MP_STUDENT_ORIGIN:http://localhost:15173}")String origin) throws Exception { return base(http,mapper).securityMatcher("/api/app/v1/**").authorizeHttpRequests(a->a.anyRequest().hasAuthority("STUDENT")).addFilterBefore(new Boundary(true,sessions,csrf,mapper,origin,pilot),UsernamePasswordAuthenticationFilter.class).build(); }
     private HttpSecurity base(HttpSecurity http,ObjectMapper mapper) throws Exception { return http.csrf(c->c.disable()).requestCache(c->c.disable()).logout(c->c.disable()).sessionManagement(c->c.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).exceptionHandling(c->c.authenticationEntryPoint((req,res,e)->fail(mapper,req,res,new ApiException(401,"AUTH_REQUIRED"))).accessDeniedHandler((req,res,e)->fail(mapper,req,res,new ApiException(403,"PERMISSION_DENIED")))); }
     static void fail(ObjectMapper mapper,HttpServletRequest req,HttpServletResponse res,ApiException error) throws IOException { res.setStatus(error.status);res.setContentType("application/json;charset=UTF-8");mapper.writeValue(res.getOutputStream(),ApiResponses.error(req,error)); }
     static final class Boundary extends OncePerRequestFilter {
         final boolean student;final StudentSessions sessions;final CsrfService csrf;final ObjectMapper mapper;final String origin;
-        Boundary(boolean student,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,String origin) { this.student=student;this.sessions=sessions;this.csrf=csrf;this.mapper=mapper;this.origin=origin; }
+        final com.ruoyi.majorpilot.pilot.PilotAccess pilot;
+        Boundary(boolean student,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,String origin) { this(student,sessions,csrf,mapper,origin,null); }
+        Boundary(boolean student,StudentSessions sessions,CsrfService csrf,ObjectMapper mapper,String origin,com.ruoyi.majorpilot.pilot.PilotAccess pilot) { this.student=student;this.sessions=sessions;this.csrf=csrf;this.mapper=mapper;this.origin=origin;this.pilot=pilot; }
         @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain)throws ServletException,IOException {
             res.setHeader("X-Request-Id",ApiResponses.requestId(req));res.setHeader("Cache-Control","no-store");res.setHeader("Referrer-Policy","no-referrer");
             try {
-                if(!Set.of("127.0.0.1","::1","0:0:0:0:0:0:0:1").contains(req.getRemoteAddr()))throw new ApiException(403,"LOCAL_ONLY");
+                if(pilot==null&&!Set.of("127.0.0.1","::1","0:0:0:0:0:0:0:1").contains(req.getRemoteAddr()))throw new ApiException(403,"LOCAL_ONLY");
+                if(pilot!=null&&!req.isSecure())throw new ApiException(403,"HTTPS_REQUIRED");
                 String path=req.getRequestURI();if(path.startsWith("/api/public/v1/p0/")||path.startsWith("/api/app/v1/p0/"))throw new ApiException(404,"RESOURCE_NOT_FOUND");
+                if(pilot!=null){
+                    if(!student&&!Set.of("/api/public/v1/auth/login","/api/public/v1/auth/csrf","/api/public/v1/majors","/api/public/v1/questionnaires/current").contains(path)&&!path.startsWith("/api/public/v1/deletion-receipts/"))throw new ApiException(404,"PILOT_FEATURE_DISABLED");
+                    if(path.equals("/api/app/v1/me/email")||path.equals("/api/app/v1/me/email/confirm")||path.contains("/follow-up")||path.contains("/review-previews")||path.contains("/demos")||path.contains("/product-adoption"))throw new ApiException(404,"PILOT_FEATURE_DISABLED");
+                }
                 String session=ApiResponses.cookie(req,"MP_SESSION");
                 if(student) {
                     var principal=sessions.authenticate(session);req.setAttribute("mp.student",principal);
                     SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(principal,null,List.of(new SimpleGrantedAuthority("STUDENT"))));
                     if(!principal.status().equals("ACTIVE")&&!pendingAccountPath(path))throw new ApiException(403,"EMAIL_NOT_VERIFIED");
+                    if(pilot!=null){if(!pilot.isMember(principal.internalId()))throw new ApiException(403,"PILOT_ACCOUNT_REQUIRED");if(!pilot.consented(principal.internalId())&&!pendingAccountPath(path)&&!Set.of("/api/app/v1/pilot","/api/app/v1/pilot/consent").contains(path))throw new ApiException(403,"CONSENT_REQUIRED");}
                 }
                 boolean download=student&&path.matches("/api/app/v1/data-export-requests/[0-7][0-9A-HJKMNP-TV-Z]{25}/download");
                 if(download||!Set.of("GET","HEAD","OPTIONS").contains(req.getMethod())) {

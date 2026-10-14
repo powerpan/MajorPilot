@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /** Domain facts are recorded only by backend transactions; answers and credentials never enter events. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class ProductEvents {
     private static final Map<String,Set<String>> ALLOWED = Map.of(
         "intake.session.started",Set.of("questionnaireVersion"),

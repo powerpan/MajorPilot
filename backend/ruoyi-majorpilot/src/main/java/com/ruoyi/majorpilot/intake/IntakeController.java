@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local")
+@RestController @Profile({"local","pilot"})
 public class IntakeController {
     public record Create(String questionnaireVersion) {}
     private final IntakeService intakes;private final CsrfService csrf;private final RateLimits limits;private final MajorCatalog catalog;

@@ -10,7 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public final class PublishedTaskContentProvider implements TaskContentProvider {
     private final JdbcTemplate db;private final TaskContentRepository repository;private final boolean demoEnabled,previewEnabled;
     private LocalProductAccess local;

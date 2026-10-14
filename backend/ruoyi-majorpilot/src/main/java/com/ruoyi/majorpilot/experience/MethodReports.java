@@ -12,8 +12,11 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 
 /** The new edition has its own explicit contract. It never fabricates learning events for v1. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class MethodReports {
+    private com.ruoyi.majorpilot.pilot.ReportAllowances allowances;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void allowances(com.ruoyi.majorpilot.pilot.ReportAllowances value){allowances=value;}
     private final RunStore db;private final TaskContentProvider content;private final GuidedLearning learning;private final NextRecommendations next;
     public MethodReports(RunStore db,TaskContentProvider content,GuidedLearning learning,NextRecommendations next){this.db=db;this.content=content;this.learning=learning;this.next=next;}
     public void enqueue(Row run){
@@ -60,9 +63,16 @@ public class MethodReports {
     public Map<String,Object> create(Map<String,Object> report,JsonNode input){
         if(report.get("generation_target_version_id")!=null)throw new ApiException(409,"REPORT_REGENERATION_IN_PROGRESS");
         String id=PublicIds.next(),sha=db.hash(input);long no=db.jdbc().queryForObject("SELECT COALESCE(MAX(version_no),0)+1 FROM mp_report_version WHERE report_id=?",Long.class,n(report,"id"));
+        boolean permitted=allowances==null||allowances.reserve(n(report,"student_id"),id,s(report,"report_type"));
         var request=map("schemaVersion","method-report-request-v1","inputSha256",sha,"reportId",s(report,"public_id"),"reportVersionId",id,"reviewRequired",true);
         db.jdbc().update("INSERT INTO mp_report_version(public_id,report_id,version_no,generation_phase,request_manifest_json,request_manifest_sha256,input_manifest_json,source_manifest_sha256,next_recommendation_id,template_version,prompt_version,schema_version,claim_rule_version,review_required,review_policy_version) VALUES(?,?,?,'PREPARED',?,?,?,?,?,'method-report-template-v1',?,'method-report-v1','method-report-source-v1',TRUE,'report-review-rewrite-v1')",id,n(report,"id"),no,db.json(request),db.hash(db.mapper().valueToTree(request)),db.json(input),sha,nullable(report,"next_recommendation_id"),MethodReportContract.PROMPT);
-        var version=db.jdbc().queryForMap("SELECT * FROM mp_report_version WHERE public_id=?",id);db.jdbc().update("UPDATE mp_report SET generation_target_version_id=?,status=IF(current_version_id IS NULL,'GENERATING','READY'),row_version=row_version+1 WHERE id=?",n(version,"id"),n(report,"id"));
+        var version=db.jdbc().queryForMap("SELECT * FROM mp_report_version WHERE public_id=?",id);
+        if(!permitted){
+            db.jdbc().update("UPDATE mp_report_version SET status='FAILED',failure_code='PILOT_REPORT_LIMIT',completed_at=UTC_TIMESTAMP(3) WHERE id=?",n(version,"id"));
+            db.jdbc().update("UPDATE mp_report SET status=IF(current_version_id IS NULL,'FAILED','READY'),row_version=row_version+1 WHERE id=?",n(report,"id"));
+            return db.jdbc().queryForMap("SELECT * FROM mp_report_version WHERE public_id=?",id);
+        }
+        db.jdbc().update("UPDATE mp_report SET generation_target_version_id=?,status=IF(current_version_id IS NULL,'GENERATING','READY'),row_version=row_version+1 WHERE id=?",n(version,"id"),n(report,"id"));
         db.jdbc().update("INSERT INTO mp_background_job(public_id,job_type,business_key,owner_student_id,target_type,target_id,checkpoint_json) VALUES(?,'METHOD_REPORT',?,?,'REPORT_VERSION',?,?)",PublicIds.next(),"method-report:"+id,n(report,"student_id"),n(version,"id"),db.json(map("inputSha256",sha)));
         return version;
     }
@@ -77,6 +87,7 @@ public class MethodReports {
         var input=db.mapper().createObjectNode().put("schemaVersion","method-report-input-v1").put("reportType","COMPARISON");var runs=input.putArray("runs");var sources=input.putArray("sources");var checkpoints=input.putArray("checkpoints");
         for(var v:byMajor.values()){var original=s(v,"schema_version").equals(MethodReportContract.SCHEMA)?db.node(v.get("input_manifest_json")):legacyInput(student,v);if(s(v,"schema_version").equals(MethodReportContract.SCHEMA)&&!db.hash(original).equals(s(v,"source_manifest_sha256")))throw invalid();var task=(ObjectNode)original.path("runs").get(0).deepCopy();task.set("sourceReport",db.mapper().valueToTree(map("reportId",s(v,"report_public_id"),"reportVersionId",s(v,"public_id"),"versionNo",n(v,"version_no"))));runs.add(task);original.path("sources").forEach(s->sources.add(s.deepCopy()));original.path("checkpoints").forEach(c->checkpoints.add(c.deepCopy()));}
         input.set("nextRecommendation",db.mapper().valueToTree(next.projection(student,null)));
+        if(allowances!=null&&!force){var latest=db.jdbc().queryForList("SELECT source_manifest_sha256 FROM mp_report_version WHERE report_id=? ORDER BY version_no DESC LIMIT 1",n(report,"id"));if(!latest.isEmpty()&&db.hash(input).equals(s(latest.getFirst(),"source_manifest_sha256")))return;}
         if(!force&&report.get("current_version_id")!=null){var current=db.jdbc().queryForMap("SELECT schema_version,source_manifest_sha256 FROM mp_report_version WHERE id=?",n(report,"current_version_id"));if(s(current,"schema_version").equals(MethodReportContract.SCHEMA)&&db.hash(input).equals(s(current,"source_manifest_sha256")))return;}
         var version=create(report,input);for(var v:byMajor.values())db.jdbc().update("INSERT INTO mp_comparison_source(comparison_report_version_id,source_experience_report_version_id,major_id) VALUES(?,?,?)",n(version,"id"),n(v,"id"),n(v,"major_id"));
     }

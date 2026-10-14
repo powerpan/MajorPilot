@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local")
+@RestController @Profile({"local","pilot"})
 @RequestMapping("/api/app/v1/experience-runs/{id}/workbooks")
 public class WorkbookController {
     private final RunService runs;

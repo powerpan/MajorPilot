@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class StudentRecommendationService {
     public record ProfileInput(String questionnaireVersion,JsonNode answers) {}
     public record DecisionInput(String selectedMajorCode,String overrideReasonCode,String overrideText) {}

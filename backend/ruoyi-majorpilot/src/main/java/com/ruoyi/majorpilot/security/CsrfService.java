@@ -4,7 +4,7 @@ import jakarta.servlet.http.*;
 import java.time.Instant;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class CsrfService {
     private final Secrets secrets;
     public CsrfService(Secrets secrets) { this.secrets=secrets; }

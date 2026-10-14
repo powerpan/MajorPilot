@@ -4,7 +4,7 @@ import jakarta.servlet.http.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-@RestController @Profile("local") @RequestMapping("/api/app/v1")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/app/v1")
 public class ReportController {
     private final ReportService service;public ReportController(ReportService service){this.service=service;}
     @GetMapping("/reports") Object list(@RequestParam(required=false)String cursor,@RequestParam(required=false)Integer limit,HttpServletRequest req){return ApiResponses.success(req,service.list(ApiResponses.student(req),cursor,limit));}

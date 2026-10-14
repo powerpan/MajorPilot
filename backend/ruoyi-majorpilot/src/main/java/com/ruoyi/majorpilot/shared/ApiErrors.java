@@ -6,7 +6,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
-@RestControllerAdvice(basePackages="com.ruoyi.majorpilot") @Profile("local") @Order(-200)
+@RestControllerAdvice(basePackages="com.ruoyi.majorpilot") @Profile({"local","pilot"}) @Order(-200)
 public class ApiErrors {
     private static final Logger LOG=LoggerFactory.getLogger(ApiErrors.class);
     @ExceptionHandler(ApiException.class) public ResponseEntity<?> rejected(ApiException failure,HttpServletRequest req) { return ResponseEntity.status(failure.status).body(ApiResponses.error(req,failure)); }

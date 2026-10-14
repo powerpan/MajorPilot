@@ -7,7 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public final class Secrets {
     private static final SecureRandom RANDOM=new SecureRandom();private final byte[] key;
     public Secrets(@Value("${MP_CSRF_SECRET}") String key) { if(key.length()<32)throw new IllegalArgumentException("Strong local signing secret required");this.key=key.getBytes(StandardCharsets.UTF_8); }

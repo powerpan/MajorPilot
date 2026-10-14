@@ -13,6 +13,7 @@ import { hasTaskDrafts } from "../lib/task-drafts";
 import { useIntake } from "../stores/intake";
 import type { Consent } from "../types";
 import ArrowIcon from "../components/ArrowIcon.vue";
+import { pilotMode } from "../lib/pilot";
 const route = useRoute(),
   router = useRouter(),
   auth = useAuth(),
@@ -185,11 +186,11 @@ async function submit() {
             ? "问卷不需要重新填写。注册后立即保存建议，再验证邮箱。"
             : mode === "forgot"
               ? "输入你注册时使用的邮箱。"
-              : "使用邮箱和密码登录，继续已保存的进度。"
+              : pilotMode ? "使用负责人提供的测试账户和密码登录。无需邮箱验证；忘记密码请联系负责人。" : "使用邮箱和密码登录，继续已保存的进度。"
         }}
       </p>
       <form @submit.prevent="submit">
-        <label for="auth-email">邮箱</label
+        <label for="auth-email">{{pilotMode?'测试账户':'邮箱'}}</label
         ><input
           id="auth-email"
           v-model.trim="email"
@@ -197,7 +198,7 @@ async function submit() {
           autocomplete="email"
           required
           maxlength="254"
-          placeholder="you@example.com"
+          :placeholder="pilotMode?'输入负责人提供的账户':'you@example.com'"
         /><template v-if="mode !== 'forgot'"
           ><div class="label-row">
             <label for="auth-password">密码</label
@@ -276,7 +277,7 @@ async function submit() {
           ><span class="action-arrow"><ArrowIcon /></span>
         </button>
       </form>
-      <div class="auth-links">
+      <div v-if="!pilotMode" class="auth-links">
         <RouterLink v-if="mode === 'login'" to="/forgot-password"
           >忘记密码？</RouterLink
         ><RouterLink v-if="mode === 'login'" to="/intake/1"

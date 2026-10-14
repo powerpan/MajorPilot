@@ -112,6 +112,8 @@ function browser({ channels = true } = {}) {
       },
     };
     const storage = (map, broadcast) => ({
+      get length(){return map.size;},
+      key: index => [...map.keys()][index] ?? null,
       getItem: (key) => map.get(key) ?? null,
       setItem(key, value) {
         map.set(key, String(value));
@@ -335,12 +337,14 @@ test("successful login followed by claim clears anonymous data but retains the n
   await tab.intake.init(true);
   tab.localStorage.setItem("other-project", "preserve");
   tab.sessionStorage.setItem("other-project", "preserve");
+  tab.sessionStorage.setItem("mp:pilot-intake:synthetic-student", "private pilot draft");
   await tab.auth.login("synthetic@example.invalid", "synthetic passphrase");
   tab.intake.claimed();
   assert.equal(tab.auth.me.value.studentId, me.studentId);
   cleared(tab);
   assert.equal(tab.localStorage.getItem("other-project"), "preserve");
   assert.equal(tab.sessionStorage.getItem("other-project"), "preserve");
+  assert.equal(tab.sessionStorage.getItem("mp:pilot-intake:synthetic-student"), null);
   for (const value of bus.sent)
     assert.deepEqual(Object.keys(value).sort(), ["nonce", "reason", "version"]);
   assert.equal(JSON.stringify(bus.sent).includes("synthetic-private"), false);

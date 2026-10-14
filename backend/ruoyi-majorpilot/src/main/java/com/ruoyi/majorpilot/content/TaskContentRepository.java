@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /** Loads only catalogued classpath resources; neither HTTP nor client-supplied filesystem paths are supported. */
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public final class TaskContentRepository {
     public record Bundle(String path,String manifestSha256,String dataSha256,JsonNode manifest) {
         public Bundle { manifest=manifest.deepCopy(); }

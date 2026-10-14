@@ -13,6 +13,7 @@ import "./styles/ba.css";
 import "./styles/reports.css";
 import "./styles/privacy.css";
 import { useAuth } from "./stores/auth";
+import { pilotMode } from "./lib/pilot";
 const HomeView = () => import("./views/HomeView.vue");
 import IntakeView from "./views/IntakeView.vue";
 import AuthView from "./views/AuthView.vue";
@@ -56,6 +57,7 @@ const router = createRouter({
       (path) => ({ path, component: InformationView }),
     ),
     { path: "/app", component: DashboardView, meta: { private: true } },
+    { path: "/app/welcome", component: () => import("./views/PilotWelcomeView.vue"), meta: { private: true } },
     { path: "/app/settings", component: SettingsView, meta: { private: true } },
     {
       path: "/app/reports/:reportId",
@@ -99,6 +101,9 @@ const router = createRouter({
   ],
 });
 router.beforeEach(async (to) => {
+  if(pilotMode&&["/register","/forgot-password","/verify-email","/reset-password","/change-email","/p0"].includes(to.path))return "/login";
+  if(pilotMode&&(to.path.startsWith("/intake/")||to.path==="/recommendation"))return "/app/welcome";
+  if(!pilotMode&&to.path==="/app/welcome")return "/app";
   document.title =
     to.path === "/p0"
       ? "MajorPilot · P0 技术验证"
@@ -108,6 +113,7 @@ router.beforeEach(async (to) => {
     try {
       await auth.refresh(true);
       if (!auth.me) return { path: "/login", query: { returnTo: to.path } };
+      if(pilotMode&&!auth.me.canStartExperience&&to.path!=="/app/welcome"&&to.path!=="/app/settings")return "/app/welcome";
     } catch {
       /* Private view presents retry, not fake data. */
     }

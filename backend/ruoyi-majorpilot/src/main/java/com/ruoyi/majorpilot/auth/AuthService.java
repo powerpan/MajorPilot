@@ -12,12 +12,16 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AuthService {
+    private com.ruoyi.majorpilot.pilot.PilotAccess pilot;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void pilotAccess(com.ruoyi.majorpilot.pilot.PilotAccess access){pilot=access;}
     private final JdbcTemplate jdbc;private final TransactionTemplate tx;private final IntakeClaimPort intake;private final IdempotencyService idem;
     private final StudentPasswords passwords;private final StudentSessions sessions;private final RateLimits limits;private final AuthMailGateway mail;private final SecurityEvents audit;private final Secrets secrets;private final ProductEvents events;
     public AuthService(JdbcTemplate jdbc,TransactionTemplate tx,IntakeClaimPort intake,IdempotencyService idem,StudentPasswords passwords,StudentSessions sessions,RateLimits limits,AuthMailGateway mail,SecurityEvents audit,Secrets secrets,ProductEvents events) { this.jdbc=jdbc;this.tx=tx;this.intake=intake;this.idem=idem;this.passwords=passwords;this.sessions=sessions;this.limits=limits;this.mail=mail;this.audit=audit;this.secrets=secrets;this.events=events; }
     public AuthDtos.Registered register(AuthDtos.Register body,String intakeHash,String key,String source,String requestId) {
+        requireMailMode();
         String email=AuthInputs.email(body.email());AuthInputs.newPassword(body.password());validateConsents(body.consents());
         limits.require("register-ip",source,10,Duration.ofHours(1));limits.require("register-email",email,5,Duration.ofHours(1));
         String passwordHash=passwords.hash(body.password());AtomicReference<String> outgoing=new AtomicReference<>();AtomicReference<Long> outgoingStudent=new AtomicReference<>();
@@ -46,13 +50,14 @@ public class AuthService {
             var rows=jdbc.queryForList("SELECT * FROM mp_student_account WHERE email_normalized=? FOR UPDATE",normalized);
             Map<String,Object> account=rows.isEmpty()?null:rows.getFirst();boolean matches=passwords.matches(body.password(),account==null?null:(String)account.get("password_hash"));
             if(account==null)return new ApiException(401,"AUTH_INVALID");long id=number(account,"id");
+            boolean pilotMember=pilot!=null&&pilot.isMember(id);if(pilot!=null&&!pilotMember)return new ApiException(401,"AUTH_INVALID");
             String state=(String)account.get("status");Instant locked=account.get("locked_until")==null?null:DbTimes.instant(account.get("locked_until"));Instant now=Instant.now();
             boolean lockedNow=state.equals("LOCKED")&&(locked==null||locked.isAfter(now));
             if(!matches) {
                 boolean expiredTemporaryLock=state.equals("LOCKED")&&locked!=null&&!locked.isAfter(now);
                 int failures=expiredTemporaryLock?1:((Number)account.get("failed_login_count")).intValue()+1;
                 if(!Set.of("DELETED","DELETION_PENDING").contains(state)&&!lockedNow) {
-                    String nextState=failures>=10?"LOCKED":expiredTemporaryLock?(account.get("email_verified_at")==null?"PENDING_VERIFICATION":"ACTIVE"):state;
+                    String nextState=failures>=10?"LOCKED":expiredTemporaryLock?(pilotMember||account.get("email_verified_at")!=null?"ACTIVE":"PENDING_VERIFICATION"):state;
                     jdbc.update("UPDATE mp_student_account SET failed_login_count=?,status=?,locked_until=? WHERE id=?",failures,nextState,failures>=10?Timestamp.from(now.plusSeconds(900)):null,id);
                     if(failures>=10){sessions.revokeAll(id,"SECURITY_LOCK");audit.record(id,"ACCOUNT_LOCKED",source,requestId);}
                 }
@@ -60,19 +65,20 @@ public class AuthService {
             }
             if(lockedNow)return new ApiException(403,"ACCOUNT_LOCKED");
             if(Set.of("DELETED","DELETION_PENDING").contains(state))return new ApiException(401,"AUTH_INVALID");
-            String active=account.get("email_verified_at")==null?"PENDING_VERIFICATION":"ACTIVE";
+            String active=pilotMember||account.get("email_verified_at")!=null?"ACTIVE":"PENDING_VERIFICATION";
             jdbc.update("UPDATE mp_student_account SET status=?,failed_login_count=0,locked_until=NULL,last_login_at=? WHERE id=?",active,Timestamp.from(now),id);
             String secret=sessions.issue(id);audit.record(id,"LOGIN_SUCCEEDED",source,requestId);
-            return new AuthDtos.LoginResult(new AuthDtos.Me((String)account.get("public_id"),(String)account.get("email_display"),active,active.equals("ACTIVE"),active.equals("ACTIVE")),secret);
+            return new AuthDtos.LoginResult(new AuthDtos.Me((String)account.get("public_id"),(String)account.get("email_display"),active,account.get("email_verified_at")!=null,active.equals("ACTIVE")&&(pilot==null||pilot.consented(id))),secret);
         });
         if(result instanceof ApiException failure)throw failure;return (AuthDtos.LoginResult)result;
     }
     public AuthDtos.Me me(StudentPrincipal student) {
         var account=jdbc.queryForMap("SELECT public_id,email_display,status,email_verified_at FROM mp_student_account WHERE id=?",student.internalId());
         boolean verified=account.get("email_verified_at")!=null;String status=(String)account.get("status");
-        return new AuthDtos.Me((String)account.get("public_id"),(String)account.get("email_display"),status,verified,status.equals("ACTIVE")&&verified);
+        return new AuthDtos.Me((String)account.get("public_id"),(String)account.get("email_display"),status,verified,status.equals("ACTIVE")&&(pilot==null?verified:pilot.consented(student.internalId())));
     }
     public void requestMail(AuthDtos.Email body,String purpose,String source,String requestId) {
+        requireMailMode();
         String email;try{email=AuthInputs.email(body.email());}catch(ApiException invalid){email="invalid";}
         limits.require("mail-ip",source,20,Duration.ofHours(1));limits.require("mail-email",email,3,Duration.ofHours(1));
         final String normalized=email;AtomicReference<Long> outgoingStudent=new AtomicReference<>();String token=tx.execute(status->{
@@ -87,6 +93,7 @@ public class AuthService {
     public void verify(String token,String source,String requestId) { limits.require("email-token-ip",source,30,Duration.ofMinutes(15));consume(token,"VERIFY_EMAIL",null,source,requestId); }
     public void reset(AuthDtos.Reset body,String source,String requestId) { limits.require("email-token-ip",source,30,Duration.ofMinutes(15));String hash=passwords.hash(body.newPassword());consume(body.token(),"RESET_PASSWORD",hash,source,requestId); }
     private void consume(String token,String purpose,String passwordHash,String source,String requestId) {
+        requireMailMode();
         if(token==null||!token.matches("[A-Za-z0-9_-]{43}"))throw new ApiException(422,"EMAIL_TOKEN_INVALID");
         tx.executeWithoutResult(status->{
             var candidate=jdbc.queryForList("SELECT student_id FROM mp_email_token WHERE token_hash=? AND purpose=?",Secrets.hash(token),purpose);
@@ -113,16 +120,20 @@ public class AuthService {
             jdbc.queryForObject("SELECT id FROM mp_student_account WHERE id=? FOR UPDATE",Long.class,student.internalId());
             var latest=jdbc.queryForList("SELECT decision FROM mp_consent_record WHERE student_id=? AND document_type='RESEARCH' ORDER BY id DESC LIMIT 1",String.class,student.internalId());
             if(!latest.isEmpty()&&latest.getFirst().equals("WITHDRAWN"))return;
-            jdbc.update("INSERT INTO mp_consent_record(student_id,document_type,document_version,decision) VALUES(?,'RESEARCH','v1','WITHDRAWN')",student.internalId());
+            jdbc.update("INSERT INTO mp_consent_record(student_id,document_type,document_version,decision) VALUES(?,'RESEARCH',?,'WITHDRAWN')",student.internalId(),pilot==null?"v1":"pilot-v1");
             audit.record(student.internalId(),"RESEARCH_WITHDRAWN",source,requestId);
         });
     }
-    private void validateConsents(List<AuthDtos.Consent> consents) {
+    public static void validateConsents(List<AuthDtos.Consent> consents) {
+        validateConsents(consents,"v1");
+    }
+    public static void validateConsents(List<AuthDtos.Consent> consents,String version) {
         if(consents==null||consents.size()<2||consents.size()>3)throw new ApiException(422,"CONSENT_REQUIRED");Set<String> types=new HashSet<>();
         for(var consent:consents) {
-            if(consent==null||consent.documentType()==null||consent.decision()==null||!Set.of("TERMS","PRIVACY","RESEARCH").contains(consent.documentType())||!types.add(consent.documentType())||!"v1".equals(consent.documentVersion())||!Set.of("ACCEPTED","DECLINED").contains(consent.decision())||(!consent.documentType().equals("RESEARCH")&&!consent.decision().equals("ACCEPTED")))throw new ApiException(422,"CONSENT_REQUIRED");
+            if(consent==null||consent.documentType()==null||consent.decision()==null||!Set.of("TERMS","PRIVACY","RESEARCH").contains(consent.documentType())||!types.add(consent.documentType())||!version.equals(consent.documentVersion())||!Set.of("ACCEPTED","DECLINED").contains(consent.decision())||(!consent.documentType().equals("RESEARCH")&&!consent.decision().equals("ACCEPTED")))throw new ApiException(422,"CONSENT_REQUIRED");
         }
         if(!types.containsAll(Set.of("TERMS","PRIVACY")))throw new ApiException(422,"CONSENT_REQUIRED");
     }
     private static long number(Map<String,Object> row,String name) { return ((Number)row.get(name)).longValue(); }
+    private void requireMailMode(){if(pilot!=null)throw new ApiException(404,"PILOT_EMAIL_DISABLED");}
 }

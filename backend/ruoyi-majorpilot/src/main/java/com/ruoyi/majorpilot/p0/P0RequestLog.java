@@ -18,7 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerMapping;
 
 /** Logs generated correlation IDs and route templates only: never URL IDs, headers, body or exception text. */
-@Component @Profile({"p0","local"}) @Order(Ordered.HIGHEST_PRECEDENCE+20)
+@Component @Profile({"p0","local","pilot"}) @Order(Ordered.HIGHEST_PRECEDENCE+20)
 public class P0RequestLog extends OncePerRequestFilter {
     private static final Logger LOG=LoggerFactory.getLogger(P0RequestLog.class);
     @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain) throws ServletException,IOException {

@@ -27,7 +27,8 @@ class MethodLearningMySqlTest {
     @BeforeEach void setup(){mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);f=new ProfessionalMySqlTest();f.setup();books=new WorkbookCatalog(mapper,repository);learning=new GuidedLearning(f.store,f.provider,books);f.runs.guidedLearning(learning);reports=new MethodReports(f.store,f.provider,learning,new NextRecommendations(db,mapper));f.closure.methodPipeline(learning,reports);
         gateway=mock(MethodReportGateway.class);when(gateway.enabled()).thenReturn(true);when(gateway.provider()).thenReturn("SYNTHETIC");when(gateway.model()).thenReturn("offline-fixture");when(gateway.call(any(),nullable(JsonNode.class),anyBoolean())).thenAnswer(call->new MethodReportGateway.Result(MethodReportContractTest.proposal(mapper,call.getArgument(0)),"SYNTHETIC","offline-fixture",0L,0L,0L,1,null));worker=new MethodReportWorker(f.store,tx,reports,gateway);
     }
-    @AfterEach void cleanup(){worker.close();f.cleanup();for(String id:IDS.values())db.update("UPDATE mp_task_version SET status='REVIEW' WHERE public_id=?",id);}
+    @AfterEach void cleanup(){worker.close();db.update("DELETE FROM mp_pilot_report_usage WHERE student_id=?",f.student.internalId());db.update("DELETE FROM mp_pilot_account WHERE student_id=?",f.student.internalId());f.cleanup();for(String id:IDS.values())db.update("UPDATE mp_task_version SET status='REVIEW' WHERE public_id=?",id);}
+    com.ruoyi.majorpilot.pilot.ReportAllowances pilot(){var value=new com.ruoyi.majorpilot.pilot.ReportAllowances(db);db.update("INSERT INTO mp_pilot_account(student_id,account_slot) VALUES(?,1)",f.student.internalId());reports.allowances(value);worker.allowances(value);return value;}
     RunDtos.Run start(String major){String id=IDS.get(major);db.update("UPDATE mp_task_version SET status='PUBLISHED' WHERE public_id=?",id);f.version=f.provider.pinned(id);long profile=db.queryForObject("SELECT id FROM mp_decision_profile WHERE student_id=?",Long.class,f.student.internalId());String rec=PublicIds.next(),decision=PublicIds.next();
         db.update("INSERT INTO mp_recommendation(public_id,student_id,decision_profile_id,recommendation_type,completed_major_codes_json,rule_version,primary_major_code,alternative_order_json,tie_detected,explanation_status,explanation_version,safe_result_json,generated_at) VALUES(?,?,?,'INITIAL','[]',?,?,'[]',FALSE,'STRUCTURED_ONLY','test-only','{}',UTC_TIMESTAMP(3))",rec,f.student.internalId(),profile,"test-"+major,major);
         long recId=db.queryForObject("SELECT id FROM mp_recommendation WHERE public_id=?",Long.class,rec);
@@ -52,11 +53,36 @@ class MethodLearningMySqlTest {
     }
     void publish(){var lease=worker.claim();assertNotNull(lease);worker.process(lease);assertEquals("READY",db.queryForObject("SELECT status FROM mp_report_version WHERE id=?",String.class,lease.version()),()->db.queryForMap("SELECT status,failure_code FROM mp_report_version WHERE id=?",lease.version()).toString());}
     @Test void allThreeFlowsFreezePublishReviewAndCompareWithoutPaidCalls()throws Exception{
+        var allowance=pilot();
         for(String major:List.of("BUSINESS_ANALYTICS","DATA_SCIENCE","AI")){var closed=close(major);assertEquals("CLOSED",closed.status());assertEquals("GENERATING",closed.reportStatus());assertEquals(2,closed.experienceEdition());
             if("true".equals(System.getenv("MP_METHOD_EXPORT"))){var dir=java.nio.file.Path.of("../../data/method-quality/base");java.nio.file.Files.createDirectories(dir);java.nio.file.Files.writeString(dir.resolve(major+".json"),mapper.writerWithDefaultPrettyPrinter().writeValueAsString(reports.input(row(closed))));}
             publish();if(!major.equals("BUSINESS_ANALYTICS"))publish();}
         assertEquals(4,db.queryForObject("SELECT COUNT(*) FROM mp_report WHERE student_id=? AND status='READY'",Integer.class,f.student.internalId()));assertEquals(10,db.queryForObject("SELECT COUNT(*) FROM mp_ai_call WHERE student_id=? AND status='SUCCEEDED'",Integer.class,f.student.internalId()));assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM mp_report_version v JOIN mp_report r ON r.id=v.report_id WHERE r.student_id=? AND v.status='READY' AND (v.review_invocation_id IS NULL OR v.reviewed_proposal_sha256 IS NULL)",Integer.class,f.student.internalId()));
         var published=db.queryForList("SELECT structured_report_json FROM mp_report_version v JOIN mp_report r ON r.id=v.report_id WHERE r.student_id=? AND v.status='READY'",f.student.internalId());for(var p:published){var body=f.store.node(p.get("structured_report_json"));assertTrue(new ReportSchema(mapper).output(body));assertTrue(body.path("calculationConditions").isArray());for(var condition:body.path("calculationConditions"))assertEquals("MATCHED",condition.path("verificationStatus").asText());}
+        assertEquals(0,allowance.current(f.student.internalId()).get("experience").remaining());assertEquals(0,allowance.current(f.student.internalId()).get("comparison").remaining());
+        var report=db.queryForMap("SELECT * FROM mp_report WHERE student_id=? AND report_type='EXPERIENCE' LIMIT 1",f.student.internalId());var old=report.get("current_version_id");
+        tx.executeWithoutResult(t->reports.regenerate(f.student.internalId(),report.get("public_id").toString()));
+        assertNull(worker.claim());assertEquals(old,db.queryForMap("SELECT current_version_id FROM mp_report WHERE id=?",report.get("id")).get("current_version_id"));
+        assertEquals("PILOT_REPORT_LIMIT",db.queryForObject("SELECT failure_code FROM mp_report_version WHERE report_id=? ORDER BY version_no DESC LIMIT 1",String.class,report.get("id")));
+    }
+    @Test void pilotFailedBeforeCallReleasesButExternalFailureConsumes()throws Exception{
+        var allowance=pilot();var run=close("BUSINESS_ANALYTICS");var lease=worker.claim();
+        when(gateway.enabled()).thenReturn(false);worker.process(lease);assertEquals(3,allowance.current(f.student.internalId()).get("experience").remaining());verify(gateway,never()).call(any(),nullable(JsonNode.class),anyBoolean());
+        when(gateway.enabled()).thenReturn(true);doReturn(new MethodReportGateway.Result(null,"SYNTHETIC","offline-fixture",null,null,null,1,"TIMEOUT")).when(gateway).call(any(),nullable(JsonNode.class),anyBoolean());
+        String report=db.queryForObject("SELECT public_id FROM mp_report WHERE experience_run_id=?",String.class,row(run).id());tx.executeWithoutResult(t->reports.regenerate(f.student.internalId(),report));worker.process(worker.claim());assertEquals(2,allowance.current(f.student.internalId()).get("experience").remaining());
+    }
+    @Test void pilotExhaustionDoesNotLoseClosedAnswersOrEnqueueJobs()throws Exception{
+        var allowance=pilot();for(int i=0;i<3;i++)tx.executeWithoutResult(t->assertTrue(allowance.reserve(f.student.internalId(),PublicIds.next(),"EXPERIENCE")));
+        var run=close("DATA_SCIENCE");assertEquals("CLOSED",run.status());assertNull(worker.claim());assertFalse(reports.input(row(run)).path("sources").isEmpty());assertEquals("FAILED",db.queryForObject("SELECT status FROM mp_report WHERE experience_run_id=?",String.class,row(run).id()));
+    }
+    @Test void pilotConcurrentReservationsRollbackIdempotencyAndRestartKeepExactLimits()throws Exception{
+        var allowance=pilot();long student=f.student.internalId();
+        assertThrows(IllegalStateException.class,()->allowance.reserve(student,PublicIds.next(),"EXPERIENCE"));
+        String rolledBack=PublicIds.next();assertThrows(IllegalStateException.class,()->tx.executeWithoutResult(t->{allowance.reserve(student,rolledBack,"EXPERIENCE");throw new IllegalStateException("synthetic rollback");}));
+        assertEquals(3,allowance.current(student).get("experience").remaining());
+        String same=PublicIds.next();tx.executeWithoutResult(t->{assertTrue(allowance.reserve(student,same,"EXPERIENCE"));assertTrue(allowance.reserve(student,same,"EXPERIENCE"));});assertEquals(1,allowance.current(student).get("experience").used());
+        try(var pool=java.util.concurrent.Executors.newFixedThreadPool(8)){var tasks=new java.util.ArrayList<java.util.concurrent.Callable<Boolean>>();for(int i=0;i<12;i++)tasks.add(()->tx.execute(t->allowance.reserve(student,PublicIds.next(),"EXPERIENCE")));int wins=0;for(var future:pool.invokeAll(tasks))if(future.get())wins++;assertEquals(2,wins);}
+        var restarted=new com.ruoyi.majorpilot.pilot.ReportAllowances(db);assertEquals(0,restarted.current(student).get("experience").remaining());assertEquals(2,restarted.current(student).get("comparison").remaining());
     }
     @Test void completionCannotBypassExplicitLearningAndWrongConceptDoesNotBlock()throws Exception{
         var run=start("BUSINESS_ANALYTICS");String step="b1-context";var definition=f.definition(step);var answer=(ObjectNode)f.value(definition.path("inputSchema"),0);var saved=f.save(run,step,answer);assertEquals("LEARNING_SUBMISSION_REQUIRED",assertThrows(ApiException.class,()->f.runs.completeStep(f.student,run.runId(),step,key(),new RunDtos.Revision(saved.revision()))).code);

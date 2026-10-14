@@ -3,10 +3,9 @@ import {readFileSync} from 'node:fs'
 import {createHash} from 'node:crypto'
 import {fileURLToPath} from 'node:url'
 import {digestUtf8, createDsDigestHandler} from './ds-digest.mjs'
+import {executorConfig} from './config.mjs'
 
-const host = '127.0.0.1'
-const port = 15175
-const parentOrigin = 'http://localhost:15173'
+const {host,port,parentOrigin,requestHost} = executorConfig()
 const worker = readFileSync(new URL('./worker.js', import.meta.url), 'utf8')
 const workerHash = createHash('sha256').update(worker).digest('hex')
 const manifest = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'))
@@ -63,7 +62,7 @@ const csp = `default-src 'none'; script-src 'sha256-${scriptHash}'; worker-src b
 
 export function createServer() {
   return http.createServer((request, response) => {
-    if (request.headers.host !== `${host}:${port}`) {response.writeHead(421); return response.end()}
+    if (request.headers.host !== requestHost) {response.writeHead(421); return response.end()}
     response.setHeader('Content-Security-Policy', csp)
     response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), display-capture=(), clipboard-read=(), clipboard-write=()')
     response.setHeader('X-Content-Type-Options', 'nosniff')

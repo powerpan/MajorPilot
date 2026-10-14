@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 
 /** Runs inside the close transaction; no external calls or deferred domain facts. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class ClosurePipeline {
     public static final String RULE="evidence-v2",DS_RULE="ds-evidence-v1",BA_RULE="ba-evidence-v1",NEXT_RULE="next-recommendation-v1";
     private final RunService runs;private final RunStore db;private final EvidenceRuleRegistry registry;

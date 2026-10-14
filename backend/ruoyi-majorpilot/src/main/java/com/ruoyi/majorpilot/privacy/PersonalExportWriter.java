@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** In-memory, explicit personal-data projection. The caller owns the Student lock and snapshot. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class PersonalExportWriter {
     static final long MAX_BYTES=64L*1024*1024;
     private final JdbcTemplate db;private final ObjectMapper mapper;private final ReportSchema reportSchema;

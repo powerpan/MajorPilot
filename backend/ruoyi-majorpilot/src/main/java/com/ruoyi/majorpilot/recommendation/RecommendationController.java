@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local")
+@RestController @Profile({"local","pilot"})
 public class RecommendationController {
     private final StudentRecommendationService service;private final RateLimits limits;
     public RecommendationController(StudentRecommendationService service,RateLimits limits) { this.service=service;this.limits=limits; }

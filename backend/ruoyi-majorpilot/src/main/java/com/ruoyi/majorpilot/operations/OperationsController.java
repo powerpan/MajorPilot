@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local") @RequestMapping("/api/admin/v1/majorpilot")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/admin/v1/majorpilot")
 public class OperationsController {
     private final OperationsService service;private final OperationsMetrics metrics;private final OperationsHealth health;
     public OperationsController(OperationsService service,OperationsMetrics metrics,OperationsHealth health){this.service=service;this.metrics=metrics;this.health=health;}

@@ -9,8 +9,9 @@ import com.ruoyi.majorpilot.shared.Secrets;
 import jakarta.annotation.PreDestroy;
 import java.util.Set;
 import java.util.concurrent.*;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AuthMailGateway {
+    @org.springframework.beans.factory.annotation.Value("${majorpilot.pilot.mail-disabled:false}") private boolean mailDisabled;
     private final JavaMailSender sender;private final JdbcTemplate jdbc;private final TransactionTemplate tx;
     private final ThreadPoolExecutor executor=new ThreadPoolExecutor(1,2,30,TimeUnit.SECONDS,new ArrayBlockingQueue<>(32),r->{Thread thread=new Thread(r,"local-auth-mail");thread.setDaemon(true);return thread;},new ThreadPoolExecutor.AbortPolicy());
     public AuthMailGateway(JavaMailSender sender,JdbcTemplate jdbc,TransactionTemplate tx) { this.sender=sender;this.jdbc=jdbc;this.tx=tx; }
@@ -18,6 +19,7 @@ public class AuthMailGateway {
     @PreDestroy public void shutdown() { executor.shutdownNow(); }
     /** Local profile always uses the loopback catcher; no external SMTP configuration. */
     public boolean send(long studentId,String purpose,String token) {
+        if(mailDisabled)return false;
         if(studentId<=0||purpose==null||!Set.of("VERIFY_EMAIL","RESET_PASSWORD","CHANGE_EMAIL").contains(purpose)||token==null||!token.matches("[A-Za-z0-9_-]{43}"))return false;
         try { return Boolean.TRUE.equals(tx.execute(status->{
             // All account mutation/deletion uses this same lock. A queued message cannot

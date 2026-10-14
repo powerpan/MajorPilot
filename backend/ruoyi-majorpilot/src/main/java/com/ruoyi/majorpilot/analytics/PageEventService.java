@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Whitelisted page observations, never backend facts or client-supplied ownership/major/result fields. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class PageEventService {
     public record Observation(String clientEventId,String eventName,String eventVersion,Instant occurredAt,String contextType,String contextPublicId,Long visibleDurationMs,JsonNode properties) {}
     public record Batch(List<Observation> events) {}

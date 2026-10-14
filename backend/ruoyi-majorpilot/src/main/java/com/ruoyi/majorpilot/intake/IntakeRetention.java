@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Bounded P1 retention: only expired, unclaimed intake data. Never deletes Student-owned records. */
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public class IntakeRetention {
     private final JdbcTemplate jdbc;private final TransactionTemplate tx;
     public IntakeRetention(JdbcTemplate jdbc,TransactionTemplate tx) { this.jdbc=jdbc;this.tx=tx; }

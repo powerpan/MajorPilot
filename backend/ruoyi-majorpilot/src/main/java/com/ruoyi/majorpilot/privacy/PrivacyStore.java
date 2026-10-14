@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public class PrivacyStore {
     final JdbcTemplate db;final TransactionTemplate tx;final ObjectMapper mapper;
     public PrivacyStore(JdbcTemplate db,TransactionTemplate tx,ObjectMapper mapper){this.db=db;this.tx=tx;this.mapper=mapper;}

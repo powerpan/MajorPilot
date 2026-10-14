@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 /** Optional follow-up has one successful question per Run, never a new required answer. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class FollowUpService {
     private final ReflectionService reflection;private final RunService runs;private final RunStore db;private final HintProvider provider;private final RateLimits limits;
     public FollowUpService(ReflectionService reflection,HintProvider provider,RateLimits limits){this.reflection=reflection;this.runs=reflection.runService();this.db=runs.store();this.provider=provider;this.limits=limits;}

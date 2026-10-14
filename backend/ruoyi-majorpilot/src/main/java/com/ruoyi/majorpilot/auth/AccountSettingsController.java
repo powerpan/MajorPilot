@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local") @RequestMapping("/api/app/v1/me")
+@RestController @Profile({"local","pilot"}) @RequestMapping("/api/app/v1/me")
 public class AccountSettingsController {
     private final AccountSettingsService service;
     public AccountSettingsController(AccountSettingsService service) { this.service=service; }

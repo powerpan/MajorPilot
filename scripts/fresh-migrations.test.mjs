@@ -8,8 +8,8 @@ test('migration probe imports without running and defaults to a fresh schema', (
   assert.deepEqual(parseMigrationArguments(['/tmp/validated.jar']), { artifactArgument: '/tmp/validated.jar', fromVersion: null });
 });
 
-test('preserved V6/V7/V8/V9 baselines accept either argument order', () => {
-  for (const version of [6, 7, 8, 9]) {
+test('preserved V6/V7/V8/V9/V12 baselines accept either argument order', () => {
+  for (const version of [6, 7, 8, 9, 12]) {
     const flag = `--upgrade-from-v${version}`;
     const expected = { artifactArgument: '/tmp/validated.jar', fromVersion: version };
     assert.deepEqual(parseMigrationArguments([flag, '/tmp/validated.jar']), expected);

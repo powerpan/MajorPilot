@@ -18,8 +18,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 
 /** Durable three-request ceiling. Unknown in-flight calls are never silently repeated after restart. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class MethodReportWorker {
+    private com.ruoyi.majorpilot.pilot.ReportAllowances allowances;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void allowances(com.ruoyi.majorpilot.pilot.ReportAllowances value){allowances=value;}
     private final RunStore db;private final TransactionTemplate tx;private final MethodReports reports;private final MethodReportGateway gateway;
     private final String worker="method-"+PublicIds.next();private final AtomicBoolean busy=new AtomicBoolean();private final ExecutorService executor=Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
     record Lease(long job,long student,long version,long token){}
@@ -58,6 +61,7 @@ public class MethodReportWorker {
         String invocation=PublicIds.next();
         boolean started=Boolean.TRUE.equals(tx.execute(t->{if(!fence(l))return false;var v=version(l);if(n(v,"http_attempt_count")>=3)throw new ApiException(409,"METHOD_REQUEST_LIMIT");
             String expected=stage.equals("INITIAL")?"PREPARED":stage.equals("REPAIR")?"INITIAL_REQUESTED":"DRAFT_READY";if(!s(v,"generation_phase").equals(expected))throw new ApiException(409,"METHOD_PHASE_INVALID");
+            if(allowances!=null)allowances.started(l.student,s(v,"public_id"));
             db.jdbc().update("UPDATE mp_report_version SET generation_phase=?,http_attempt_count=http_attempt_count+1,external_started_at=COALESCE(external_started_at,UTC_TIMESTAMP(3)),external_deadline_at=DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 15 MINUTE),model=? WHERE id=?",stage.equals("INITIAL")?"INITIAL_REQUESTED":stage.equals("REPAIR")?"REPAIR_REQUESTED":"REVIEW_REQUESTED",gateway.model(),l.version);
             db.jdbc().update("UPDATE mp_background_job SET lease_until=DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 16 MINUTE) WHERE id=?",l.job);
             db.jdbc().update("INSERT INTO mp_ai_call(public_id,student_id,call_kind,provider,model,prompt_version,input_schema_version,input_sha256,input_field_keys_json,status,duration_ms,http_attempts,repair_attempts,report_version_id,invocation_id,generation_stage,thinking_enabled) VALUES(?,?,'REPORT',?,?,?,'method-report-input-v1',?,'[\"originalInput\",\"untrustedDraft\"]','IN_PROGRESS',0,1,?,?,?, ?,TRUE)",invocation,l.student,gateway.provider(),gateway.model(),MethodReportContract.PROMPT,db.hash(input),stage.equals("REPAIR")?1:0,l.version,invocation,stage);
@@ -98,10 +102,11 @@ public class MethodReportWorker {
             db.jdbc().update("UPDATE mp_report_version SET status='READY',generation_phase='PUBLISHED',generation_mode='AI',structured_report_json=?,report_body_sha256=?,reviewed_proposal_sha256=?,validation_result_json=?,rendered_at=UTC_TIMESTAMP(3),completed_at=UTC_TIMESTAMP(3) WHERE id=?",db.json(body),db.hash(body),db.hash(reviewed),db.json(map("schema",MethodReportContract.SCHEMA,"sourceChecks",true,"independentReviewCompleted",true,"semanticCertainty",false)),l.version);
             if(report.get("current_version_id")!=null)db.jdbc().update("UPDATE mp_report_version SET status='SUPERSEDED' WHERE id=? AND status='READY'",n(report,"current_version_id"));
             db.jdbc().update("UPDATE mp_report SET current_version_id=?,generation_target_version_id=NULL,status='READY',ready_at=UTC_TIMESTAMP(3),first_ready_at=COALESCE(first_ready_at,UTC_TIMESTAMP(3)),row_version=row_version+1 WHERE id=?",l.version,n(report,"id"));
+            if(allowances!=null)allowances.finish(l.student,s(v,"public_id"),true);
             db.jdbc().update("UPDATE mp_background_job SET status='SUCCEEDED',completed_at=UTC_TIMESTAMP(3),lease_until=NULL WHERE id=?",l.job);return true;}));
         // A third source may have become ready while this comparison was running.
         // Reconcile again after either kind publishes; identical sources are a no-op.
         if(ready)tx.executeWithoutResult(t->{var accounts=db.jdbc().queryForList("SELECT status FROM mp_student_account WHERE id=? FOR UPDATE",l.student);if(accounts.size()==1&&s(accounts.getFirst(),"status").equals("ACTIVE"))reports.comparison(l.student);});
     }
-    private void fail(Lease l,String code){tx.executeWithoutResult(t->{if(!fence(l))return;var v=version(l);db.jdbc().update("UPDATE mp_ai_call SET status='UNKNOWN',error_code=? WHERE report_version_id=? AND status='IN_PROGRESS'",code,l.version);db.jdbc().update("UPDATE mp_report_version SET status='FAILED',failure_code=?,completed_at=UTC_TIMESTAMP(3) WHERE id=?",code,l.version);db.jdbc().update("UPDATE mp_report SET generation_target_version_id=NULL,status=IF(current_version_id IS NULL,'FAILED','READY'),row_version=row_version+1 WHERE id=? AND generation_target_version_id=?",n(v,"report_id"),l.version);db.jdbc().update("UPDATE mp_background_job SET status='FAILED',last_error_code=?,completed_at=UTC_TIMESTAMP(3),lease_until=NULL WHERE id=?",code,l.job);});}
+    private void fail(Lease l,String code){tx.executeWithoutResult(t->{if(!fence(l))return;var v=version(l);db.jdbc().update("UPDATE mp_ai_call SET status='UNKNOWN',error_code=? WHERE report_version_id=? AND status='IN_PROGRESS'",code,l.version);db.jdbc().update("UPDATE mp_report_version SET status='FAILED',failure_code=?,completed_at=UTC_TIMESTAMP(3) WHERE id=?",code,l.version);db.jdbc().update("UPDATE mp_report SET generation_target_version_id=NULL,status=IF(current_version_id IS NULL,'FAILED','READY'),row_version=row_version+1 WHERE id=? AND generation_target_version_id=?",n(v,"report_id"),l.version);db.jdbc().update("UPDATE mp_background_job SET status='FAILED',last_error_code=?,completed_at=UTC_TIMESTAMP(3),lease_until=NULL WHERE id=?",code,l.job);if(allowances!=null)allowances.finish(l.student,s(v,"public_id"),false);});}
 }

@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class OperationsAudit {
     private final JdbcTemplate db;private final ObjectMapper mapper;
     public OperationsAudit(JdbcTemplate db,ObjectMapper mapper){this.db=db;this.mapper=mapper;}

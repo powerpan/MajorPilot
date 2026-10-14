@@ -15,8 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import static com.ruoyi.majorpilot.report.ReportStore.*;
 
 /** Only short database transactions. Never calls a model. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class ReportCoordinator {
+    @org.springframework.beans.factory.annotation.Value("${majorpilot.pilot.content-enabled:false}") private boolean pilotMode;
     private com.ruoyi.majorpilot.experience.MethodReports methods;
     @org.springframework.beans.factory.annotation.Autowired public void methodReports(com.ruoyi.majorpilot.experience.MethodReports value){methods=value;}
     private final ReportStore store;private final NextRecommendations next;private final ReportCore core;
@@ -45,6 +46,7 @@ public class ReportCoordinator {
         var version=create(report,request);prepare(report,version,List.of(source));
     }
     public Map<String,Object> create(Map<String,Object> report,Map<String,Object> request){
+        if(pilotMode)throw new ApiException(409,"PILOT_LEGACY_REPORT_DISABLED");
         long id=n(report,"id");if(report.get("generation_target_version_id")!=null)throw new ApiException(409,"REPORT_REGENERATION_IN_PROGRESS");
         long number=store.db().queryForObject("SELECT COALESCE(MAX(version_no),0)+1 FROM mp_report_version WHERE report_id=?",Long.class,id);String publicId=PublicIds.next();var pins=VersionPins.v1();Instant timestamp=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
         store.db().update("INSERT INTO mp_report_version(public_id,report_id,version_no,request_manifest_json,request_manifest_sha256,next_recommendation_id,template_version,prompt_version,schema_version,claim_rule_version,rendered_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",publicId,id,number,store.json(request),store.hash(store.mapper().valueToTree(request)),nullable(report,"next_recommendation_id"),pins.templateVersion(),pins.promptVersion(),pins.outputSchemaVersion(),pins.claimRuleVersion(),Timestamp.from(timestamp));

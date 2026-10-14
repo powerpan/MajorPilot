@@ -8,7 +8,7 @@ import java.util.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class ExecutionService {
     private final RunService runs;private final RunStore db;private final ExecutionCalculator calculator;private final RateLimits limits;
     public ExecutionService(RunService runs,ExecutionCalculator calculator,RateLimits limits){this.runs=runs;this.db=runs.store();this.calculator=calculator;this.limits=limits;}

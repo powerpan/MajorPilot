@@ -12,6 +12,8 @@ import type { ReportPage, ComparisonResponse } from "../types/reports";
 import { waitingLabels } from "../lib/report-display";
 import NextRecommendationPanel from "../components/reports/NextRecommendationPanel.vue";
 import ArrowIcon from "../components/ArrowIcon.vue";
+import { pilotMode } from "../lib/pilot";
+import PilotAllowance from "../components/PilotAllowance.vue";
 import { isProductRun, productRun, historicalProductRuns, productAction, reportEditionLabel, currentDecisionFor, runStatusLabel } from "../lib/product-entry";
 const formalRuns = ref<Run[]>([]), decisionDialog = ref<HTMLDialogElement | null>(null);
 const editions=ref<{majorCode:MajorCode;experienceEdition:number;taskVersionId:string;versionCode:string}[]>([]);
@@ -95,7 +97,7 @@ async function load() {
       await router.replace("/login?returnTo=/app");
       return;
     }
-    if (!auth.me.emailVerified) return;
+    if (!auth.me.canStartExperience) return;
     const nextDashboard = await request<Dashboard>("/api/app/v1/dashboard");
     const runs = await request<Run[]>("/api/app/v1/experience-runs");
     if (issued !== epoch) return;
@@ -272,10 +274,11 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </div>
+    <PilotAllowance v-if="pilotMode && auth.me?.canStartExperience" />
     <div v-if="loading" class="loading-state" role="status">
       正在读取已保存的资料…
     </div>
-    <div v-else-if="auth.me && !auth.me.emailVerified" class="content-page">
+    <div v-else-if="!pilotMode && auth.me && !auth.me.emailVerified" class="content-page">
       <h2>先验证你的邮箱</h2>
       <p>资料已保存。验证邮箱后，即可查看初始建议并选择方向。</p>
       <RouterLink to="/verify-email" class="text-link"
@@ -283,7 +286,7 @@ onBeforeUnmount(() => {
       ><button class="quiet-button" @click="load">已验证？刷新状态</button>
     </div>
     <template v-else-if="dashboard"
-      ><section
+      ><section v-if="pilotMode && !dashboard.recommendation" class="content-page"><h2>还差一点背景信息。</h2><p>告诉我们你的起点，系统就能安排第一个尝试的专业。</p><RouterLink to="/app/welcome" class="primary-button">继续填写背景</RouterLink></section><section
         v-if="
           dashboard.recommendation &&
           !dashboard.nextRecommendation &&

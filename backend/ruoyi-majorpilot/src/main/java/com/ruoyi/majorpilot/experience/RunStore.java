@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-@Repository @Profile("local")
+@Repository @Profile({"local","pilot"})
 public class RunStore {
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final boolean demoEnabled;private final boolean previewEnabled;
     static final String SELECT="SELECT r.*,m.code AS major_code,t.public_id AS task_public_id FROM mp_experience_run r LEFT JOIN mp_major m ON m.id=r.major_id LEFT JOIN mp_task_version t ON t.id=r.task_version_id";

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.experience.RunStore.*;
 
 /** All writes run under the existing Student lock and idempotency boundary. No browser time or answer is trusted. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class GuidedLearning {
     private final RunStore db; private final TaskContentProvider content; private final WorkbookCatalog workbooks;
     public GuidedLearning(RunStore db, TaskContentProvider content, WorkbookCatalog workbooks) { this.db=db; this.content=content; this.workbooks=workbooks; }

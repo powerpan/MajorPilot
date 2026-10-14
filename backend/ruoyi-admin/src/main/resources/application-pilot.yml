@@ -1,0 +1,80 @@
+# Invitation-only deployment. Never combine with local or p0.
+server:
+  address: 127.0.0.1
+  port: 18230
+  forward-headers-strategy: native
+  tomcat:
+    threads:
+      max: 24
+      min-spare: 2
+    remoteip:
+      internal-proxies: '127\.0\.0\.1'
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      host-header: x-forwarded-host
+      port-header: x-forwarded-port
+spring:
+  devtools:
+    restart:
+      enabled: false
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    time-zone: UTC
+  datasource:
+    druid:
+      master:
+        url: ${MP_DB_URL}
+        username: ${MP_DB_USERNAME}
+        password: ${MP_DB_PASSWORD}
+      initial-size: 1
+      min-idle: 1
+      max-active: 6
+      web-stat-filter:
+        enabled: false
+      stat-view-servlet:
+        enabled: false
+      filter:
+        stat:
+          enabled: false
+          log-slow-sql: false
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 16390
+      database: 0
+      password: ${MP_REDIS_PASSWORD}
+      lettuce:
+        pool:
+          max-active: 4
+          max-idle: 2
+          min-idle: 0
+  flyway:
+    url: ${MP_DB_URL}
+    user: ${MP_DB_USERNAME}
+    password: ${MP_DB_PASSWORD}
+    enabled: true
+    clean-disabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+  mail:
+    host: 127.0.0.1
+    port: 9
+ruoyi:
+  profile: ${MP_DATA_DIR}/uploads
+logging:
+  config: classpath:logback-p0.xml
+  level:
+    com.ruoyi: info
+    org.springframework: warn
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+majorpilot:
+  pilot:
+    mail-disabled: true
+    content-enabled: true
+  p0:
+    worker-enabled: false

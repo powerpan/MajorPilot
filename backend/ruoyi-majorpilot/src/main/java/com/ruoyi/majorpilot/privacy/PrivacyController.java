@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local")
+@RestController @Profile({"local","pilot"})
 public class PrivacyController {
     public static final String RECEIPT_PATH="/api/public/v1/deletion-receipts";
     private final PrivacyService service;

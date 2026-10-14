@@ -8,7 +8,7 @@ import static com.ruoyi.majorpilot.operations.OperationsDtos.*;
 import static com.ruoyi.majorpilot.operations.OperationsService.*;
 
 /** Technical state, not a claim that unobserved Student activity did not happen. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class OperationsHealth {
     private final OperationsService ops;
     public OperationsHealth(OperationsService ops){this.ops=ops;}

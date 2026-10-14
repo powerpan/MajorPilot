@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Versioned product-admin APIs keep upstream JWT identity, but use the product error contract. */
-@Configuration @Profile("local")
+@Configuration @Profile({"local","pilot"})
 public class ProductAdminSecurityConfig {
     @Bean @Order(3)
     SecurityFilterChain productAdmin(HttpSecurity http,JwtAuthenticationTokenFilter jwt,ObjectMapper mapper) throws Exception {

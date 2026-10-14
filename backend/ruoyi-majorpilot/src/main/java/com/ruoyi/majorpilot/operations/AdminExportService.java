@@ -15,7 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static com.ruoyi.majorpilot.operations.OperationsService.*;
 import static com.ruoyi.majorpilot.operations.OperationsDtos.*;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AdminExportService {
     public record Material(byte[] bytes,List<Long> students,long rows){}
     private final OperationsService ops;private final OperationsMetrics metrics;private final IdempotencyService idem;private final RateLimits limits;private final PrivateObjectStore objects;private final TransactionTemplate read;

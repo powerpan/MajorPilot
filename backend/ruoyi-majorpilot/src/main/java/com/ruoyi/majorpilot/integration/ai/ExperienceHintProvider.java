@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /** Static reviewed fallback by default, even when P0 has configured a live provider and key. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public final class ExperienceHintProvider implements HintProvider {
     private final TaskContentProvider content;private final HintBailianGateway gateway;private final FollowUpBailianGateway followUpGateway;
     @Autowired

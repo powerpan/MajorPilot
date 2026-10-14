@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** All private references are resolved and verified here before crossing into the pure report core. */
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public class ReportStore {
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final TransactionTemplate tx;private final TaskContentProvider content;
     public ReportStore(JdbcTemplate jdbc,ObjectMapper mapper,TransactionTemplate tx,TaskContentProvider content){this.jdbc=jdbc;this.mapper=mapper;this.tx=tx;this.content=content;}

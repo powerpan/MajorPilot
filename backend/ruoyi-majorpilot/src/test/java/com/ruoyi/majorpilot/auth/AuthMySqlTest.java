@@ -34,7 +34,20 @@ class AuthMySqlTest {
         sessions=new StudentSessions(jdbc);idem=new IdempotencyService(jdbc,tx,secrets,new ObjectMapper());
         service=new AuthService(jdbc,tx,mock(IntakeClaimPort.class),idem,passwords,sessions,mock(RateLimits.class),mock(AuthMailGateway.class),new SecurityEvents(jdbc,secrets),secrets,mock(ProductEvents.class));
     }
-    @AfterEach void cleanup() { for(String table:List.of("mp_security_event","mp_email_token","mp_student_session","mp_consent_record"))jdbc.update("DELETE FROM "+table+" WHERE student_id=?",student);jdbc.update("DELETE FROM mp_idempotency_record WHERE owner_student_id=?",student);jdbc.update("DELETE FROM mp_student_account WHERE id=?",student); }
+    @AfterEach void cleanup() { jdbc.update("DELETE FROM mp_pilot_report_usage WHERE student_id=?",student);jdbc.update("DELETE FROM mp_pilot_account WHERE student_id=?",student);for(String table:List.of("mp_security_event","mp_email_token","mp_student_session","mp_consent_record"))jdbc.update("DELETE FROM "+table+" WHERE student_id=?",student);jdbc.update("DELETE FROM mp_idempotency_record WHERE owner_student_id=?",student);jdbc.update("DELETE FROM mp_student_account WHERE id=?",student); }
+    @Test void pilotActivationDoesNotFabricateEmailOrConsentAndNeverAdmitsOtherAccounts(){
+        var pilot=new com.ruoyi.majorpilot.pilot.PilotAccess(jdbc,tx);service.pilotAccess(pilot);
+        assertEquals("AUTH_INVALID",assertThrows(ApiException.class,()->service.login(new AuthDtos.Login(email,"synthetic original passphrase"),"fixture","fixture")).code);
+        jdbc.update("INSERT INTO mp_pilot_account(student_id,account_slot) VALUES(?,1)",student);jdbc.update("UPDATE mp_student_account SET email_verified_at=NULL WHERE id=?",student);
+        var login=service.login(new AuthDtos.Login(email,"synthetic original passphrase"),"fixture","fixture");assertEquals("ACTIVE",login.me().status());assertFalse(login.me().emailVerified());assertFalse(login.me().canStartExperience());
+        assertThrows(ApiException.class,()->pilot.accept(student,List.of()));
+        var consent=List.of(new AuthDtos.Consent("TERMS","pilot-v1","ACCEPTED"),new AuthDtos.Consent("PRIVACY","pilot-v1","ACCEPTED"),new AuthDtos.Consent("RESEARCH","pilot-v1","DECLINED"));
+        pilot.accept(student,consent);pilot.accept(student,consent);assertEquals(3,service.consents(new StudentPrincipal(student,publicId,"ACTIVE")).size());
+        var me=service.me(new StudentPrincipal(student,publicId,"ACTIVE"));assertTrue(me.canStartExperience());assertFalse(me.emailVerified());
+        assertThrows(ApiException.class,()->service.requestMail(new AuthDtos.Email(email),"RESET_PASSWORD","fixture","fixture"));
+        jdbc.update("UPDATE mp_student_account SET status='LOCKED',failed_login_count=10,locked_until=UTC_TIMESTAMP(3)-INTERVAL 1 MINUTE WHERE id=?",student);
+        assertThrows(ApiException.class,()->service.login(new AuthDtos.Login(email,"wrong password"),"fixture","fixture"));assertEquals("ACTIVE",jdbc.queryForObject("SELECT status FROM mp_student_account WHERE id=?",String.class,student));
+    }
     @Test void sessionsAreDurableRevocableAndIdleBounded() {
         String first=sessions.issue(student),second=sessions.issue(student);assertEquals(publicId,new StudentSessions(jdbc).authenticate(first).publicId());
         sessions.revokeCurrent(first);assertThrows(ApiException.class,()->sessions.authenticate(first));assertEquals(publicId,sessions.authenticate(second).publicId());

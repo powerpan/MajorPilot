@@ -32,7 +32,8 @@ export interface ExecutionResult {
   elapsedMs: number;
 }
 
-const executorOrigin = "http://127.0.0.1:15175";
+declare const __MP_EXECUTOR_ORIGIN__: string | undefined;
+const executorOrigin = typeof __MP_EXECUTOR_ORIGIN__ === "string" ? __MP_EXECUTOR_ORIGIN__ : "http://127.0.0.1:15175";
 export async function execute(
   template: ExecutionTemplate,
   values: number[],

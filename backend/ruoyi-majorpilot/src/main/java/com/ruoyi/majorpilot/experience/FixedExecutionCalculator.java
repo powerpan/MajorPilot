@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.ruoyi.majorpilot.classifier.ClassifierEngine;
 import com.ruoyi.majorpilot.datascience.DsStatsEngine;
 import com.ruoyi.majorpilot.businessanalytics.BaMetricsEngine;
-@Component @Profile("local")
+@Component @Profile({"local","pilot"})
 public class FixedExecutionCalculator implements ExecutionCalculator {
     private final TaskContentProvider content;private final ObjectMapper mapper;private final ClassifierEngine classifier;private final DsStatsEngine dataScience;private final BaMetricsEngine businessAnalytics;
     @Autowired public FixedExecutionCalculator(TaskContentProvider content,ObjectMapper mapper,ClassifierEngine classifier,DsStatsEngine dataScience,BaMetricsEngine businessAnalytics){this.content=content;this.mapper=mapper;this.classifier=classifier;this.dataScience=dataScience;this.businessAnalytics=businessAnalytics;}

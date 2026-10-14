@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController @Profile("local")
+@RestController @Profile({"local","pilot"})
 public class PageEventController {
     private final PageEventService service;private final IntakeService intakes;
     public PageEventController(PageEventService service,IntakeService intakes) { this.service=service;this.intakes=intakes; }

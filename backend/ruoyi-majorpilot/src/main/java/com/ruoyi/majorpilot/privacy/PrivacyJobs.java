@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.privacy.PrivacyStore.*;
 
 /** Durable, fenced workers. HTTP acceptance never implies completion of deletion. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class PrivacyJobs {
     public record Lease(long job,long student,long target,String type,long generation,String worker){}
     private final PrivacyStore store;private final PrivateObjectStore files;private final PersonalExportWriter writer;private final AccountDeletionStages deletion;

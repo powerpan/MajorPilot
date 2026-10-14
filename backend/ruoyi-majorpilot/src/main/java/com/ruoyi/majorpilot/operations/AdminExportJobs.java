@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import static com.ruoyi.majorpilot.operations.OperationsService.*;
 
 /** Operator exports have a distinct worker; no student/report/deletion job can be claimed here. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AdminExportJobs {
     public record Lease(long job,long export,long operator,long generation,String worker){}
     private final OperationsService ops;private final AdminExportService exports;private final PrivateObjectStore objects;

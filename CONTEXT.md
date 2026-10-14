@@ -108,6 +108,12 @@ _Avoid_: Report Evidence, User Log
 
 ## Reports
 
+**Pilot Account**:
+A pre-provisioned Student Account authorized for a bounded invitation-only test. Activation does not imply email verification or consent on the Student's behalf.
+
+**Report Allowance**:
+A server-enforced limit on new report generation tasks, with independent Experience Report and Comparison Report counters. Viewing an existing report does not consume an allowance; model stages within one task are not separate reports.
+
 **Evidence Snapshot**:
 The immutable set of Experience Evidence approved as input to one Report Version.
 _Avoid_: Prompt Context, Event Dump

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class IdempotencyService {
     public record Owner(Long studentId,Long intakeId,String subject) {}
     public record Result<T>(T data,boolean replayed) {}

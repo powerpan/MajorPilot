@@ -11,7 +11,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Read-only preflight, before the FILES phase removes anything. Never widens a deletion scope.
  * All publishers must share the caller's Student lock. Later phases use the already validated,
  * fixed scope: polymorphic targets can legitimately disappear while that scope is being removed. */
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class AccountDeletionOwnershipGuard {
     record Edge(String child,String column,String parent,String parentColumn) {}
     private static final Edge MEMBERSHIP=new Edge("mp_admin_export_student","export_id","mp_admin_export","id");
@@ -104,6 +104,8 @@ public class AccountDeletionOwnershipGuard {
     private static Map<String,String> owners(){
         var out=new LinkedHashMap<String,String>();
         out.put("mp_student_account","SELECT t.*,t.id AS deletion_owner FROM mp_student_account t");
+        // Only the occupied invitation slot survives deletion; usage rows are erased.
+        direct(out,"mp_pilot_account","student_id");direct(out,"mp_pilot_report_usage","student_id");
         for(String name:List.of("mp_student_session","mp_email_token","mp_security_event","mp_experience_run","mp_evidence_snapshot","mp_report","mp_student_feedback","mp_ai_call","mp_student_data_export","mp_account_deletion_request"))direct(out,name,"student_id");
         direct(out,"mp_intake_session","claimed_student_id");direct(out,"mp_background_job","owner_student_id");direct(out,"mp_admin_export_student","student_id");
         for(String name:List.of("mp_consent_record","mp_decision_profile","mp_product_event"))out.put(name,"SELECT t.*,COALESCE(t.student_id,i.claimed_student_id) AS deletion_owner FROM "+name+" t LEFT JOIN mp_intake_session i ON i.id=t.intake_session_id");
@@ -124,6 +126,8 @@ public class AccountDeletionOwnershipGuard {
     private static void via(Map<String,String> map,String table,String column,String parent){map.put(table,"SELECT t.*,p.deletion_owner FROM "+table+" t LEFT JOIN ("+map.get(parent)+") p ON p.id=t."+column);}
     private static Set<Edge> edges(){
         var all=new LinkedHashSet<Edge>();
+        edge(all,"mp_pilot_account","student_id","mp_student_account");
+        all.add(new Edge("mp_pilot_report_usage","student_id","mp_pilot_account","student_id"));
         for(String name:List.of("mp_student_session","mp_email_token","mp_security_event","mp_experience_run","mp_evidence_snapshot","mp_report","mp_student_feedback","mp_ai_call","mp_student_data_export","mp_account_deletion_request","mp_recommendation_decision"))edge(all,name,"student_id","mp_student_account");
         edge(all,"mp_intake_session","claimed_student_id","mp_student_account");edge(all,"mp_background_job","owner_student_id","mp_student_account");edge(all,"mp_sensitive_audit","owner_student_id","mp_student_account");
         for(String name:List.of("mp_consent_record","mp_decision_profile","mp_product_event")){edge(all,name,"student_id","mp_student_account");edge(all,name,"intake_session_id","mp_intake_session");}

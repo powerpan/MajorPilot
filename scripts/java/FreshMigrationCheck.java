@@ -23,7 +23,7 @@ public final class FreshMigrationCheck {
             require(expected!=null&&expected.matches("[1-9][0-9]{0,2}"));
             int expectedVersion=Integer.parseInt(expected);
             String from=System.getenv("MP_MIGRATION_FROM_VERSION");
-            require(from==null||((from.equals("6")||from.equals("7")||from.equals("8")||from.equals("9"))&&expectedVersion>Integer.parseInt(from)));
+            require(from==null||((from.equals("6")||from.equals("7")||from.equals("8")||from.equals("9")||from.equals("12"))&&expectedVersion>Integer.parseInt(from)));
             boolean upgrade=from!=null;
             int fromVersion=upgrade?Integer.parseInt(from):0;
             String url="jdbc:mysql://127.0.0.1:13306/"+schema+"?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC";
@@ -130,6 +130,7 @@ public final class FreshMigrationCheck {
             result.put("migrationPath",upgrade?"V1-V"+fromVersion+" plus existing rows, then upgrade":"empty V1-latest");result.put("upgradeFromVersion",upgrade?fromVersion:null);result.put("existingStudentPreserved",existingStudentPreserved);result.put("existingJobPreserved",existingJobPreserved);result.put("existingRoleGrantsPreserved",existingRoleGrantsPreserved);result.put("p6TableCount",p6Tables);result.put("p6ForeignKeyCount",p6ForeignKeys);result.put("p7TableCount",p7Tables);result.put("p7Checks",p7);
             result.put("productAuthorizationChecks",productAuthorization);result.put("existingTaskPreserved",existingTaskPreserved);result.put("existingPreviewPreserved",existingPreviewPreserved);
             result.put("methodLearningChecks",methodLearning);
+            if(!upgrade&&expectedVersion>=13)result.put("pilotBootstrapChecks",PilotBootstrapCheck.run(url,account,password));
             System.out.println("MAJORPILOT_MIGRATION_RESULT="+new ObjectMapper().writeValueAsString(result));
         } catch(Exception failure) {
             // JDBC/Flyway diagnostics can contain connection identity or SQL. Do not log them.

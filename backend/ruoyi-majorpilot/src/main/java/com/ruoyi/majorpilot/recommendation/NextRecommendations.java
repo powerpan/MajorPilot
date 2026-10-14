@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@Service @Profile("local")
+@Service @Profile({"local","pilot"})
 public class NextRecommendations {
     public record Reason(String code,String reasonType,String text) {}
     public record View(String recommendationType,String recommendationId,String sourceRunId,String decisionProfileId,String ruleVersion,String explanationVersion,List<String> completedMajorCodes,String primaryMajor,List<String> alternativeMajors,List<Reason> reasons,List<RecommendationView.MajorDifference> differences,Instant generatedAt) {}

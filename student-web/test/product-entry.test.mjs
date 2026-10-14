@@ -46,6 +46,7 @@ function harness({ initialRuns = [], currentDecision = null, primary = "BUSINESS
   const data = { "/api/app/v1/dashboard": dashboard, "/api/app/v1/experience-runs": initialRuns, "/api/public/v1/majors": dashboard.majors, "/api/app/v1/reports?limit=50": { items: reports }, "/api/app/v1/comparison-report": { state: "WAITING", reason: "NEED_TWO_MAJORS" } };
   class ApiError extends Error { constructor(status, code) { super(code); this.status = status; this.code = code; } }
   const imports = {
+    "../lib/pilot": { pilotMode: false },
     vue: { defineComponent: (value) => value, ref: (value) => ({ value }), computed: (get) => ({ get value() { return get(); } }), onMounted: (fn) => { mount = fn; }, watch: (get, fn) => { mount = fn; }, onBeforeUnmount() {}, nextTick: async () => {} },
     "vue-router": { useRouter: () => ({ push: async (url) => navigation.push(url), replace: async (url) => navigation.push(url) }), useRoute: () => ({ params: { major: "BUSINESS_ANALYTICS", taskVersionId: "old-task" }, query: {}, fullPath: "/app/experiences/BUSINESS_ANALYTICS" }) },
     "../lib/api": { ApiError, errorText: (error) => error.message, stableOperation: () => (body) => JSON.stringify(body), api: async (path, options = {}) => {
@@ -60,7 +61,7 @@ function harness({ initialRuns = [], currentDecision = null, primary = "BUSINESS
       if (!(path in data)) throw new Error(`Unexpected read ${path}`);
       return data[path];
     } },
-    "../stores/auth": { useAuth: () => ({ me: { emailVerified: true }, refresh: async () => {}, expire() {} }), onIdentityChange: (fn) => { changed = fn; return () => {}; }, identityRequest: () => { const issued = epoch; return { signal: new AbortController().signal, finish() {}, assertCurrent() { if (issued !== epoch) throw new ApiError(409, "IDENTITY_CHANGED"); } }; } },
+    "../stores/auth": { useAuth: () => ({ me: { emailVerified: true, canStartExperience: true }, refresh: async () => {}, expire() {} }), onIdentityChange: (fn) => { changed = fn; return () => {}; }, identityRequest: () => { const issued = epoch; return { signal: new AbortController().signal, finish() {}, assertCurrent() { if (issued !== epoch) throw new ApiError(409, "IDENTITY_CHANGED"); } }; } },
     "../data/majors": { major, majors: ["AI", "DATA_SCIENCE", "BUSINESS_ANALYTICS"].map(code => ({ code })) }, "../lib/events": { observeRecommendation: () => () => {} }, "../lib/product-entry": entries, "../lib/report-display": { waitingLabels: {} },
   };
   const module = { exports: {} };
