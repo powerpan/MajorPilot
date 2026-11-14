@@ -9,7 +9,11 @@ import java.util.Map;
 /** Public DTOs; internal ids never cross the student API. */
 public final class RunDtos {
     private RunDtos() {}
-    public record Create(String decisionId,String demoKey,Long expectedRevision) {}
+    public record Create(String decisionId,String demoKey,Long expectedRevision,
+                         @JsonInclude(JsonInclude.Include.NON_NULL) String majorCode) {
+        /** Preserve fingerprints for receipts created before direct major selection. */
+        public Create(String decisionId,String demoKey,Long expectedRevision){this(decisionId,demoKey,expectedRevision,null);}
+    }
     public record CreatePreview(String taskVersionId) {}
     public record InputBinding(String parameterKey,String sourceStepKey,String sourceField,long sourceRevision,JsonNode value) {}
     public record Transition(Long expectedRevision,String pauseActiveRunId,Long expectedActiveRunRevision) {}

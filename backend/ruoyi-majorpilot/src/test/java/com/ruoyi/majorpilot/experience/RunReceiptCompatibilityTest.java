@@ -4,6 +4,11 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 class RunReceiptCompatibilityTest {
+    @Test void directSelectionDoesNotChangeLegacyCreateFingerprints()throws Exception{
+        var mapper=new ObjectMapper();String legacy="{\"decisionId\":\"synthetic\",\"demoKey\":null,\"expectedRevision\":0}";
+        assertEquals(legacy,mapper.writeValueAsString(mapper.readValue(legacy,RunDtos.Create.class)));assertEquals(legacy,mapper.writeValueAsString(new RunDtos.Create("synthetic",null,0L)));
+        assertEquals("AI",mapper.valueToTree(new RunDtos.Create(null,null,null,"AI")).path("majorCode").asText());
+    }
     @Test void absentStepSourceExpectationKeepsLegacyCompletionFingerprintAndStepShape()throws Exception{
         var mapper=new ObjectMapper();var old=new RunDtos.Revision(2L);var input=mapper.readValue("{\"expectedRevision\":2}",RunDtos.StepCompletion.class);
         assertNull(input.expectedSourceRevisions());assertEquals(mapper.writeValueAsString(old),mapper.writeValueAsString(input));

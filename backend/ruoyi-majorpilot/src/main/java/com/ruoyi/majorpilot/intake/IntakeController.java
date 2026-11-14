@@ -40,5 +40,9 @@ public class IntakeController {
     @GetMapping("/api/public/v1/intake-sessions/{id}/recommendation") Object recommendation(@PathVariable String id,HttpServletRequest req,HttpServletResponse res) {
         String hash=ApiResponses.intakeSecretHash(req);var value=intakes.recommendation(id,hash);renew(req,res,id,hash);return ApiResponses.success(req,value);
     }
+    @PostMapping("/api/public/v1/intake-sessions/{id}/finish") Object finish(@PathVariable String id,@RequestBody IntakeService.Submission input,@RequestHeader(value="Idempotency-Key",required=false) String key,HttpServletRequest req,HttpServletResponse res) {
+        String hash=ApiResponses.intakeSecretHash(req);limits.require("intake-submit",hash,30,Duration.ofHours(1));
+        var value=intakes.finish(id,hash,key,input);renew(req,res,id,hash);return ResponseEntity.status(201).body(ApiResponses.success(req,value));
+    }
     private void renew(HttpServletRequest req,HttpServletResponse res,String id,String hash) { Instant expiry=intakes.expiration(id,hash);if(expiry!=null)ApiResponses.setIntakeCookie(res,ApiResponses.cookie(req,"MP_INTAKE"),expiry); }
 }

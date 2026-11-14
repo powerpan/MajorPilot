@@ -163,9 +163,9 @@ async function start() {
     if (existing.value) await router.push(`/app/runs/${existing.value.runId}`);
     return;
   }
-  if (!existing.value && (definition.value?.availability !== "AVAILABLE" || !recommendation.value)) return;
+  if (!existing.value && definition.value?.availability !== "AVAILABLE") return;
   const issued = epoch;
-  if (!existing.value && !selected.value && !await choose()) return;
+  if (!existing.value && recommendation.value && !selected.value && !await choose()) return;
   if (issued !== epoch) return;
   busy.value = true;
   error.value = "";
@@ -175,7 +175,9 @@ async function start() {
       await router.push(report.value ? `/app/reports/${report.value.reportId}` : `/app/runs/${existing.value.runId}`);
       return;
     }
-    const body = { decisionId: decision.value?.decisionId };
+    const body = recommendation.value
+      ? { decisionId: decision.value?.decisionId }
+      : { majorCode: code.value };
     const next =
       existing.value ||
       (await request<Run>("/api/app/v1/experience-runs", {
@@ -308,7 +310,8 @@ async function start() {
         <p v-if="success" class="success-notice" role="status">{{ success }}</p>
         </template
       >
-      <button v-if="existing || (recommendation && definition.availability === 'AVAILABLE')"
+      <p v-if="!existing && !recommendation && definition.availability === 'AVAILABLE'" class="notice">无需先获得个性化推荐。你可以自主开始这个方向，背景资料之后仍可补充。</p>
+      <button v-if="existing || definition.availability === 'AVAILABLE'"
         class="action-link action-small formal-start-action" :class="{ 'desktop-task-action': !completed }" :disabled="busy" @click="start">
         <span>{{ busy ? "正在打开…" : productAction(existing, report, major(code).short, definition.availability === 'AVAILABLE') }}</span>
         <span class="action-arrow"><ArrowIcon /></span>

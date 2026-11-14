@@ -57,6 +57,9 @@ const router = createRouter({
       (path) => ({ path, component: InformationView }),
     ),
     { path: "/app", component: DashboardView, meta: { private: true } },
+    { path: "/app/profile", component: () => import("./views/ProfileView.vue"), meta: { private: true } },
+    { path: "/app/profile/edit", component: () => import("./views/ProfileEditView.vue"), meta: { private: true } },
+    { path: "/app/plans", component: () => import("./views/PlansDemoView.vue"), meta: { private: true } },
     { path: "/app/welcome", component: () => import("./views/PilotWelcomeView.vue"), meta: { private: true } },
     { path: "/app/settings", component: SettingsView, meta: { private: true } },
     {

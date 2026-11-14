@@ -1762,6 +1762,10 @@
                   "currentRevision": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "currentProfileVersion": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 },
                 "required": []
@@ -2771,13 +2775,24 @@
               "ALL_COMPLETED"
             ],
             "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/P1ProfileView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "recommendation",
           "majors",
           "currentDecision",
-          "nextStep"
+          "nextStep",
+          "profile"
         ]
       },
       "P1Consent": {
@@ -3116,6 +3131,218 @@
         "required": [
           "acceptedCount",
           "duplicateCount"
+        ]
+      },
+      "P1ProfileAnswerStates": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "applicationStage": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "targetIntakeWindow": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "targetRegions": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "currentField": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "currentFieldText": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "consideredMajors": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "majorFamiliarity": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "foundationSelfView": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "scenarioPreference": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "workElements": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "decisionUncertainties": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "mainQuestion": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "acquisitionChannel": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          }
+        },
+        "required": [
+          "applicationStage",
+          "targetIntakeWindow",
+          "targetRegions",
+          "currentField",
+          "currentFieldText",
+          "consideredMajors",
+          "majorFamiliarity",
+          "foundationSelfView",
+          "scenarioPreference",
+          "workElements",
+          "decisionUncertainties",
+          "mainQuestion",
+          "acquisitionChannel"
+        ]
+      },
+      "P1ProfileView": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/P1DraftAnswers"
+          },
+          "answerStates": {
+            "$ref": "#/components/schemas/P1ProfileAnswerStates"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "recommendationReady": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decisionProfileId",
+          "profileVersion",
+          "questionnaireVersion",
+          "submittedAt",
+          "answers",
+          "answerStates",
+          "complete",
+          "recommendationReady"
+        ]
+      },
+      "P1IntakeFinishInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/P1QuestionnaireVersion"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "$ref": "#/components/schemas/P1DraftAnswers"
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "expectedRevision",
+          "answers"
+        ]
+      },
+      "P1IntakeFinished": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/P1ProfileView"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/P1Recommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "profile",
+          "recommendation"
         ]
       },
       "Report": {
@@ -5933,6 +6160,16 @@
               "TASK_CONTENT_PREPARING"
             ]
           },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/P1ProfileView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "nextRecommendation": {
             "anyOf": [
               {
@@ -5949,6 +6186,7 @@
           "majors",
           "currentDecision",
           "nextStep",
+          "profile",
           "nextRecommendation"
         ]
       }

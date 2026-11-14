@@ -54,5 +54,6 @@ onBeforeUnmount(() => dispose?.());
         >
       </RecommendationDetails></template
     >
+    <section v-else class="content-page"><h1 class="serif">先保留你的起点。</h1><p>资料已保存，目前的信息不足以生成个性化推荐。注册并验证邮箱后，你仍可以自主选择已开放的专业。</p><div class="button-row"><ActionLink to="/register">注册并保存资料</ActionLink><RouterLink to="/intake/1" class="text-link">返回补充背景</RouterLink></div></section>
   </main>
 </template>

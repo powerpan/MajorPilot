@@ -14,13 +14,13 @@ public record DecisionAnswers(
     AcquisitionChannel acquisitionChannel) {
 
     public DecisionAnswers {
-        targetRegions = List.copyOf(targetRegions);
-        consideredMajors = List.copyOf(consideredMajors);
-        majorFamiliarity = Map.copyOf(majorFamiliarity);
-        foundationSelfView = Map.copyOf(foundationSelfView);
-        scenarioPreference = List.copyOf(scenarioPreference);
-        workElements = List.copyOf(workElements);
-        decisionUncertainties = List.copyOf(decisionUncertainties);
+        targetRegions = targetRegions == null ? List.of() : List.copyOf(targetRegions);
+        consideredMajors = consideredMajors == null ? List.of() : List.copyOf(consideredMajors);
+        majorFamiliarity = majorFamiliarity == null ? Map.of() : Map.copyOf(majorFamiliarity);
+        foundationSelfView = foundationSelfView == null ? Map.of() : Map.copyOf(foundationSelfView);
+        scenarioPreference = scenarioPreference == null ? List.of() : List.copyOf(scenarioPreference);
+        workElements = workElements == null ? List.of() : List.copyOf(workElements);
+        decisionUncertainties = decisionUncertainties == null ? List.of() : List.copyOf(decisionUncertainties);
     }
     public enum Major { AI, DATA_SCIENCE, BUSINESS_ANALYTICS }
     public enum ApplicationStage { EXPLORING, RESEARCHING_PROGRAMS, PREPARING_APPLICATION, APPLIED, HOLDING_OFFERS }

@@ -45,4 +45,13 @@ class QuestionnaireTest {
     @Test void charactersUseCodePointsNotUtf16Units() {
         var input=IntakeFixtures.answers();input.put("currentFieldText","😀".repeat(80));assertEquals(80,Questionnaire.complete(input).currentFieldText().codePointCount(0,160));
     }
+    @Test void partialNormalizationNeverCreatesAnswersAndReadinessRequiresAllRankingInputs() throws Exception {
+        var input=(ObjectNode)IntakeFixtures.JSON.readTree("{\"applicationStage\":null,\"targetIntakeWindow\":\"UNSURE\",\"majorFamiliarity\":{\"AI\":\"UNFAMILIAR\"},\"scenarioPreference\":[{\"majorCode\":\"AI\",\"rank\":2}]}");
+        var output=Questionnaire.draft(input);assertEquals(input,output);assertFalse(output.has("acquisitionChannel"));assertFalse(Questionnaire.isComplete(output));assertFalse(Questionnaire.recommendationReady(output));
+        assertEquals("SKIPPED",Questionnaire.answerStates(output).get("applicationStage"));assertEquals("UNSURE",Questionnaire.answerStates(output).get("targetIntakeWindow"));assertEquals("MISSING",Questionnaire.answerStates(output).get("currentField"));
+        var full=IntakeFixtures.answers();full.remove("currentFieldText");full.remove("mainQuestion");full.remove("acquisitionChannel");assertTrue(Questionnaire.isComplete(full));assertTrue(Questionnaire.recommendationReady(full));
+        full.putNull("foundationSelfView");assertFalse(Questionnaire.isComplete(full));assertTrue(Questionnaire.recommendationReady(full));
+        full.putNull("scenarioPreference");assertFalse(Questionnaire.recommendationReady(full));
+    }
+
 }

@@ -30,7 +30,7 @@ export async function loadP1Contracts() {
 export async function checkP1() {
   const { original, schemas, operations } = await loadP1Contracts();
   assert.equal(original.openapi, '3.1.0');
-  assert.equal(operations.length, 27);
+  assert.equal(operations.length, 28);
   assert.equal(new Set(operations.map(value => value.id)).size, operations.length);
   for (const { path, method } of operations) {
     const value = original.paths[path][method];

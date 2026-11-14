@@ -4,6 +4,6 @@
   "type": "module",
   "packageManager": "npm@11.19.1",
   "engines": {"node": "24.x", "npm": "11.19.1"},
-  "scripts": {"test:execution": "node execution.mjs", "test:cookies": "node cookies.mjs", "test:admin": "node admin.mjs", "test:security": "node security.mjs", "test:pyodide": "node pyodide.mjs"},
+  "scripts": {"test:execution": "node execution.mjs", "test:cookies": "node cookies.mjs", "test:admin": "node admin.mjs", "test:security": "node security.mjs", "test:pyodide": "node pyodide.mjs", "test:profile-flow": "node profile-flow.mjs"},
   "devDependencies": {"playwright": "1.62.1"}
 }

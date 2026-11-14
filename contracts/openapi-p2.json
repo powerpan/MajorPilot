@@ -4093,9 +4093,57 @@
                 "type": "null"
               }
             ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AI",
+                  "DATA_SCIENCE",
+                  "BUSINESS_ANALYTICS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": []
+        "required": [],
+        "description": "Choose exactly one non-null decisionId, demoKey, or majorCode. majorCode supports self-directed starts without requiring a recommendation; identity, consent, content availability and run-state checks still apply.",
+        "oneOf": [
+          {
+            "properties": {
+              "decisionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "decisionId"
+            ]
+          },
+          {
+            "properties": {
+              "demoKey": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "demoKey"
+            ]
+          },
+          {
+            "properties": {
+              "majorCode": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "majorCode"
+            ]
+          }
+        ]
       },
       "Transition": {
         "type": "object",

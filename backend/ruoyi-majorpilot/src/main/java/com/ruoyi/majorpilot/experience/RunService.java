@@ -76,11 +76,17 @@ public class RunService {
         return write(student,path,key,request,type,action);
     }
     public RunDtos.Run create(StudentPrincipal student,String key,RunDtos.Create input) {
-        if((input.decisionId()==null)==(input.demoKey()==null))throw new ApiException(422,"VALIDATION_ERROR");
+        if((input.decisionId()==null?0:1)+(input.demoKey()==null?0:1)+(input.majorCode()==null?0:1)!=1)throw new ApiException(422,"VALIDATION_ERROR");
         if(input.demoKey()!=null&&!db.demoEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");
         return write(student,"/experience-runs",key,input,RunDtos.Run.class,()->{
-            Long major=null,recommendation=null,decision=null;String kind=input.demoKey()==null?"MAJOR":"DEMO",demo=input.demoKey();
+            Long major=null,recommendation=null,decision=null,profile=null;String kind=input.demoKey()==null?"MAJOR":"DEMO",demo=input.demoKey();
             if(kind.equals("DEMO")){if(!db.demoEnabled())throw new ApiException(404,"RESOURCE_NOT_FOUND");content.currentDemo(demo);}
+            else if(input.majorCode()!=null){
+                if(!Set.of("AI","DATA_SCIENCE","BUSINESS_ANALYTICS").contains(input.majorCode()))throw new ApiException(422,"VALIDATION_ERROR");
+                var choices=db.jdbc().queryForList("SELECT id FROM mp_major WHERE code=? AND status='ACTIVE'",input.majorCode());
+                if(choices.isEmpty())throw new ApiException(404,"CONTENT_UNAVAILABLE");
+                content.currentMajor(input.majorCode());major=n(choices.getFirst(),"id");
+            }
             else {var choices=db.jdbc().queryForList("SELECT d.id,d.recommendation_id,m.id AS major_id FROM mp_recommendation_decision d JOIN mp_major m ON m.code=d.selected_major_code WHERE d.public_id=? AND d.student_id=? AND m.status='ACTIVE'",input.decisionId(),student.internalId());if(choices.isEmpty())throw new ApiException(404,"RESOURCE_NOT_FOUND");var choice=choices.getFirst();major=n(choice,"major_id");decision=n(choice,"id");recommendation=n(choice,"recommendation_id");}
             int edition=1;
             if(kind.equals("MAJOR")){String majorCode=db.jdbc().queryForObject("SELECT code FROM mp_major WHERE id=?",String.class,major);try{if(com.ruoyi.majorpilot.learning.MethodGuide.enabled(content.currentMajor(majorCode).manifest()))edition=2;}catch(ApiException unavailable){if(unavailable.status!=404&&unavailable.status!=409)throw unavailable;}}
@@ -90,13 +96,21 @@ public class RunService {
                 if(!adopted.isEmpty())return db.view(db.row(adopted.getFirst()));
             }
             var existing=db.jdbc().queryForList(RunStore.SELECT+" WHERE r.student_id=? AND r.lane_key=? AND r.status<>'REPLACED'",student.internalId(),lane);
-            if(!existing.isEmpty()) {var run=db.row(existing.getFirst());
-                if(run.status().equals("READY")&&run.origin()==null&&!Objects.equals(run.decisionId(),decision)){db.revision(run,input.expectedRevision());db.jdbc().update("UPDATE mp_experience_run SET source_decision_id=?,source_recommendation_id=?,row_version=row_version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=?",decision,recommendation,run.id());}
-                return db.view(db.internal(run.id()));
-            }
-            String id=PublicIds.next();db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,demo_key,source_recommendation_id,source_decision_id,experience_edition) VALUES(?,?,?,?,?,?,?,?)",id,student.internalId(),kind,major,demo,recommendation,decision,edition);
+            // Existing lanes retain the background and decision they were created with.
+            if(!existing.isEmpty())return db.view(db.row(existing.getFirst()));
+            // Recommendation provenance is independent: a new experience uses today's submitted background.
+            if(kind.equals("MAJOR"))profile=profileAtCreation(student);
+            String id=PublicIds.next();db.jdbc().update("INSERT INTO mp_experience_run(public_id,student_id,content_kind,major_id,demo_key,source_recommendation_id,source_decision_id,decision_profile_id,experience_edition) VALUES(?,?,?,?,?,?,?,?,?)",id,student.internalId(),kind,major,demo,recommendation,decision,profile,edition);
             var run=db.owned(student,id);db.event(run,"run.created",Map.of("contentKind",kind));return db.view(run);
         });
+    }
+    /** Version zero is an internal absence snapshot, not a submitted background or recommendation. Called under the student lock. */
+    private long profileAtCreation(StudentPrincipal student){
+        var profiles=db.jdbc().queryForList("SELECT id FROM mp_decision_profile WHERE student_id=? ORDER BY profile_version_no DESC LIMIT 1",Long.class,student.internalId());
+        if(!profiles.isEmpty())return profiles.getFirst();
+        String id=PublicIds.next();
+        db.jdbc().update("INSERT INTO mp_decision_profile(public_id,student_id,profile_version_no,questionnaire_version,submitted_at,profile_summary_json,status) VALUES(?,?,0,?,UTC_TIMESTAMP(3),?,'CLAIMED')",id,student.internalId(),com.ruoyi.majorpilot.intake.Questionnaire.VERSION,"{\"source\":\"UNPROVIDED_AT_EXPERIENCE_CREATION\"}");
+        return db.jdbc().queryForObject("SELECT id FROM mp_decision_profile WHERE public_id=?",Long.class,id);
     }
     public RunDtos.Run transition(StudentPrincipal student,String id,String operation,String key,RunDtos.Transition input) {
         if(!Set.of("start","resume","pause").contains(operation))throw new IllegalArgumentException("Unknown transition");
@@ -115,7 +129,7 @@ public class RunService {
                 var locked=db.jdbc().queryForList("SELECT status FROM mp_task_version WHERE id=? FOR UPDATE",version.internalId());
                 boolean freshStandardMajor=run.kind().equals("MAJOR")&&run.mode().equals("STANDARD")&&run.origin()==null;
                 if(locked.isEmpty()||(run.taskPublicId()==null||freshStandardMajor)&&!(local==null?"PUBLISHED".equals(s(locked.getFirst(),"status")):local.canStart(version.internalId())))throw new ApiException(409,"TASK_VERSION_UNAVAILABLE");
-                // A READY run has no pinned content or answers yet. Once it starts,
+                // A READY run may already pin its background. On start,
                 // fix its edition together with its Task Version; never migrate started work.
                 if(run.taskPublicId()==null&&com.ruoyi.majorpilot.learning.MethodGuide.enabled(version.manifest())){
                     if(db.jdbc().queryForObject("SELECT COUNT(*) FROM mp_experience_run WHERE student_id=? AND major_id=? AND experience_edition=2 AND status<>'REPLACED' AND id<>?",Integer.class,run.studentId(),run.majorId(),run.id())>0)throw new ApiException(409,"LEARNING_NEW_EDITION_EXISTS");

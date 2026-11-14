@@ -14,6 +14,7 @@ import NextRecommendationPanel from "../components/reports/NextRecommendationPan
 import ArrowIcon from "../components/ArrowIcon.vue";
 import { pilotMode } from "../lib/pilot";
 import PilotAllowance from "../components/PilotAllowance.vue";
+import ProfileSummary from "../components/ProfileSummary.vue";
 import { isProductRun, productRun, historicalProductRuns, productAction, reportEditionLabel, currentDecisionFor, runStatusLabel } from "../lib/product-entry";
 const formalRuns = ref<Run[]>([]), decisionDialog = ref<HTMLDialogElement | null>(null);
 const editions=ref<{majorCode:MajorCode;experienceEdition:number;taskVersionId:string;versionCode:string}[]>([]);
@@ -50,6 +51,10 @@ const available = (code: MajorCode) => dashboard.value?.majors.find(
   (item) => item.majorCode === code,
 )?.availability === "AVAILABLE";
 const actionLabel = (code: MajorCode) => productAction(runFor(code), reportFor(code), major(code).short, available(code));
+const statusLabel = (code: MajorCode) => {
+  const run = runFor(code);
+  return run ? runStatusLabel[run.status] : available(code) ? "尚未开始" : "尚未开放";
+};
 const unsubscribe = onIdentityChange(() => {
   epoch++;
   dashboard.value = null;
@@ -173,7 +178,6 @@ async function startFormal(code: MajorCode, overrideConfirmed = false) {
     await router.push(`/app/experiences/${code}`);
     return;
   }
-  if (!existing && !recommendation) return;
   if (!existing && recommendation && code !== recommendation.primaryMajor &&
       !currentDecisionFor(dashboard.value.currentDecision, recommendation.recommendationId, code) && !overrideConfirmed) {
     await choose(code);
@@ -205,7 +209,9 @@ async function startFormal(code: MajorCode, overrideConfirmed = false) {
       );
       dashboard.value!.currentDecision = decision;
     }
-    const body = { decisionId: decision?.decisionId };
+    const body = recommendation
+      ? { decisionId: decision?.decisionId }
+      : { majorCode: code };
     const next =
       existing ||
       (await request<Run>("/api/app/v1/experience-runs", {
@@ -268,25 +274,31 @@ onBeforeUnmount(() => {
     <div class="dashboard-top">
       <h1 class="serif">继续你的专业探索。</h1>
       <div>
+        <RouterLink to="/app/plans" class="text-link">方案与支付（演示）</RouterLink>
         <RouterLink to="/app/settings" class="text-link">账户与数据</RouterLink
         ><button class="plain-button" :disabled="busy" @click="logout">
           退出
         </button>
       </div>
     </div>
-    <PilotAllowance v-if="pilotMode && auth.me?.canStartExperience" />
     <div v-if="loading" class="loading-state" role="status">
       正在读取已保存的资料…
     </div>
     <div v-else-if="!pilotMode && auth.me && !auth.me.emailVerified" class="content-page">
       <h2>先验证你的邮箱</h2>
-      <p>资料已保存。验证邮箱后，即可查看初始建议并选择方向。</p>
+      <p>验证邮箱后即可选择专业体验，背景资料可以稍后补充。</p>
       <RouterLink to="/verify-email" class="text-link"
         >打开验证与重发入口</RouterLink
       ><button class="quiet-button" @click="load">已验证？刷新状态</button>
     </div>
-    <template v-else-if="dashboard"
-      ><section v-if="pilotMode && !dashboard.recommendation" class="content-page"><h2>还差一点背景信息。</h2><p>告诉我们你的起点，系统就能安排第一个尝试的专业。</p><RouterLink to="/app/welcome" class="primary-button">继续填写背景</RouterLink></section><section
+    <template v-else-if="dashboard">
+      <ProfileSummary />
+      <PilotAllowance v-if="pilotMode" />
+      <p v-if="!activeRecommendation && dashboard.nextStep !== 'ALL_COMPLETED'" class="dashboard-choice-note">
+        还没有足够信息生成个性化建议。你可以直接选择下方已开放的专业，也可以
+        <RouterLink to="/app/profile/edit" class="text-link">补充背景资料</RouterLink>。
+      </p>
+      <section
         v-if="
           dashboard.recommendation &&
           !dashboard.nextRecommendation &&
@@ -367,35 +379,32 @@ onBeforeUnmount(() => {
       <div v-if="error && !choosing" class="error-notice" role="alert">
         {{ error }}<button class="plain-button text-link" :disabled="busy" @click="load">重新读取</button>
       </div>
-      <section class="dashboard-majors" aria-label="三个专业体验">
-        <article v-for="item in dashboard.majors" :key="item.majorCode">
-          <div class="dashboard-major-title">
-            <b class="serif">{{ major(item.majorCode).short }}</b>
-            <div>
-              <h2>{{ item.name }}</h2>
-              <p>{{ major(item.majorCode).chinese }}</p>
-            </div>
-            <span>{{
-              runFor(item.majorCode)
-                ? runStatusLabel[runFor(item.majorCode)!.status]
-                : "未开始"
-            }}</span>
+      <div class="dashboard-section-heading">
+        <div><p class="eyebrow">THREE WAYS TO EXPLORE</p><h2 class="serif">从一个方向开始。</h2></div>
+        <p>不必先选定专业。先了解，再决定要不要试。</p>
+      </div>
+      <section class="major-card-grid" aria-label="三个专业体验">
+        <article v-for="item in dashboard.majors" :key="item.majorCode" class="major-card" :data-major="item.majorCode">
+          <div class="major-card-top">
+            <b class="serif major-card-code">{{ major(item.majorCode).short }}</b>
+            <span class="major-card-status" :data-status="runFor(item.majorCode)?.status || item.availability">{{ statusLabel(item.majorCode) }}</span>
           </div>
-          <p>{{ major(item.majorCode).description }}</p>
-          <p v-if="item.availability !== 'AVAILABLE' && !runFor(item.majorCode)" class="muted">
-            这个方向暂未开放，已保存的建议不受影响。
-          </p>
-          <div class="button-row">
+          <div class="major-card-title"><h3>{{ major(item.majorCode).chinese }}</h3><p lang="en">{{ item.name }}</p></div>
+          <p class="major-card-question">{{ major(item.majorCode).question }}</p>
+          <p class="major-card-description">{{ major(item.majorCode).description }}</p>
+          <p v-if="item.availability !== 'AVAILABLE' && !runFor(item.majorCode)" class="major-card-note">可以先了解内容，暂时不能开始任务。</p>
+          <div class="major-card-actions">
             <button
-              class="quiet-button"
-              :class="{ 'desktop-task-action': runFor(item.majorCode)?.status !== 'CLOSED' }"
-              :disabled="
-                busy || (!runFor(item.majorCode) && !activeRecommendation && item.availability === 'AVAILABLE')
-              "
+              class="action-link action-small"
+              :class="{ 'desktop-task-action': runFor(item.majorCode)?.status !== 'CLOSED' && (available(item.majorCode) || !!runFor(item.majorCode)) }"
+              :disabled="busy"
               @click="startFormal(item.majorCode)"
             >
-              {{ actionLabel(item.majorCode) }}</button
-            ><RouterLink
+              <span>{{ actionLabel(item.majorCode) }}</span><span class="action-arrow"><ArrowIcon /></span>
+            </button>
+            <RouterLink v-if="runFor(item.majorCode) && runFor(item.majorCode)?.status !== 'CLOSED'" :to="`/app/runs/${runFor(item.majorCode)!.runId}`" class="text-link mobile-entry-action">查看已保存进度 →</RouterLink>
+            <RouterLink
+              v-if="available(item.majorCode) || !!runFor(item.majorCode)"
               :to="{
                 path: `/app/experiences/${item.majorCode}`,
                 query: activeRecommendation
@@ -403,9 +412,8 @@ onBeforeUnmount(() => {
                   : {},
               }"
               class="text-link"
-              >了解任务</RouterLink
+              >了解体验</RouterLink
             >
-            <RouterLink v-if="runFor(item.majorCode) && runFor(item.majorCode)?.status !== 'CLOSED'" :to="`/app/runs/${runFor(item.majorCode)!.runId}`" class="text-link mobile-entry-action">查看进度</RouterLink>
           </div>
         </article>
       </section>
@@ -546,6 +554,29 @@ onBeforeUnmount(() => {
   </main>
 </template>
 <style scoped>
+.dashboard-top > div { flex-wrap: wrap; justify-content: flex-end; gap: 16px 24px; }
+.dashboard-top h1 { flex-shrink: 0; }
+.dashboard-choice-note { margin: 24px 0 36px; color: var(--muted); line-height: 1.8; }
+.dashboard-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin: 38px 0 22px; }
+.dashboard-section-heading h2 { margin: 6px 0 0; font-size: 32px; }
+.dashboard-section-heading > p { max-width: 340px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; }
+.major-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.major-card { display: flex; flex-direction: column; min-width: 0; padding: 24px; border: 1px solid var(--line); background: rgba(255, 255, 255, .22); }
+.major-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.major-card-code { font-size: 66px; font-weight: 400; line-height: 1; letter-spacing: -.045em; }
+.major-card-status { padding: 5px 9px; border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
+.major-card-status[data-status="IN_PROGRESS"], .major-card-status[data-status="PAUSED"] { color: var(--blue); border-color: var(--blue); }
+.major-card-title { margin: 26px 0 22px; min-height: 62px; }
+.major-card-title h3 { margin: 0 0 8px; font-size: 23px; }
+.major-card-title p { font-size: 15px; margin: 0; line-height: 1.5; }
+.major-card-question { margin: 0 0 12px; font-size: 17px; line-height: 1.6; }
+.major-card-description, .major-card-note { color: var(--muted); font-size: 14px; line-height: 1.8; }
+.major-card-description { margin: 0 0 24px; }
+.major-card-note { margin: 0 0 14px; }
+.major-card-actions { display: flex; align-items: flex-start; flex-direction: column; gap: 18px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--line); }
+.major-card-actions .action-link { width: 100%; justify-content: space-between; font-size: 16px; }
+.major-card-actions > .text-link { font-size: 14px; }
 .dashboard-recommendation-copy { flex: 1; min-width: 0; }
 .mobile-entry-action { display: none; }
 .dashboard-recommendation .dashboard-primary-action { flex: 0 0 auto; margin: 0 0 0 auto; font-size: 18px; white-space: nowrap; }
@@ -563,8 +594,18 @@ onBeforeUnmount(() => {
 @media (max-width: 1023px) {
   .mobile-entry-action { display: inline-flex; }
   .edition-start-action { display: none; }
+  .major-card-grid { gap: 14px; }
+  .major-card { padding: 18px; }
 }
 @media (max-width: 700px) {
+  .dashboard-top > div { justify-content: flex-start; font-size: 13px; gap: 14px 20px; }
+  .dashboard-top h1 { font-size: 34px; }
+  .dashboard-section-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .dashboard-section-heading > p { margin: 0; }
+  .major-card-grid { grid-template-columns: 1fr; }
+  .major-card { padding: 24px; }
+  .major-card-title { min-height: auto; margin: 20px 0 16px; }
+  .major-card-actions { flex-direction: row; align-items: center; flex-wrap: wrap; }
   .dashboard-recommendation { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 20px; row-gap: 18px; }
   .dashboard-recommendation .dashboard-major { align-self: start; }
   .dashboard-recommendation .dashboard-primary-action { grid-column: 1 / -1; margin-left: 0; width: 100%; font-size: 17px; }

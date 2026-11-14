@@ -88,6 +88,8 @@ class StudentPrivacyBoundaryTest {
         principal("PENDING_VERIFICATION");
         for(String path:List.of("/api/app/v1/dashboard","/api/app/v1/experience-runs/"+ID,"/api/app/v1/me/tasks",EXPORT+"/anything",DELETION+"/confirm/extra","/api/app/v1/data-export-requests/not-an-id","/api/app/v1/account-deletion-requests/"+ID.toLowerCase()))rejected(request("GET",path),403,"EMAIL_NOT_VERIFIED");
         rejected(write("POST","/api/app/v1/experience-runs"),403,"EMAIL_NOT_VERIFIED");
+        rejected(write("PUT","/api/app/v1/profile/draft"),403,"EMAIL_NOT_VERIFIED");
+        rejected(write("POST","/api/app/v1/profile/submit"),403,"EMAIL_NOT_VERIFIED");
         rejected(write("POST","/api/app/v1/events"),403,"EMAIL_NOT_VERIFIED");
         verifyNoInteractions(csrf);
     }

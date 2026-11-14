@@ -8,6 +8,7 @@ import java.util.concurrent.*;
 import java.util.function.Supplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.majorpilot.analytics.*;
+import com.ruoyi.majorpilot.auth.*;
 import com.ruoyi.majorpilot.recommendation.*;
 import com.ruoyi.majorpilot.security.RateLimits;
 import com.ruoyi.majorpilot.shared.*;
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.*;
 class IntakeMySqlTest {
     static JdbcTemplate jdbc; static TransactionTemplate tx; static ObjectMapper mapper;
     final List<Long> intakeIds=new ArrayList<>(),studentIds=new ArrayList<>();
-    ProductEvents events; RecommendationStore store; IntakeService intakes; StudentRecommendationService choices; IdempotencyService idem;
+    ProductEvents events; RecommendationStore store; IntakeService intakes; StudentRecommendationService choices; IdempotencyService idem; ProfileService profiles;
     @BeforeAll static void database() {
         String url=System.getenv("MP_DB_URL");
         if(url==null||!url.startsWith("jdbc:mysql://127.0.0.1:13306/majorpilot?"))throw new IllegalStateException("Dedicated local database required");
@@ -36,11 +37,11 @@ class IntakeMySqlTest {
     @BeforeEach void services() {
         events=new ProductEvents(jdbc,mapper);store=new RecommendationStore(jdbc,mapper,events);
         idem=new IdempotencyService(jdbc,tx,new Secrets("synthetic-intake-integration-key-".repeat(3)),mapper);
-        intakes=new IntakeService(jdbc,mapper,store,idem,events);choices=new StudentRecommendationService(jdbc,store,idem,events);
+        intakes=new IntakeService(jdbc,mapper,store,idem,events);choices=new StudentRecommendationService(jdbc,store,idem,events);profiles=new ProfileService(jdbc,mapper,store,idem);
     }
     @AfterEach void cleanup() {
         transaction(()->{
-            for(long student:studentIds){jdbc.update("DELETE FROM mp_product_event WHERE student_id=?",student);jdbc.update("DELETE FROM mp_recommendation_decision WHERE student_id=?",student);jdbc.update("DELETE FROM mp_idempotency_record WHERE owner_student_id=?",student);}
+            for(long student:studentIds){for(String table:List.of("mp_security_event","mp_email_token","mp_student_session","mp_consent_record"))jdbc.update("DELETE FROM "+table+" WHERE student_id=?",student);jdbc.update("DELETE FROM mp_product_event WHERE student_id=?",student);jdbc.update("DELETE FROM mp_recommendation_decision WHERE student_id=?",student);jdbc.update("DELETE FROM mp_idempotency_record WHERE owner_student_id=?",student);}
             for(long intake:intakeIds){jdbc.update("DELETE FROM mp_product_event WHERE intake_session_id=?",intake);jdbc.update("DELETE FROM mp_idempotency_record WHERE owner_intake_session_id=?",intake);jdbc.update("DELETE FROM mp_consent_record WHERE intake_session_id=?",intake);}
             var profiles=new ArrayList<Long>();
             for(long intake:intakeIds)profiles.addAll(jdbc.queryForList("SELECT id FROM mp_decision_profile WHERE intake_session_id=?",Long.class,intake));
@@ -127,6 +128,68 @@ class IntakeMySqlTest {
         assertEquals(1,transaction(()->pages.intake(hash(one),new PageEventService.Batch(List.of(valid)))).duplicateCount());
         assertEquals(1,transaction(()->pages.intake(hash(one),new PageEventService.Batch(List.of(observation(recommendation.recommendationId()))))).duplicateCount());assertEquals(1,views(internal(one)));
     }
+    @Test void partialFinishKeepsSkipMissingAndUncertaintyDistinctAndRemainsClaimable(){
+        var created=create();var answers=mapper.createObjectNode().putNull("applicationStage").put("targetIntakeWindow","UNSURE");
+        String idemKey=key();var request=new IntakeService.Submission(Questionnaire.VERSION,0L,answers);
+        var finished=transaction(()->intakes.finish(publicId(created),hash(created),idemKey,request));
+        assertNull(finished.recommendation());assertFalse(finished.profile().complete());assertFalse(finished.profile().recommendationReady());
+        assertEquals(answers,finished.profile().answers());assertEquals("SKIPPED",finished.profile().answerStates().get("applicationStage"));assertEquals("UNSURE",finished.profile().answerStates().get("targetIntakeWindow"));assertEquals("MISSING",finished.profile().answerStates().get("currentField"));
+        assertEquals(finished,transaction(()->intakes.finish(publicId(created),hash(created),idemKey,request)));assertEquals(finished,transaction(()->intakes.finish(publicId(created),hash(created),key(),request)));
+        assertEquals("RECOMMENDATION_NOT_FOUND",assertThrows(ApiException.class,()->transaction(()->intakes.recommendation(publicId(created),hash(created)))).code);
+        var student=student();assertTrue(claim(created,student));assertEquals(answers,transaction(()->profiles.get(student)).profile().answers());assertNull(transaction(()->choices.dashboard(student)).get("recommendation"));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM mp_decision_answer a JOIN mp_decision_profile p ON p.id=a.decision_profile_id WHERE p.student_id=?",Integer.class,student.internalId()));
+    }
+    @Test void emptyFinishDoesNotInventAcquisitionChannelOrRecommendation(){
+        var created=create();var finished=transaction(()->intakes.finish(publicId(created),hash(created),key(),new IntakeService.Submission(Questionnaire.VERSION,0L,mapper.createObjectNode())));
+        assertTrue(finished.profile().answers().isEmpty());assertNull(finished.recommendation());assertEquals(13,finished.profile().answerStates().size());assertTrue(finished.profile().answerStates().values().stream().allMatch("MISSING"::equals));
+        assertEquals("MISSING",transaction(()->intakes.lockClaimable(publicId(created),hash(created))).acquisitionChannelCode());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM mp_decision_answer a JOIN mp_decision_profile p ON p.id=a.decision_profile_id WHERE p.intake_session_id=?",Integer.class,internal(created)));
+    }
+    @Test void emptyIntakeRegistrationStillRequiresConsentAndRealEmailVerification(){
+        var intake=create();transaction(()->intakes.finish(publicId(intake),hash(intake),key(),new IntakeService.Submission(Questionnaire.VERSION,0L,mapper.createObjectNode())));
+        var secrets=new Secrets("offline-profile-auth-secret-".repeat(3));var mail=mock(AuthMailGateway.class);when(mail.send(anyLong(),eq("VERIFY_EMAIL"),anyString())).thenReturn(true);
+        var auth=new AuthService(jdbc,tx,intakes,idem,new StudentPasswords(),new StudentSessions(jdbc),mock(RateLimits.class),mail,new SecurityEvents(jdbc,secrets),secrets,events);
+        String email="empty-profile-"+PublicIds.next().toLowerCase(Locale.ROOT)+"@example.invalid",password="synthetic registration passphrase";
+        assertEquals("CONSENT_REQUIRED",assertThrows(ApiException.class,()->auth.register(new AuthDtos.Register(publicId(intake),email,password,List.of()),hash(intake),key(),"fixture","fixture")).code);
+        var consents=List.of(new AuthDtos.Consent("TERMS","v1","ACCEPTED"),new AuthDtos.Consent("PRIVACY","v1","ACCEPTED"));
+        var result=auth.register(new AuthDtos.Register(publicId(intake),email,password,consents),hash(intake),key(),"fixture","fixture");
+        long id=jdbc.queryForObject("SELECT id FROM mp_student_account WHERE public_id=?",Long.class,result.studentId());studentIds.add(id);
+        assertEquals("PENDING_VERIFICATION",result.status());assertEquals("VERIFY_EMAIL",result.nextAction());assertEquals("SENT",result.emailDeliveryStatus());
+        var principal=new StudentPrincipal(id,result.studentId(),"PENDING_VERIFICATION");assertFalse(auth.me(principal).canStartExperience());assertFalse(auth.me(principal).emailVerified());assertEquals("EMAIL_NOT_VERIFIED",assertThrows(ApiException.class,()->transaction(()->profiles.get(principal))).code);
+        var token=org.mockito.ArgumentCaptor.forClass(String.class);verify(mail).send(eq(id),eq("VERIFY_EMAIL"),token.capture());auth.verify(token.getValue(),"fixture","fixture");
+        assertTrue(auth.me(principal).canStartExperience());assertTrue(auth.me(principal).emailVerified());assertTrue(transaction(()->profiles.get(principal)).profile().answers().isEmpty());assertEquals(2,auth.consents(principal).size());
+    }
+    @Test void accountDraftSubmitCancelAndStaleTabsPreserveFormalHistory(){
+        var student=student();var first=transaction(()->profiles.submit(student,key(),profileInput(0,0,IntakeFixtures.answers(),"EDIT")));
+        assertTrue(first.profile().complete());assertNotNull(first.recommendation());assertEquals(1,first.draftRevision());
+        var draft=transaction(()->profiles.save(student,profileInput(1,1,mapper.createObjectNode(),"RESTART")));
+        assertTrue(draft.draft().answers().isEmpty());assertEquals(first.profile(),draft.profile());assertEquals(draft,transaction(()->profiles.get(student)));
+        assertEquals("PROFILE_DRAFT_CONFLICT",assertThrows(ApiException.class,()->transaction(()->profiles.save(student,profileInput(1,1,mapper.createObjectNode(),"EDIT")))).code);
+        var cancelled=transaction(()->profiles.discard(student,new ProfileService.Revision(2L)));assertNull(cancelled.draft());assertEquals(3,cancelled.draftRevision());assertEquals(first.profile(),cancelled.profile());
+        var partial=mapper.createObjectNode().putNull("scenarioPreference");partial.putObject("majorFamiliarity").put("AI","UNFAMILIAR");partial.put("targetIntakeWindow","UNSURE");
+        String submitKey=key();var input=profileInput(3,1,partial,"RESTART");var second=transaction(()->profiles.submit(student,submitKey,input));
+        assertEquals(2,second.profile().profileVersion());assertEquals(partial,second.profile().answers());assertNull(second.recommendation());assertNull(store.latestStudent(student.internalId()));assertEquals(second,transaction(()->profiles.submit(student,submitKey,input)));
+        assertEquals("PROFILE_DRAFT_CONFLICT",assertThrows(ApiException.class,()->transaction(()->profiles.submit(student,key(),input))).code);
+        assertEquals("PROFILE_VERSION_CONFLICT",assertThrows(ApiException.class,()->transaction(()->profiles.save(student,profileInput(4,1,partial,"EDIT")))).code);
+        assertEquals(2,count("mp_decision_profile","student_id",student.internalId()));assertEquals(first.profile().answers(),store.profile(jdbc.queryForObject("SELECT id FROM mp_decision_profile WHERE public_id=?",Long.class,first.profile().decisionProfileId())).answers());
+        assertEquals("SUPERSEDED",jdbc.queryForObject("SELECT status FROM mp_decision_profile WHERE public_id=?",String.class,first.profile().decisionProfileId()));
+        var another=student();assertNull(transaction(()->profiles.get(another)).profile());assertNull(transaction(()->profiles.get(another)).draft());
+    }
+    @Test void realRankingFieldsCanRecommendWithoutInventingTheOtherBackground(){
+        var student=student();var source=IntakeFixtures.answers();var answers=mapper.createObjectNode();for(String field:List.of("consideredMajors","majorFamiliarity","scenarioPreference","workElements"))answers.set(field,source.get(field));
+        var result=transaction(()->profiles.submit(student,key(),profileInput(0,0,answers,"EDIT")));
+        assertFalse(result.profile().complete());assertTrue(result.profile().recommendationReady());assertNotNull(result.recommendation());assertEquals(answers,result.profile().answers());assertEquals("MISSING",result.profile().answerStates().get("applicationStage"));assertEquals(4,jdbc.queryForObject("SELECT COUNT(*) FROM mp_decision_answer a JOIN mp_decision_profile p ON p.id=a.decision_profile_id WHERE p.student_id=?",Integer.class,student.internalId()));
+    }
+    @Test void concurrentProfileSubmissionsAppendExactlyOneVersion()throws Exception{
+        var student=student();var input=profileInput(0,0,mapper.createObjectNode(),"RESTART");
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var jobs=pool.invokeAll(List.<Callable<String>>of(()->submitOutcome(student,input),()->submitOutcome(student,input)));
+            var outcomes=new ArrayList<String>();for(var job:jobs)outcomes.add(job.get());assertEquals(1,Collections.frequency(outcomes,"SUCCESS"));assertEquals(1,Collections.frequency(outcomes,"PROFILE_DRAFT_CONFLICT"));
+        }
+        assertEquals(1,count("mp_decision_profile","student_id",student.internalId()));assertEquals(1,transaction(()->profiles.get(student)).draftRevision());
+    }
+    private String submitOutcome(StudentPrincipal student,ProfileService.Input input){try{transaction(()->profiles.submit(student,key(),input));return "SUCCESS";}catch(ApiException conflict){return conflict.code;}}
+    private static ProfileService.Input profileInput(long revision,long base,com.fasterxml.jackson.databind.JsonNode answers,String mode){return new ProfileService.Input(Questionnaire.VERSION,revision,base,answers,"step-1",mode);}
     private IntakeService.Created create(){var result=transaction(()->intakes.create(Questionnaire.VERSION,null));intakeIds.add(jdbc.queryForObject("SELECT id FROM mp_intake_session WHERE public_id=?",Long.class,result.view().intakeSessionId()));return result;}
     private StudentPrincipal student(){String id=PublicIds.next(),email="intake-fixture-"+id.toLowerCase(Locale.ROOT)+"@example.invalid";jdbc.update("INSERT INTO mp_student_account(public_id,email_normalized,email_display,password_hash,status,email_verified_at) VALUES(?,?,?,'synthetic-unused-hash','ACTIVE',UTC_TIMESTAMP(3))",id,email,email);long internal=jdbc.queryForObject("SELECT id FROM mp_student_account WHERE public_id=?",Long.class,id);studentIds.add(internal);return new StudentPrincipal(internal,id,"ACTIVE");}
     private boolean claim(IntakeService.Created created,StudentPrincipal student){try{return transaction(()->{var claim=intakes.lockClaimable(publicId(created),hash(created));intakes.claimAll(claim.intakeInternalId(),student.internalId());return true;});}catch(ApiException conflict){assertEquals("INTAKE_ALREADY_CLAIMED",conflict.code);return false;}}

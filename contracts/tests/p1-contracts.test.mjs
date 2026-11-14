@@ -13,7 +13,7 @@ test('P1 method and path inventory matches its local domain and identity control
   const sources = ['auth', 'intake', 'recommendation', 'analytics', 'shared'].flatMap(directory => {
     const path = new URL(`${directory}/`, root);
     // P7 owns this later controller and checks its complete route/permission inventory.
-    return readdirSync(path).filter(file => file.endsWith('Controller.java') && file !== 'AccountSettingsController.java').map(file => readFileSync(new URL(file, path), 'utf8'));
+    return readdirSync(path).filter(file => file.endsWith('Controller.java') && !['AccountSettingsController.java', 'ProfileController.java'].includes(file)).map(file => readFileSync(new URL(file, path), 'utf8'));
   });
   const implemented = sources.flatMap(source => {
     const base = source.match(/@RequestMapping\("([^"]*)"\)/u)?.[1] ?? '';
@@ -68,7 +68,7 @@ test('health dependency failure is a typed 503 success envelope, not a generic s
 });
 test('P3 publication projection accepts formal availability and run states without preview status leakage', () => {
   const majors = ['AI', 'DATA_SCIENCE', 'BUSINESS_ANALYTICS'].map(majorCode => ({ majorCode, name: majorCode, status: 'NOT_STARTED', availability: 'UNAVAILABLE' }));
-  const dashboard = { recommendation: null, majors, currentDecision: null, nextStep: 'TASK_CONTENT_PREPARING' };
+  const dashboard = { recommendation: null, majors, currentDecision: null, nextStep: 'TASK_CONTENT_PREPARING', profile: null };
   valid('Dashboard', dashboard);
   for (const status of ['READY', 'IN_PROGRESS', 'PAUSED', 'TASK_COMPLETED', 'CLOSED']) {
     dashboard.majors[0] = { ...majors[0], availability: 'AVAILABLE', status };

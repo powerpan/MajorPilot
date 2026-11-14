@@ -36,6 +36,8 @@ const messages: Record<string, string> = {
   INTAKE_ALREADY_CLAIMED: "资料已保存并绑定账户，请登录继续，不需要重新填写。",
   INTAKE_REVISION_CONFLICT:
     "另一页面已保存了较新版本。请选择如何处理，系统不会覆盖你的答案。",
+  PROFILE_DRAFT_CONFLICT: "另一页面已更新这份草稿。请保留本机填写，再读取服务器版本；不会自动覆盖。",
+  PROFILE_VERSION_CONFLICT: "正式资料已在另一页面提交了新版本。你的草稿仍保留，请读取最新资料后再修改。",
   QUESTIONNAIRE_VERSION_STALE: "问卷版本已更新，请保留本机草稿后重新开始。",
   DECISION_PROFILE_INVALID: "请检查尚未完成或不符合要求的答案。",
   EMAIL_TOKEN_INVALID: "邮件链接无效、已过期或已使用。请重新发送邮件。",

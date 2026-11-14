@@ -7,6 +7,8 @@
 
 ## 1. API 边界
 
+2026-11-14 的个人资料、匿名部分提交和自主开始接口见 [48](./48-profile-dashboard-and-payment-demo.md)，优先于本文件早期的完整问卷及来源推荐前置条件。新增接口继续使用本文的身份、CSRF、归属、幂等与错误协议；支付演示不新增业务写 API。
+
 | 边界 | 基础路径 | 身份 | 客户端 |
 | --- | --- | --- | --- |
 | 公开与匿名流程 | `/api/public/v1` | 无 Student 身份；Intake、删除回执各用独立限定凭证 | `majorpilot-web` |
@@ -180,6 +182,7 @@ Cookie Path 只是发送范围，不代替认证、归属校验和安全链隔�
 | GET | `/intake-sessions/{id}` | 恢复当前草稿 | 同时需要匹配 Intake Cookie |
 | PUT | `/intake-sessions/{id}/draft` | 保存问卷草稿 | `expectedRevision` |
 | POST | `/intake-sessions/{id}/submit` | 提交 Decision Profile 并生成推荐 | 要求 Idempotency-Key |
+| POST | `/intake-sessions/{id}/finish` | 保存空或部分背景并结束本次填写 | 推荐可为空；保留 Intake Cookie 认领，要求 Idempotency-Key |
 | GET | `/intake-sessions/{id}/recommendation` | 查看注册前真实推荐 | 不隐藏主推荐和核心理由 |
 | POST | `/auth/register` | 创建 Student Account 并认领 Intake | 不允许重复认领 |
 | POST | `/auth/verify-email` | 使用一次性令牌验证邮箱 | 令牌不出现在日志 |
@@ -216,6 +219,10 @@ Cookie Path 只是发送范围，不代替认证、归属校验和安全链隔�
 | POST | `/me/email/confirm` | 使用一次性令牌确认新邮箱 |
 | PATCH | `/me/password` | 校验当前密码后修改，撤销全部会话，要求重新登录 |
 | GET | `/dashboard` | 三个 Major 状态、推荐、继续入口和报告入口 |
+| GET | `/profile` | 最新正式背景、独立草稿、草稿 revision；缺失与主动跳过分开 |
+| PUT | `/profile/draft` | 按草稿 revision 及正式资料版本校验并保存，不改变正式背景 |
+| POST | `/profile/submit` | 追加完整或部分资料版本，要求 Idempotency-Key；信息足够才附初始推荐 |
+| POST | `/profile/draft/discard` | 校验草稿 revision 后丢弃草稿，保留正式与历史资料 |
 | GET | `/decision-profiles` | 查看自己的版本摘要 |
 | POST | `/decision-profiles` | 提交新版本并重新推荐 |
 | GET | `/recommendations/{id}` | 查看自己的推荐和理由 |
@@ -232,6 +239,8 @@ Cookie Path 只是发送范围，不代替认证、归属校验和安全链隔�
 | POST | `/events` | 学生页面事件批量上报；要求 Session、CSRF 与资源归属 |
 
 `GET /me` 不返回密码状态细节、内部 ID、管理角色或其他学生数据。
+
+本轮新页面使用 `/profile` 系列；旧 `/decision-profiles` 保留兼容。精确字段与冲突码见 [资料流程可执行合同](../contracts/openapi-profile-flow.json)。草稿 revision 在提交及取消后仍递增，避免旧标签页重新写回已丢弃的草稿。
 
 ### 7.1 用户反馈
 
@@ -261,7 +270,7 @@ Cookie Path 只是发送范围，不代替认证、归属校验和安全链隔�
 
 | 方法 | 路径 | 作用 | 允许状态 |
 | --- | --- | --- | --- |
-| POST | `/experience-runs` | 引用 decisionId 创建／复用所选 Major 的 Ready Run | 每专业最多一个当前 Run；已有 Paused／Closed 则返回其继续／报告入口 |
+| POST | `/experience-runs` | 引用 decisionId 或直接指定 majorCode 创建／复用 Ready Run | 自主选择不制造推荐；每专业最多一个当前 Run；已有 Paused／Closed 返回其继续／报告入口 |
 | GET | `/experience-runs/{id}` | 获取运行摘要和当前步骤 | 所有归属状态 |
 | POST | `/experience-runs/{id}/start` | 固定 Task Version 并正式开始 | `READY` |
 | POST | `/experience-runs/{id}/pause` | 保存后明确暂停，释放活动名额 | `IN_PROGRESS` 或 `TASK_COMPLETED` |
@@ -282,9 +291,9 @@ Cookie Path 只是发送范围，不代替认证、归属校验和安全链隔�
 
 创建 Run 表示学生确认选择，状态为 Ready。只有调用 start 才分配并固定当前 PUBLISHED Task Version。这样打开介绍页不会被记录为正式开始。
 
-READY 不占活动名额；相同 Major 的当前 Run 已存在则返回它，不创建 attempt。普通 start 固定来源决定和 profile；异常恢复 Run 按 `11` 沿用原版本／背景。PAUSED 继续使用 resume，CLOSED 返回报告入口，REPLACED 返回恢复 Run 指针且不能写入。
+READY 不占活动名额；相同 Major 的当前 Run 已存在则返回它，不创建 attempt。普通专业 Run 在创建时固定最新正式背景，未提供背景则绑定明确空快照，不把草稿当正式答案。推荐／决定的原始引用保留，不因背景更新而改写；异常恢复 Run 按 `11` 沿用原版本／背景。PAUSED 继续使用 resume，CLOSED 返回报告入口，REPLACED 返回恢复 Run 指针且不能写入。
 
-复用尚未开始的 READY 时，如需要改用新 profile／推荐决定，创建接口必须同时携带该 Run 的 expectedRevision 才能更新来源引用；缺失或过期返回409，不静默改变。已开始或恢复运行不走此更新路径。
+复用已有 READY 不重新绑定背景。仅针对历史尚未绑定 profile、尚未开始且不属于恢复的 READY，保留显式新 decisionId 与 expectedRevision 的兼容更新；缺失或过期返回409，不静默改变。新建或已开始运行不走此路径。
 
 start／resume 必带目标 `expectedRevision`；若有另一个活动 Run，默认返回409 ACTIVE_RUN_EXISTS。学生明确确认切换后，可附 `pauseActiveRunId` 与 `expectedActiveRunRevision`；服务端锁定学生及运行，在同一事务暂停所声明的活动 Run 并激活目标。活动 id/revision 不符或目标不可开始则全部回滚，不能静默暂停另一个新开的任务。pause 同样带 expectedRevision；保存未成功时不自动暂停、不提示已同步。
 

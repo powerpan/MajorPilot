@@ -27,7 +27,7 @@ _Avoid_: Student Account, User Account
 ## Major decision
 
 **Intake Session**:
-The temporary pre-registration journey in which a Visitor saves intake answers and receives an Initial Recommendation.
+The temporary pre-registration journey in which a Visitor may save intake answers. An Initial Recommendation is available only when the required preference inputs are complete; skipping background questions does not skip account or consent requirements.
 _Avoid_: Anonymous Session, Guest Session
 
 **Major**:
@@ -37,6 +37,9 @@ _Avoid_: Course, Degree, University Program
 **Decision Profile**:
 A versioned snapshot of information a Visitor or Student voluntarily provides for recommendation, explanation, and product analysis.
 _Avoid_: User Profile, Questionnaire
+
+**Profile Draft**:
+A resumable, version-checked set of unsubmitted background answers, separate from the current Decision Profile. Submitting it creates a new Decision Profile; existing Experience Runs and Reports retain their original background references.
 
 **Initial Recommendation**:
 The first Major Experience proposed from a Decision Profile before the Student begins a Major Experience.

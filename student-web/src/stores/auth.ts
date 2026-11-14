@@ -33,7 +33,7 @@ function clearLocalDraft() {
     sessionStorage.removeItem("mp:intake-draft:v1");
     for(let index=sessionStorage.length-1;index>=0;index--){
       const key=sessionStorage.key(index);
-      if(key?.startsWith("mp:pilot-intake:"))sessionStorage.removeItem(key);
+      if(key?.startsWith("mp:pilot-intake:") || key?.startsWith("mp:profile-editor:"))sessionStorage.removeItem(key);
     }
   } catch {
     /* Storage denied. */

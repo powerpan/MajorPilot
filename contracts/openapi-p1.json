@@ -1375,6 +1375,70 @@
           }
         }
       }
+    },
+    "/api/public/v1/intake-sessions/{id}/finish": {
+      "post": {
+        "operationId": "finishIntakeWithOptionalAnswers",
+        "description": "Freeze the actual partial or empty answers. Omitted keys remain missing; null is an explicit skip. Recommendation is null unless real preferences are sufficient. Allows the existing registration and email-verification flow without fabricated answers.",
+        "security": [
+          {
+            "IntakeSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/PublicId"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/IntakeFinished"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeFinishInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2037,6 +2101,10 @@
                   "currentRevision": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "currentProfileVersion": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 },
                 "required": []
@@ -2146,7 +2214,10 @@
             "type": "string"
           },
           "availability": {
-            "enum": ["UNAVAILABLE", "AVAILABLE"],
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
             "type": "string"
           }
         },
@@ -2651,7 +2722,10 @@
             "type": "boolean"
           },
           "availability": {
-            "enum": ["UNAVAILABLE", "AVAILABLE"],
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
             "type": "string"
           }
         },
@@ -2794,7 +2868,10 @@
             "format": "date-time"
           },
           "availability": {
-            "enum": ["UNAVAILABLE", "AVAILABLE"],
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
             "type": "string"
           }
         },
@@ -2960,11 +3037,21 @@
                   "type": "string"
                 },
                 "status": {
-                  "enum": ["NOT_STARTED", "READY", "IN_PROGRESS", "PAUSED", "TASK_COMPLETED", "CLOSED"],
+                  "enum": [
+                    "NOT_STARTED",
+                    "READY",
+                    "IN_PROGRESS",
+                    "PAUSED",
+                    "TASK_COMPLETED",
+                    "CLOSED"
+                  ],
                   "type": "string"
                 },
                 "availability": {
-                  "enum": ["UNAVAILABLE", "AVAILABLE"],
+                  "enum": [
+                    "UNAVAILABLE",
+                    "AVAILABLE"
+                  ],
                   "type": "string"
                 }
               },
@@ -3021,15 +3108,30 @@
             ]
           },
           "nextStep": {
-            "enum": ["TASK_CONTENT_PREPARING", "SELECT_EXPERIENCE", "ALL_COMPLETED"],
+            "enum": [
+              "TASK_CONTENT_PREPARING",
+              "SELECT_EXPERIENCE",
+              "ALL_COMPLETED"
+            ],
             "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "recommendation",
           "majors",
           "currentDecision",
-          "nextStep"
+          "nextStep",
+          "profile"
         ]
       },
       "Consent": {
@@ -3368,6 +3470,218 @@
         "required": [
           "acceptedCount",
           "duplicateCount"
+        ]
+      },
+      "ProfileAnswerStates": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "applicationStage": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "targetIntakeWindow": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "targetRegions": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "currentField": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "currentFieldText": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "consideredMajors": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "majorFamiliarity": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "foundationSelfView": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "scenarioPreference": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "workElements": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "decisionUncertainties": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "mainQuestion": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "acquisitionChannel": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          }
+        },
+        "required": [
+          "applicationStage",
+          "targetIntakeWindow",
+          "targetRegions",
+          "currentField",
+          "currentFieldText",
+          "consideredMajors",
+          "majorFamiliarity",
+          "foundationSelfView",
+          "scenarioPreference",
+          "workElements",
+          "decisionUncertainties",
+          "mainQuestion",
+          "acquisitionChannel"
+        ]
+      },
+      "ProfileView": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/DraftAnswers"
+          },
+          "answerStates": {
+            "$ref": "#/components/schemas/ProfileAnswerStates"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "recommendationReady": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decisionProfileId",
+          "profileVersion",
+          "questionnaireVersion",
+          "submittedAt",
+          "answers",
+          "answerStates",
+          "complete",
+          "recommendationReady"
+        ]
+      },
+      "IntakeFinishInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "$ref": "#/components/schemas/DraftAnswers"
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "expectedRevision",
+          "answers"
+        ]
+      },
+      "IntakeFinished": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ProfileView"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "profile",
+          "recommendation"
         ]
       }
     },

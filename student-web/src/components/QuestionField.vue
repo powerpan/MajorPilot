@@ -28,14 +28,13 @@ function toggle(code: string) {
     emit("update:modelValue", values);
 }
 function rank(code: string, value: string) {
-  const next = props.field.options.map((option) => ({
-    majorCode: option.code as MajorCode,
-    rank:
-      option.code === code
-        ? Number(value)
-        : ranks.value.find((item) => item.majorCode === option.code)?.rank || 1,
-  }));
-  const levels = [...new Set(next.map((item) => item.rank))].sort();
+  const next = [
+    ...ranks.value.filter(item => item.majorCode !== code),
+    { majorCode: code as MajorCode, rank: Number(value) },
+  ];
+  // Unselected scenarios remain absent. Normalize only after all were chosen.
+  if (next.length < props.field.options.length) { emit("update:modelValue", next); return; }
+  const levels = [...new Set(next.map((item) => item.rank))].sort((a, b) => a - b);
   emit(
     "update:modelValue",
     next.map((item) => ({ ...item, rank: levels.indexOf(item.rank) + 1 })),
@@ -170,12 +169,13 @@ function allTied() {
         ><select
           :id="`rank-${option.code}`"
           :value="
-            ranks.find((item) => item.majorCode === option.code)?.rank || 1
+            ranks.find((item) => item.majorCode === option.code)?.rank || ''
           "
           @change="
             rank(option.code, ($event.target as HTMLSelectElement).value)
           "
         >
+          <option disabled value="">请选择优先顺序</option>
           <option :value="1">第 1 优先</option>
           <option :value="2">第 2 优先</option>
           <option :value="3">第 3 优先</option>

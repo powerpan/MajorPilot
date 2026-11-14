@@ -40,7 +40,10 @@ class MethodLearningMySqlTest {
     ObjectNode answer(RunDtos.Run run,JsonNode definition,JsonNode guideStep)throws Exception{var value=(ObjectNode)f.value(definition.path("inputSchema"),0);if(!guideStep.path("local").isNull()){var book=books.list(f.version).getFirst();var local=value.withObject("local");local.put("workbookVersion",book.workbookVersion()).put("workbookSha256",book.sha256());var spec=guideStep.at("/local/defaultSpecification").deepCopy();local.set("specification",spec);var data=mapper.readTree(f.provider.publicAsset(f.version,run.majorCode().equals("DATA_SCIENCE")?"learner-activity":"weekly-funnel").bytes());var values=local.putObject("values");LocalResultVerifier.calculate(run.majorCode(),spec,data).forEach((k,v)->{var rounded=v.rounded(v.unit()==LocalResultVerifier.Unit.COUNT?0:2);values.put(k,rounded==null?"UNDEFINED":rounded.toPlainString());});}return value;}
     RunDtos.Run close(String major)throws Exception{return close(major,false);}
     RunDtos.Run close(String major,boolean skipTransfer)throws Exception{
-        var run=start(major);var guide=learning.guide(row(run));
+        return close(start(major),skipTransfer);
+    }
+    RunDtos.Run close(RunDtos.Run run,boolean skipTransfer)throws Exception{
+        var guide=learning.guide(row(run));
         for(var definition:f.version.manifest().path("steps")){String step=definition.path("stepKey").asText();var gs=MethodGuide.step(guide.path("steps"),step);String cp=gs.path("checkpointId").asText(null),transfer=gs.path("transferCheckpointId").asText(null);
             if(cp!=null)event(run,step,cp,"SUPPORT_PROVIDED",cp.toLowerCase()+"-basic",null);
             var value=answer(run,definition,gs);if(skipTransfer&&transfer!=null)value.put("transferMode","SKIP").put("transfer","");var saved=f.save(run,step,value);
@@ -52,6 +55,45 @@ class MethodLearningMySqlTest {
         var current=f.current(run);return f.close(f.runs.taskComplete(f.student,current.runId(),key(),new RunDtos.Revision(current.revision())));
     }
     void publish(){var lease=worker.claim();assertNotNull(lease);worker.process(lease);assertEquals("READY",db.queryForObject("SELECT status FROM mp_report_version WHERE id=?",String.class,lease.version()),()->db.queryForMap("SELECT status,failure_code FROM mp_report_version WHERE id=?",lease.version()).toString());}
+    @Test void directSelectionPinsBackgroundAtCreationAndKeepsReadyAndPausedRunsBound(){
+        String major="BUSINESS_ANALYTICS";db.update("UPDATE mp_task_version SET status='PUBLISHED' WHERE public_id=?",IDS.get(major));
+        var events=new com.ruoyi.majorpilot.analytics.ProductEvents(db,mapper);var profiles=new com.ruoyi.majorpilot.intake.ProfileService(db,mapper,new com.ruoyi.majorpilot.recommendation.RecommendationStore(db,mapper,events),f.base.idem);
+        var ready=f.runs.create(f.student,key(),new RunDtos.Create(null,null,null,major));Long original=row(ready).profileId();assertNotNull(original);assertNull(row(ready).recommendationId());assertNull(row(ready).decisionId());
+        tx.execute(t->profiles.submit(f.student,key(),new com.ruoyi.majorpilot.intake.ProfileService.Input("decision-profile-v1",0L,1L,mapper.createObjectNode().put("currentField","COMPUTING_ENGINEERING"),"step-4","EDIT")));
+        var again=f.runs.create(f.student,key(),new RunDtos.Create(null,null,null,major));assertEquals(ready.runId(),again.runId());assertEquals(original,row(again).profileId());
+        var active=f.start(again);var paused=f.runs.transition(f.student,active.runId(),"pause",key(),new RunDtos.Transition(active.revision(),null,null));
+        tx.execute(t->profiles.submit(f.student,key(),new com.ruoyi.majorpilot.intake.ProfileService.Input("decision-profile-v1",1L,2L,mapper.createObjectNode(),"step-1","RESTART")));
+        assertEquals(original,row(paused).profileId());assertEquals(paused.runId(),f.runs.create(f.student,key(),new RunDtos.Create(null,null,null,major)).runId());assertEquals(0,f.count("mp_recommendation"));
+    }
+    @Test void directEmptyBackgroundCanFinishAndPublishWithoutInventingInitialRecommendation()throws Exception{
+        String major="BUSINESS_ANALYTICS";db.update("DELETE FROM mp_decision_profile WHERE student_id=?",f.student.internalId());db.update("UPDATE mp_task_version SET status='PUBLISHED' WHERE public_id=?",IDS.get(major));f.version=f.provider.pinned(IDS.get(major));
+        var profilesStore=new com.ruoyi.majorpilot.recommendation.RecommendationStore(db,mapper,new com.ruoyi.majorpilot.analytics.ProductEvents(db,mapper));var profiles=new com.ruoyi.majorpilot.intake.ProfileService(db,mapper,profilesStore,f.base.idem);
+        tx.execute(t->profiles.save(f.student,new com.ruoyi.majorpilot.intake.ProfileService.Input("decision-profile-v1",0L,0L,mapper.createObjectNode().put("currentField","COMPUTING_ENGINEERING"),"step-4","EDIT")));
+        var request=new RunDtos.Create(null,null,null,major);String createKey=key();var ready=f.runs.create(f.student,createKey,request);assertEquals(ready,f.runs.create(f.student,createKey,request));
+        long profile=row(ready).profileId();assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM mp_decision_answer WHERE decision_profile_id=?",Integer.class,profile));assertEquals(0,db.queryForObject("SELECT profile_version_no FROM mp_decision_profile WHERE id=?",Integer.class,profile));assertEquals("UNPROVIDED_AT_EXPERIENCE_CREATION",f.store.node(db.queryForObject("SELECT profile_summary_json FROM mp_decision_profile WHERE id=?",String.class,profile)).path("source").asText());assertEquals(0,f.count("mp_recommendation"));
+        var before=tx.execute(t->profiles.get(f.student));assertNull(before.profile());assertEquals(0,before.draft().baseProfileVersion());assertTrue(profilesStore.profiles(f.student.internalId()).isEmpty());
+        var closed=close(f.start(ready),false);assertEquals("CLOSED",closed.status());assertEquals(profile,row(closed).profileId());
+        var submitted=tx.execute(t->profiles.submit(f.student,key(),new com.ruoyi.majorpilot.intake.ProfileService.Input("decision-profile-v1",1L,0L,before.draft().answers(),"step-4","EDIT")));assertEquals(1,submitted.profile().profileVersion());assertEquals(profile,row(closed).profileId());assertEquals(1,profilesStore.profiles(f.student.internalId()).size());
+        publish();assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM mp_recommendation WHERE student_id=? AND recommendation_type='INITIAL'",Integer.class,f.student.internalId()));
+    }
+    @Test void oldNextRecommendationKeepsItsSourceButNewExperienceUsesCurrentBackground()throws Exception{
+        var first=close("BUSINESS_ANALYTICS");publish();long original=row(first).profileId();String frozen=db.queryForObject("SELECT closed_input_manifest_json FROM mp_experience_run WHERE public_id=?",String.class,first.runId());String report=db.queryForObject("SELECT v.structured_report_json FROM mp_report_version v JOIN mp_report r ON r.id=v.report_id WHERE r.experience_run_id=? AND v.status='READY'",String.class,row(first).id());
+        var events=new com.ruoyi.majorpilot.analytics.ProductEvents(db,mapper);var profilesStore=new com.ruoyi.majorpilot.recommendation.RecommendationStore(db,mapper,events);var profiles=new com.ruoyi.majorpilot.intake.ProfileService(db,mapper,profilesStore,f.base.idem);
+        var submitted=tx.execute(t->profiles.submit(f.student,key(),new com.ruoyi.majorpilot.intake.ProfileService.Input("decision-profile-v1",0L,1L,mapper.createObjectNode().put("currentField","COMPUTING_ENGINEERING"),"step-4","EDIT")));
+        var recommendation=db.queryForMap("SELECT public_id,id,decision_profile_id FROM mp_recommendation WHERE source_run_id=? AND recommendation_type='NEXT'",row(first).id());assertEquals(original,((Number)recommendation.get("decision_profile_id")).longValue());
+        db.update("UPDATE mp_task_version SET status='PUBLISHED' WHERE public_id=?",IDS.get("DATA_SCIENCE"));
+        var choices=new com.ruoyi.majorpilot.recommendation.StudentRecommendationService(db,profilesStore,f.base.idem,events);var decision=tx.execute(t->choices.decide(f.student,recommendation.get("public_id").toString(),key(),new com.ruoyi.majorpilot.recommendation.StudentRecommendationService.DecisionInput("DATA_SCIENCE",null,null)));
+        var second=f.runs.create(f.student,key(),new RunDtos.Create(decision.decisionId(),null,null));long latest=db.queryForObject("SELECT id FROM mp_decision_profile WHERE public_id=?",Long.class,submitted.profile().decisionProfileId());assertEquals(latest,row(second).profileId());assertEquals(((Number)recommendation.get("id")).longValue(),row(second).recommendationId());assertEquals(original,row(first).profileId());
+        assertEquals(frozen,db.queryForObject("SELECT closed_input_manifest_json FROM mp_experience_run WHERE public_id=?",String.class,first.runId()));assertEquals(report,db.queryForObject("SELECT v.structured_report_json FROM mp_report_version v JOIN mp_report r ON r.id=v.report_id WHERE r.experience_run_id=? AND v.status='READY'",String.class,row(first).id()));
+    }
+    @Test void directSelectionCannotOpenUnavailableOrInvalidMajorOrBypassAccountState(){
+        assertThrows(ApiException.class,()->f.runs.create(f.student,key(),new RunDtos.Create(null,null,null,"UNKNOWN")));
+        assertThrows(ApiException.class,()->f.runs.create(f.student,key(),new RunDtos.Create(null,"DEMO_TABLE",null,"AI")));
+        assertThrows(ApiException.class,()->f.runs.create(f.student,key(),new RunDtos.Create(null,null,null,"BUSINESS_ANALYTICS")));
+        db.update("UPDATE mp_task_version SET status='PUBLISHED' WHERE public_id=?",IDS.get("AI"));db.update("UPDATE mp_student_account SET status='PENDING_VERIFICATION' WHERE id=?",f.student.internalId());
+        try{assertEquals("EMAIL_NOT_VERIFIED",assertThrows(ApiException.class,()->f.runs.create(f.student,key(),new RunDtos.Create(null,null,null,"AI"))).code);}finally{db.update("UPDATE mp_student_account SET status='ACTIVE' WHERE id=?",f.student.internalId());}
+        assertEquals(0,f.count("mp_experience_run"));
+    }
     @Test void allThreeFlowsFreezePublishReviewAndCompareWithoutPaidCalls()throws Exception{
         var allowance=pilot();
         for(String major:List.of("BUSINESS_ANALYTICS","DATA_SCIENCE","AI")){var closed=close(major);assertEquals("CLOSED",closed.status());assertEquals("GENERATING",closed.reportStatus());assertEquals(2,closed.experienceEdition());

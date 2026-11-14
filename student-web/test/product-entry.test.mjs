@@ -39,10 +39,10 @@ test("product instructions remove the obsolete preview label without rewriting p
   assert.equal(entries.productInstructions(run({ runMode: "REVIEW_PREVIEW" }), text), text);
   assert.equal(JSON.stringify(manifest), original);
 });
-function harness({ initialRuns = [], currentDecision = null, primary = "BUSINESS_ANALYTICS", available = true, reports = [], hold, confirmation = true, width = 1536, view = "dashboard" } = {}) {
+function harness({ initialRuns = [], currentDecision = null, primary = "BUSINESS_ANALYTICS", available = true, reports = [], hold, confirmation = true, width = 1536, view = "dashboard", noRecommendation = false } = {}) {
   let mount, changed, epoch = 0;
   const calls = [], navigation = [], confirmations = [];
-  const dashboard = { recommendation: { recommendationId: "rec-1", primaryMajor: primary }, majors: ["AI", "DATA_SCIENCE", "BUSINESS_ANALYTICS"].map((majorCode) => ({ majorCode, availability: available ? "AVAILABLE" : "CONTENT_PENDING" })), currentDecision, nextStep: "CHOOSE" };
+  const dashboard = { recommendation: noRecommendation ? null : { recommendationId: "rec-1", primaryMajor: primary }, majors: ["AI", "DATA_SCIENCE", "BUSINESS_ANALYTICS"].map((majorCode) => ({ majorCode, availability: available ? "AVAILABLE" : "CONTENT_PENDING" })), currentDecision, nextStep: "CHOOSE" };
   const data = { "/api/app/v1/dashboard": dashboard, "/api/app/v1/experience-runs": initialRuns, "/api/public/v1/majors": dashboard.majors, "/api/app/v1/reports?limit=50": { items: reports }, "/api/app/v1/comparison-report": { state: "WAITING", reason: "NEED_TWO_MAJORS" } };
   class ApiError extends Error { constructor(status, code) { super(code); this.status = status; this.code = code; } }
   const imports = {
@@ -97,6 +97,23 @@ test("recommended CTA saves the real decision then creates and starts exactly on
   assert.deepEqual(writes.map((call) => call.path), ["/api/app/v1/recommendations/rec-1/decision", "/api/app/v1/experience-runs", "/api/app/v1/experience-runs/run-1/start"]);
   assert.deepEqual(plain(writes[0].options.body), { selectedMajorCode: "BUSINESS_ANALYTICS" });
   assert.deepEqual(h.navigation, ["/app/runs/run-1"]);
+});
+test("missing background permits direct major creation without inventing a recommendation or reusing an old decision", async () => {
+  for (const view of ["dashboard", "introduction"]) {
+    const h = harness({ view, noRecommendation: true, currentDecision: { decisionId: "old", recommendationId: "old-rec", selectedMajorCode: "AI" } });
+    await h.mount();
+    if (view === "dashboard") await h.state.startFormal("BUSINESS_ANALYTICS"); else await h.state.start();
+    const writes = h.calls.filter(call => call.options.method === "POST");
+    assert.deepEqual(writes.map(call => call.path), ["/api/app/v1/experience-runs", "/api/app/v1/experience-runs/run-1/start"]);
+    assert.deepEqual(plain(writes[0].options.body), { majorCode: "BUSINESS_ANALYTICS" });
+    assert.deepEqual(h.navigation, ["/app/runs/run-1"]);
+  }
+});
+test("cards distinguish unopened content from a paused pinned experience", async () => {
+  const h = harness({ noRecommendation: true, available: false, initialRuns: [run({ status: "PAUSED" })] });
+  await h.mount();
+  assert.equal(h.state.statusLabel("AI"), "尚未开放");
+  assert.equal(h.state.statusLabel("BUSINESS_ANALYTICS"), "已暂停");
 });
 test("same-recommendation saved decision is reused, but another recommendation is not", async () => {
   for (const [id, expected] of [["rec-1", 0], ["older", 1]]) {

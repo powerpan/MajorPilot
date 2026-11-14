@@ -10,7 +10,8 @@ import {
 import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import { useIntake } from "../stores/intake";
 import { ApiError, errorText } from "../lib/api";
-import type { AnswerValue, Field, Rank } from "../types";
+import type { AnswerValue, Field } from "../types";
+import { partialProblem, skipUnanswered } from "../lib/profile";
 import QuestionField from "../components/QuestionField.vue";
 import ArrowIcon from "../components/ArrowIcon.vue";
 const store = useIntake(),
@@ -29,43 +30,7 @@ const number = computed(() =>
   page = computed(() => store.definition?.pages[number.value - 1]);
 let timer: ReturnType<typeof setTimeout> | undefined;
 function validate(field: Field) {
-  const value = store.answers[field.key];
-  if (field.type === "TEXT")
-    return typeof value === "string" &&
-      [...value].length > (field.maxLength || 300)
-      ? `请控制在${field.maxLength}字以内。`
-      : "";
-  if (!field.required) return "";
-  if (field.type === "SINGLE") return value ? "" : "请选择一项。";
-  if (field.type === "MULTIPLE")
-    return !Array.isArray(value) || value.length < (field.minItems || 1)
-      ? "请至少选择一项。"
-      : "";
-  if (field.type === "MATRIX")
-    return !value ||
-      Array.isArray(value) ||
-      typeof value !== "object" ||
-      field.rows.some((row) => !value[row.code])
-      ? "请为每一项选择当前情况。"
-      : "";
-  if (field.type === "RANKING") {
-    const ranks = Array.isArray(value) ? (value as Rank[]) : [];
-    return ranks.length === 3 ? "" : "请设置三种情境的优先顺序。";
-  }
-  return "";
-}
-function defaults() {
-  if (
-    page.value?.fields.some((field) => field.type === "RANKING") &&
-    !store.answers.scenarioPreference
-  )
-    store.setAnswer(page.value.stepKey, "scenarioPreference", [
-      { majorCode: "AI", rank: 1 },
-      { majorCode: "DATA_SCIENCE", rank: 1 },
-      { majorCode: "BUSINESS_ANALYTICS", rank: 1 },
-    ]);
-  if (number.value === 12 && !store.answers.acquisitionChannel)
-    store.setAnswer("step-12", "acquisitionChannel", "DECLINED");
+  return partialProblem(field, store.answers[field.key]);
 }
 function change(key: string, value: AnswerValue) {
   if (!page.value) return;
@@ -84,11 +49,20 @@ async function retry() {
     error.value = errorText(cause);
   }
 }
+async function focusProblem() {
+  await nextTick();
+  const panel = heading.value?.closest<HTMLElement>(".intake-form-panel");
+  const field = panel?.querySelector<HTMLElement>(".field-error")?.closest<HTMLElement>(".question-field");
+  const target = field || panel?.querySelector<HTMLElement>(".error-notice") || heading.value;
+  target?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+  (field?.querySelector<HTMLElement>("input,select,textarea,button") || target)?.focus({ preventScroll: true });
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) target?.animate([{ outline: "3px solid #4b50ff" }, { outline: "3px solid transparent" }], { duration: 1200 });
+}
 async function advance(skip = false) {
-  if (!page.value) return;
+  if (!page.value || busy.value) return;
   showValidation.value = true;
-  if (!skip && page.value.fields.some((field) => validate(field))) return;
-  if (number.value === 12) {
+  if (page.value.fields.some((field) => validate(field))) { await focusProblem(); return; }
+  if (number.value === 12 || skip) {
     const incomplete = store.definition?.pages.find((item) =>
       item.fields.some((field) => validate(field)),
     );
@@ -96,7 +70,8 @@ async function advance(skip = false) {
       await router.push(`/intake/${incomplete.number}`);
       await nextTick();
       showValidation.value = true;
-      error.value = "还有需要补充的答案，已回到对应页面。";
+      error.value = "有一项内容需要调整，已回到对应页面。其他问题可以跳过。";
+      await focusProblem();
       return;
     }
   }
@@ -104,11 +79,16 @@ async function advance(skip = false) {
   error.value = "";
   clearTimeout(timer);
   try {
+    if (skip && store.definition && !store.pendingFinish) {
+      const next = skipUnanswered(store.definition, store.answers);
+      for (const item of store.definition.pages) for (const field of item.fields)
+        if (next[field.key] === null && store.answers[field.key] !== null) store.setAnswer(item.stepKey, field.key, null);
+    }
     await store.flush();
     if (store.conflict) return;
-    if (number.value === 12) {
-      await store.submit();
-      await router.push("/recommendation");
+    if (number.value === 12 || skip || store.pendingFinish) {
+      const result = await store.finish();
+      await router.push(!skip && result.recommendation ? "/recommendation" : "/register");
     } else await router.push(`/intake/${number.value + 1}`);
   } catch (cause) {
     error.value = errorText(cause);
@@ -117,6 +97,7 @@ async function advance(skip = false) {
         if (item.field)
           serverFields.value[item.field] =
             "这一项未通过验证，请检查选项、字数或特殊字符。";
+    await focusProblem();
   } finally {
     busy.value = false;
   }
@@ -137,7 +118,6 @@ async function useServer() {
   try {
     await store.loadServer();
     error.value = "";
-    defaults();
   } catch (cause) {
     error.value = errorText(cause);
   }
@@ -155,7 +135,6 @@ function beforeUnload(event: BeforeUnloadEvent) {
 watch(number, async () => {
   showValidation.value = false;
   error.value = "";
-  defaults();
   await nextTick();
   heading.value?.focus();
 });
@@ -165,7 +144,6 @@ onMounted(async () => {
   window.addEventListener("beforeunload", beforeUnload);
   try {
     await store.init(true);
-    defaults();
   } catch (cause) {
     error.value = errorText(cause);
   } finally {
@@ -219,10 +197,11 @@ onBeforeRouteLeave((to) => {
                 ? "看看你想探索什么"
                 : "说说你的关注点"
           }}</span
-          ><span>{{ page.required ? "必填" : "可跳过" }}</span>
+          ><span>每题可跳过</span>
         </div>
         <h2 ref="heading" tabindex="-1">{{ page.title }}</h2>
         <p class="question-why">{{ page.why }}</p>
+        <p class="field-help">只填写你愿意分享的内容。没有足够偏好信息时不生成个性化推荐，也不会影响你注册后自主选择专业。</p>
         <div v-if="offline" class="notice" role="status">
           当前离线，答案保留在本机。连接恢复后保存。
         </div>
@@ -247,9 +226,9 @@ onBeforeRouteLeave((to) => {
           </button>
         </div>
         <form @submit.prevent="advance()">
+          <fieldset class="intake-questions" :disabled="busy || store.conflict || !!store.pendingFinish">
+          <div v-for="field in page.fields" :key="field.key">
           <QuestionField
-            v-for="field in page.fields"
-            :key="field.key"
             :field="field"
             :model-value="store.answers[field.key]"
             :error="
@@ -257,6 +236,10 @@ onBeforeRouteLeave((to) => {
             "
             @update:model-value="change(field.key, $event)"
           />
+          <p class="skip-question"><span v-if="store.answers[field.key] === null">已主动跳过</span><button type="button" class="text-link" :disabled="store.answers[field.key] === null" @click="change(field.key, null)">跳过这题</button></p>
+          </div>
+          </fieldset>
+          <div v-if="store.pendingFinish" class="notice"><p>上次提交结果尚未确认。重试会使用同一次请求，不会重复创建资料。</p><button type="button" class="quiet-button" :disabled="busy || offline" @click="advance(true)">确认上次提交结果</button></div>
           <div v-if="error || store.failure" class="error-notice" role="alert">
             {{ error || errorText(store.failure) }}
             <div
@@ -292,23 +275,23 @@ onBeforeRouteLeave((to) => {
               class="quiet-button"
               >上一步</RouterLink
             ><button
-              v-if="!page.required"
+              v-if="!store.pendingFinish"
               type="button"
               class="plain-button"
-              :disabled="busy || store.conflict"
+              :disabled="busy || store.conflict || offline"
               @click="advance(true)"
             >
-              跳过本页</button
+              暂不填写，继续注册</button
             ><button
               type="submit"
               class="primary-button"
-              :disabled="busy || store.conflict || offline"
+              :disabled="busy || store.conflict || offline || !!store.pendingFinish"
             >
               <span>{{
                 busy
                   ? "正在保存…"
                   : number === 12
-                    ? "查看我的初始建议"
+                    ? "保存资料并继续"
                     : "保存并继续"
               }}</span
               ><span class="action-arrow"><ArrowIcon /></span>
@@ -334,3 +317,4 @@ onBeforeRouteLeave((to) => {
     </div>
   </main>
 </template>
+<style scoped>button.text-link{appearance:none;border:0;border-bottom:1px solid currentColor;background:transparent;padding:0 0 3px;text-align:left}.intake-questions{border:0;margin:0;padding:0;min-width:0}.skip-question{display:flex;justify-content:flex-end;gap:16px;align-items:center;font-size:14px;margin:12px 0 24px}.skip-question span{color:var(--muted)}.intake-controls{flex-wrap:wrap}</style>

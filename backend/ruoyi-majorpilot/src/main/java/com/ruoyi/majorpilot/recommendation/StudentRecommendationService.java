@@ -62,7 +62,7 @@ public class StudentRecommendationService {
     @Transactional public Object get(StudentPrincipal student,String id) { active(student);return next.isNext(student.internalId(),id)?next.owned(student.internalId(),id):store.owned(student.internalId(),id); }
     @Transactional public List<Map<String,Object>> profiles(StudentPrincipal student) { active(student);return store.profiles(student.internalId()); }
     @Transactional public Map<String,Object> dashboard(StudentPrincipal student) {
-        active(student);var data=new LinkedHashMap<String,Object>();data.put("recommendation",store.latestStudent(student.internalId()));
+        active(student);var data=new LinkedHashMap<String,Object>();data.put("recommendation",store.latestStudent(student.internalId()));data.put("profile",store.latestProfile(student.internalId()));
         var majorStates=majors.dashboard(student.internalId());data.put("majors",majorStates);
         data.put("nextRecommendation",next.latest(student.internalId()));
         var choices=jdbc.queryForList("SELECT d.public_id,d.selected_major_code,d.decision_type,r.public_id AS recommendation_public_id FROM mp_recommendation_decision d JOIN mp_recommendation r ON r.id=d.recommendation_id WHERE d.student_id=? ORDER BY d.decided_at DESC,d.id DESC LIMIT 1",student.internalId());

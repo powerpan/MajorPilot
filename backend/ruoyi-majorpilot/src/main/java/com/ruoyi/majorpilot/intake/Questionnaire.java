@@ -56,6 +56,30 @@ public final class Questionnaire {
         catch (Exception invalid) { throw new Invalid("answers"); }
     }
     public static ObjectNode json(DecisionAnswers answers) { return JSON.valueToTree(answers); }
+    /** Missing keys and explicit skips remain distinct; no defaults are written. */
+    public static boolean isComplete(JsonNode answers) {
+        for (String key : KEYS) {
+            if (Set.of("currentFieldText", "mainQuestion", "acquisitionChannel").contains(key)) continue;
+            if (!answeredCompletely(answers,key)) return false;
+        }
+        return true;
+    }
+    public static boolean recommendationReady(JsonNode answers) {
+        return List.of("consideredMajors","majorFamiliarity","scenarioPreference","workElements").stream().allMatch(key->answeredCompletely(answers,key));
+    }
+    private static boolean answeredCompletely(JsonNode answers,String key) {
+        if(answers==null||!answers.hasNonNull(key))return false;
+        try { value(key,answers.get(key),true);return true; } catch(Invalid invalid) { return false; }
+    }
+    public static DecisionAnswers rankingAnswers(ObjectNode answers) {
+        if(!recommendationReady(answers))throw new Invalid("scenarioPreference");
+        try{return JSON.treeToValue(answers,DecisionAnswers.class);}catch(Exception invalid){throw new Invalid("answers");}
+    }
+    public static Map<String,String> answerStates(JsonNode answers) {
+        Map<String,String> result=new LinkedHashMap<>();
+        for(String key:KEYS)result.put(key,!answers.has(key)?"MISSING":answers.get(key).isNull()?"SKIPPED":"UNSURE".equals(answers.get(key).asText())?"UNSURE":"ANSWERED");
+        return result;
+    }
     public static int pageNumber(String stepKey) {
         if (stepKey == null || !stepKey.matches("step-(?:[1-9]|1[0-2])")) throw new Invalid("stepKey");
         return Integer.parseInt(stepKey.substring(5));

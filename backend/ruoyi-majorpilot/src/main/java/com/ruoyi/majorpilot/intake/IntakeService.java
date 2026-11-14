@@ -22,6 +22,7 @@ public class IntakeService implements IntakeClaimPort {
     public record Created(View view,String newSecret) {}
     public record Draft(String questionnaireVersion,Long expectedRevision,String stepKey,JsonNode answers) {}
     public record Submission(String questionnaireVersion,Long expectedRevision,JsonNode answers) {}
+    public record Finished(DecisionProfileView profile,RecommendationView recommendation) {}
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final RecommendationStore recommendations;private final IdempotencyService idempotency;private final ProductEvents events;
     public IntakeService(JdbcTemplate jdbc,ObjectMapper mapper,RecommendationStore recommendations,IdempotencyService idempotency,ProductEvents events) { this.jdbc=jdbc;this.mapper=mapper;this.recommendations=recommendations;this.idempotency=idempotency;this.events=events; }
 
@@ -68,6 +69,22 @@ public class IntakeService implements IntakeClaimPort {
         touch(row);return result.data();
     }
     @Transactional public RecommendationView recommendation(String id,String secretHash) { var row=lock(id,secretHash);if(!"SUBMITTED".equals(row.get("status")))throw new ApiException(409,"DECISION_PROFILE_REQUIRED");var recommendation=recommendations.latestIntake(number(row,"id"));touch(row);return recommendation; }
+    /** Finish with partial answers or none. Registration still owns consent and verification. */
+    @Transactional public Finished finish(String id,String secretHash,String key,Submission input) {
+        checkVersion(input.questionnaireVersion());ObjectNode answers=Questionnaire.draft(input.answers());var row=lock(id,secretHash);long intake=number(row,"id");
+        var result=idempotency.execute(new IdempotencyService.Owner(null,intake,"intake:"+id),"POST","/api/public/v1/intake-sessions/"+id+"/finish",key,input,Finished.class,()->{
+            if(input.expectedRevision()==null||input.expectedRevision()<0)throw new ApiException(422,"DECISION_PROFILE_INVALID");
+            var existing=jdbc.queryForList("SELECT id FROM mp_decision_profile WHERE intake_session_id=? AND source_draft_revision=?",Long.class,intake,input.expectedRevision());
+            if(!existing.isEmpty()){
+                var profile=recommendations.profile(existing.getFirst());if(!profile.answers().equals(answers))throw conflict(row);
+                return new Finished(profile,recommendations.forIntakeRevision(intake,input.expectedRevision()));
+            }
+            revision(row,input.expectedRevision());var previous=jdbc.queryForList("SELECT id,profile_version_no FROM mp_decision_profile WHERE intake_session_id=? ORDER BY profile_version_no DESC LIMIT 1",intake);
+            var created=recommendations.createPartial(null,intake,input.expectedRevision(),previous.isEmpty()?1:number(previous.getFirst(),"profile_version_no")+1,answers,previous.isEmpty()?null:number(previous.getFirst(),"id"));
+            jdbc.update("UPDATE mp_intake_session SET status='SUBMITTED',draft_json=?,row_version=row_version+1,updated_at=? WHERE id=?",recommendations.json(answers),Timestamp.from(Instant.now()),intake);
+            return new Finished(recommendations.profile(created.profileInternalId()),created.view());
+        });touch(row);return result.data();
+    }
     public Instant expiration(String id,String secretHash) {
         var rows=jdbc.queryForList("SELECT expires_at FROM mp_intake_session WHERE public_id=? AND secret_hash=? AND status IN ('DRAFT','SUBMITTED')",id,secretHash);
         return rows.isEmpty()?null:instant(rows.getFirst(),"expires_at");
@@ -87,8 +104,9 @@ public class IntakeService implements IntakeClaimPort {
         var profiles=jdbc.queryForList("SELECT id FROM mp_decision_profile WHERE intake_session_id=? ORDER BY profile_version_no DESC LIMIT 1",id);
         if(profiles.isEmpty())throw new ApiException(409,"DECISION_PROFILE_REQUIRED");
         long profile=number(profiles.getFirst(),"id");
-        var channel=jdbc.queryForObject("SELECT JSON_UNQUOTE(answer_json) FROM mp_decision_answer WHERE decision_profile_id=? AND question_key='acquisitionChannel'",String.class,profile);
-        return new ClaimableIntake(id,profile,(String)row.get("questionnaire_version"),channel==null?"DECLINED":channel);
+        var channels=jdbc.queryForList("SELECT JSON_UNQUOTE(answer_json) FROM mp_decision_answer WHERE decision_profile_id=? AND question_key='acquisitionChannel'",String.class,profile);
+        String channel=channels.isEmpty()?null:channels.getFirst();
+        return new ClaimableIntake(id,profile,(String)row.get("questionnaire_version"),channel==null||channel.equals("null")?"MISSING":channel);
     }
     @Override public void claimAll(long intake,long student) {
         if(jdbc.update("UPDATE mp_intake_session SET status='CLAIMED',claimed_student_id=?,claimed_at=?,draft_json='{}',row_version=row_version+1 WHERE id=? AND status='SUBMITTED' AND claimed_student_id IS NULL AND expires_at>?",student,Timestamp.from(Instant.now()),intake,Timestamp.from(Instant.now()))!=1)throw new ApiException(409,"INTAKE_ALREADY_CLAIMED");
@@ -110,7 +128,7 @@ public class IntakeService implements IntakeClaimPort {
     private ApiException conflict(Map<String,Object> row) { return new ApiException(409,"INTAKE_REVISION_CONFLICT",Map.of("currentRevision",number(row,"row_version"))); }
     private void touch(Map<String,Object> row) { Instant expiry=Instant.now().plusSeconds(7*86400);jdbc.update("UPDATE mp_intake_session SET expires_at=?,updated_at=? WHERE id=?",Timestamp.from(expiry),Timestamp.from(Instant.now()),number(row,"id"));row.put("expires_at",Timestamp.from(expiry)); }
     private View view(Map<String,Object> row) {
-        var recommendations=jdbc.queryForList("SELECT r.public_id FROM mp_recommendation r JOIN mp_decision_profile p ON p.id=r.decision_profile_id WHERE p.intake_session_id=? ORDER BY p.profile_version_no DESC LIMIT 1",number(row,"id"));
+        var recommendations=jdbc.queryForList("SELECT r.public_id FROM mp_recommendation r JOIN mp_decision_profile p ON p.id=r.decision_profile_id WHERE p.intake_session_id=? AND p.profile_version_no=(SELECT MAX(profile_version_no) FROM mp_decision_profile WHERE intake_session_id=?) ORDER BY p.profile_version_no DESC LIMIT 1",number(row,"id"),number(row,"id"));
         return new View((String)row.get("public_id"),(String)row.get("questionnaire_version"),(String)row.get("status"),number(row,"row_version"),instant(row,"expires_at"),(String)row.get("last_step_key"),readAnswers(row),recommendations.isEmpty()?null:(String)recommendations.getFirst().get("public_id"));
     }
     private ObjectNode readAnswers(Map<String,Object> row) { try{return (ObjectNode)mapper.readTree((String)row.get("draft_json"));}catch(Exception invalid){throw new IllegalStateException("Stored intake invalid");} }

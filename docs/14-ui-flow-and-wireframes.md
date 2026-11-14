@@ -1,5 +1,7 @@
 # MajorPilot MVP 页面状态与低保真线框
 
+2026-11-14 补充：[48 资料管理与主页体验补充](./48-profile-dashboard-and-payment-demo.md)更新个人主页与问卷交互。新增“我的资料”和独立编辑入口，三个专业同等展示；无背景也可自主进入开放体验。新增纯前端支付演示。此前问卷“必填后下一步”或“必须推荐后开始”的线框不再限制这些路径；技术工作区、暂停与报告规则不变。
+
 > 2026-09-24 新版本页面调整见[方法体验总则](./38-method-led-experience-redesign.md)、[报告阅读结构](./40-learning-evidence-and-report-design.md)和[Excel下载与回填](./41-excel-download-and-local-results.md)。原始全量大表替换为明确下载链接，网站保留引导、少量教学示例、结果摘要和回填；本地Excel操作不受网站观察。这里记录待实施设计，不表示当前页面已替换。
 
 > 状态：详细设计修订稿 v0.2  

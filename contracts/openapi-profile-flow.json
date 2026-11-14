@@ -1,0 +1,1605 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MajorPilot background profile and questionnaire skip amendment",
+    "version": "7.4.0",
+    "description": "Four-change scope dated 2026-11-14. Drafts and submitted versions are separate; missing answers never become defaults. Security prerequisites remain authoritative. Payment demonstration is frontend-only and has no API."
+  },
+  "paths": {
+    "/api/app/v1/profile": {
+      "get": {
+        "operationId": "readBackgroundProfile",
+        "description": "Latest submitted profile and independent draft. draftRevision remains monotonic even when draft is absent.",
+        "security": [
+          {
+            "StudentSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Owned active Student profile state; no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProfileState"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/profile/draft": {
+      "put": {
+        "operationId": "saveBackgroundProfileDraft",
+        "description": "Full replacement of this draft under draft and base-profile revisions. Does not mutate the submitted profile or historical experience bindings.",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned active Student profile state; no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProfileState"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/profile/submit": {
+      "post": {
+        "operationId": "submitBackgroundProfile",
+        "description": "Freeze a new profile version; recommend only with enough real preference inputs. An identical Idempotency-Key retry creates no additional version.",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Owned active Student profile state; no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProfileSubmitted"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app/v1/profile/draft/discard": {
+      "post": {
+        "operationId": "discardBackgroundProfileDraft",
+        "description": "Discard only the expected draft revision; retain all submitted profiles and monotonically advance draftRevision.",
+        "security": [
+          {
+            "StudentSession": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned active Student profile state; no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProfileState"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe failure; revisions may identify a newer draft or submitted profile. No silent overwrite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileDiscard"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "apiVersion": {
+            "const": "v1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "apiVersion"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fieldErrors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "code"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 100
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "currentRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "currentProfileVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": []
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fieldErrors",
+              "retryable"
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "DraftAnswers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "applicationStage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "EXPLORING",
+                  "RESEARCHING_PROGRAMS",
+                  "PREPARING_APPLICATION",
+                  "APPLIED",
+                  "HOLDING_OFFERS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetIntakeWindow": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "WITHIN_6_MONTHS",
+                  "MONTHS_6_TO_12",
+                  "MONTHS_12_TO_24",
+                  "AFTER_24_MONTHS",
+                  "UNSURE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetRegions": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "HONG_KONG",
+                    "SINGAPORE",
+                    "UNITED_KINGDOM"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentField": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "COMPUTING_ENGINEERING",
+                  "MATHEMATICS_STATISTICS",
+                  "BUSINESS_ECONOMICS",
+                  "NATURAL_LIFE_SCIENCES",
+                  "SOCIAL_HUMANITIES",
+                  "OTHER"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentFieldText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consideredMajors": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "AI",
+                    "DATA_SCIENCE",
+                    "BUSINESS_ANALYTICS"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "majorFamiliarity": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "AI": {
+                    "type": "string",
+                    "enum": [
+                      "UNFAMILIAR",
+                      "READ_OVERVIEW",
+                      "COURSE_OR_PROJECT",
+                      "PRACTICAL_EXPERIENCE"
+                    ]
+                  },
+                  "DATA_SCIENCE": {
+                    "type": "string",
+                    "enum": [
+                      "UNFAMILIAR",
+                      "READ_OVERVIEW",
+                      "COURSE_OR_PROJECT",
+                      "PRACTICAL_EXPERIENCE"
+                    ]
+                  },
+                  "BUSINESS_ANALYTICS": {
+                    "type": "string",
+                    "enum": [
+                      "UNFAMILIAR",
+                      "READ_OVERVIEW",
+                      "COURSE_OR_PROJECT",
+                      "PRACTICAL_EXPERIENCE"
+                    ]
+                  }
+                },
+                "required": []
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "foundationSelfView": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "PROGRAMMING": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "MATHEMATICS_STATISTICS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "DATA_ANALYSIS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  },
+                  "BUSINESS_PROBLEMS": {
+                    "type": "string",
+                    "enum": [
+                      "UNEXPOSED",
+                      "BEGINNER",
+                      "BASIC_TASKS",
+                      "FAMILIAR"
+                    ]
+                  }
+                },
+                "required": []
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenarioPreference": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "majorCode": {
+                      "type": "string",
+                      "enum": [
+                        "AI",
+                        "DATA_SCIENCE",
+                        "BUSINESS_ANALYTICS"
+                      ]
+                    },
+                    "rank": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    }
+                  },
+                  "required": [
+                    "majorCode",
+                    "rank"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workElements": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CHECK_ERRORS",
+                    "ADJUST_EXPERIMENTS",
+                    "CLEAN_DATA",
+                    "INTERPRET_CHARTS",
+                    "DEFINE_METRICS",
+                    "PROPOSE_ACTIONS",
+                    "COMMUNICATE_CONCLUSIONS"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 3,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisionUncertainties": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "DAILY_WORK",
+                    "INTEREST",
+                    "LEARNING_DIFFICULTY",
+                    "CURRENT_FOUNDATION",
+                    "MAJOR_DIFFERENCES",
+                    "FUTURE_DEVELOPMENT"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mainQuestion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acquisitionChannel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "FRIEND_OR_CLASSMATE",
+                  "SOCIAL_MEDIA",
+                  "SEARCH",
+                  "COMMUNITY",
+                  "OTHER",
+                  "DECLINED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": []
+      },
+      "QuestionnaireVersion": {
+        "const": "decision-profile-v1",
+        "type": "string"
+      },
+      "Recommendation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "recommendationId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "ruleVersion": {
+            "const": "initial-recommendation-v1",
+            "type": "string"
+          },
+          "explanationVersion": {
+            "const": "initial-template-v1",
+            "type": "string"
+          },
+          "primaryMajor": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "alternativeMajors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AI",
+                "DATA_SCIENCE",
+                "BUSINESS_ANALYTICS"
+              ]
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reason"
+            },
+            "minItems": 2,
+            "maxItems": 4
+          },
+          "tieDetected": {
+            "type": "boolean"
+          },
+          "tieBreakRule": {
+            "type": "string",
+            "enum": [
+              "RANK",
+              "CONSIDERED",
+              "STRONG_COUNT",
+              "MEDIUM_COUNT",
+              "FAMILIARITY",
+              "FIXED_ORDER"
+            ]
+          },
+          "majorDifferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MajorDifference"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "supportNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "explanationStatus": {
+            "const": "STRUCTURED_ONLY",
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canRegister": {
+            "type": "boolean"
+          },
+          "availability": {
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "decisionProfileId",
+          "recommendationId",
+          "profileVersion",
+          "questionnaireVersion",
+          "ruleVersion",
+          "explanationVersion",
+          "primaryMajor",
+          "alternativeMajors",
+          "reasons",
+          "tieDetected",
+          "tieBreakRule",
+          "majorDifferences",
+          "supportNotes",
+          "explanationStatus",
+          "generatedAt",
+          "canRegister",
+          "availability"
+        ]
+      },
+      "Reason": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "SCENARIO_FIRST_AI",
+              "SCENARIO_FIRST_DS",
+              "SCENARIO_FIRST_BA",
+              "SCENARIO_TIED",
+              "CURRENTLY_CONSIDERING",
+              "WORK_STYLE_ALIGNMENT",
+              "HIGH_EXPLORATION_VALUE",
+              "TIE_BREAK_BASELINE",
+              "EXPERIENCE_ORDER_ONLY"
+            ]
+          },
+          "reasonType": {
+            "type": "string",
+            "enum": [
+              "RANKING",
+              "CONTEXT",
+              "BOUNDARY"
+            ]
+          },
+          "majorCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AI",
+                  "DATA_SCIENCE",
+                  "BUSINESS_ANALYTICS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceQuestionKeys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "applicationStage",
+                "targetIntakeWindow",
+                "targetRegions",
+                "currentField",
+                "currentFieldText",
+                "consideredMajors",
+                "majorFamiliarity",
+                "foundationSelfView",
+                "scenarioPreference",
+                "workElements",
+                "decisionUncertainties",
+                "mainQuestion",
+                "acquisitionChannel"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 13
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "reasonType",
+          "majorCode",
+          "sourceQuestionKeys",
+          "text"
+        ]
+      },
+      "MajorDifference": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "majorCode": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "DATA_SCIENCE",
+              "BUSINESS_ANALYTICS"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "availability": {
+            "enum": [
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "majorCode",
+          "name",
+          "description",
+          "availability"
+        ]
+      },
+      "ProfileAnswerStates": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "applicationStage": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "targetIntakeWindow": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "targetRegions": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "currentField": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "currentFieldText": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "consideredMajors": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "majorFamiliarity": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "foundationSelfView": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "scenarioPreference": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "workElements": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "decisionUncertainties": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "mainQuestion": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          },
+          "acquisitionChannel": {
+            "enum": [
+              "ANSWERED",
+              "MISSING",
+              "SKIPPED",
+              "UNSURE"
+            ]
+          }
+        },
+        "required": [
+          "applicationStage",
+          "targetIntakeWindow",
+          "targetRegions",
+          "currentField",
+          "currentFieldText",
+          "consideredMajors",
+          "majorFamiliarity",
+          "foundationSelfView",
+          "scenarioPreference",
+          "workElements",
+          "decisionUncertainties",
+          "mainQuestion",
+          "acquisitionChannel"
+        ]
+      },
+      "ProfileView": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decisionProfileId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/DraftAnswers"
+          },
+          "answerStates": {
+            "$ref": "#/components/schemas/ProfileAnswerStates"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "recommendationReady": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decisionProfileId",
+          "profileVersion",
+          "questionnaireVersion",
+          "submittedAt",
+          "answers",
+          "answerStates",
+          "complete",
+          "recommendationReady"
+        ]
+      },
+      "ProfileDraft": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "baseProfileVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "answers": {
+            "$ref": "#/components/schemas/DraftAnswers"
+          },
+          "lastStepKey": {
+            "type": "string",
+            "pattern": "^step-([1-9]|1[0-2])$"
+          },
+          "mode": {
+            "enum": [
+              "EDIT",
+              "RESTART"
+            ]
+          }
+        },
+        "required": [
+          "revision",
+          "baseProfileVersion",
+          "questionnaireVersion",
+          "answers",
+          "lastStepKey",
+          "mode"
+        ]
+      },
+      "ProfileState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draftRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "profile",
+          "draft",
+          "draftRevision"
+        ]
+      },
+      "ProfileChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "baseProfileVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "$ref": "#/components/schemas/DraftAnswers"
+          },
+          "lastStepKey": {
+            "type": "string",
+            "pattern": "^step-([1-9]|1[0-2])$"
+          },
+          "mode": {
+            "enum": [
+              "EDIT",
+              "RESTART"
+            ]
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "expectedRevision",
+          "baseProfileVersion",
+          "answers",
+          "lastStepKey",
+          "mode"
+        ]
+      },
+      "ProfileDiscard": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ]
+      },
+      "ProfileSubmitted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ProfileView"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draftRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "profile",
+          "recommendation",
+          "draftRevision"
+        ]
+      },
+      "IntakeFinishInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "questionnaireVersion": {
+            "$ref": "#/components/schemas/QuestionnaireVersion"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "$ref": "#/components/schemas/DraftAnswers"
+          }
+        },
+        "required": [
+          "questionnaireVersion",
+          "expectedRevision",
+          "answers"
+        ]
+      },
+      "IntakeFinished": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ProfileView"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "profile",
+          "recommendation"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "IntakeSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_INTAKE",
+        "description": "Opaque secret, HttpOnly, SameSite=Lax; public API path only. Seven-day inactivity."
+      },
+      "StudentSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "MP_SESSION",
+        "description": "Opaque HttpOnly cookie scoped /api/app/v1; does not accept RuoYi administrator JWT."
+      },
+      "CsrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "Signed, actor-bound token matching readable MP_PUBLIC_CSRF or MP_CSRF cookie; exact local Origin required on writes."
+      }
+    },
+    "parameters": {
+      "Origin": {
+        "name": "Origin",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "const": "http://localhost:15173"
+        },
+        "description": "Local P1 exact-origin allowlist; deployment is a separate gate."
+      },
+      "RequestId": {
+        "name": "X-Request-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{16,128}$"
+        }
+      },
+      "PublicId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        }
+      }
+    }
+  }
+}

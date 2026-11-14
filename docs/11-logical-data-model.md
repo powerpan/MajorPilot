@@ -7,6 +7,8 @@
 
 ## 1. 数据库原则
 
+2026-11-14：背景资料可空、可部分提交，新增独立学生资料草稿及版本冲突控制，见 [48](./48-profile-dashboard-and-payment-demo.md)。正式 Decision Profile 仍追加不可变；草稿不参与任务和报告。自主开始不要求 source recommendation/decision，使用真实的已提交背景或明确空快照。新资料不得追溯更新既有运行；原报告的固定背景与证据引用保持。旧文中“开始必须有来源推荐”的限制由本补充替代，其他状态及删除规则不变。
+
 - 使用 MySQL 8.4 LTS；
 - RuoYi 原有表保持上游命名，MajorPilot 业务表统一使用 `mp_` 前缀；
 - `sys_user` 只表示内部操作人员，任何 `mp_student_*` 表都不外键到 `sys_user`；
@@ -163,7 +165,7 @@ erDiagram
 
 - `student_id`：注册前允许为空，认领后填充；
 - `intake_session_id`：匿名提交必填，注册后直接修改资料产生的新版本可为空；
-- `profile_version_no`：同一 Student 内递增；
+- `profile_version_no`：用户提交版本从 1 开始，在同一 Student 内递增；0 仅保留为未提供背景时的内部空快照，不作为正式资料、提交事件或资料数量展示；
 - `questionnaire_version`；
 - `submitted_at`；
 - `profile_summary_json`：只保存结构化摘要和支持提示；
@@ -277,8 +279,8 @@ erDiagram
 
 - `student_id`；
 - `major_id`、`task_version_id`；
-- `source_recommendation_id`、`source_decision_id`，创建 Ready 时引用同一学生的不可变决定；
-- `decision_profile_id`：首次开始时固定为来源推荐的 profile；恢复运行沿用原 profile，不使用最新资料替换历史；
+- `source_recommendation_id`、`source_decision_id`，推荐入口创建 Ready 时引用同一学生的不可变决定；自主选择时两者均为空，不制造推荐；
+- `decision_profile_id`：创建普通专业 Run 时固定为最新正式背景，未提交背景时使用明确的内部空快照；旧 NEXT 推荐仍保留它自己的原始背景引用。复用、开始或恢复运行沿用该 Run 原 profile，不使用最新资料替换历史；
 - `status`：`READY`、`IN_PROGRESS`、`TASK_COMPLETED`、`PAUSED`、`CLOSED`、`REPLACED`；
 - `paused_from_status`：仅 PAUSED 时为 IN_PROGRESS 或 TASK_COMPLETED；
 - `attempt_no`；
@@ -301,7 +303,7 @@ erDiagram
 - `UNIQUE(student_id, major_id, attempt_no)`；
 - 学生不能自行创建 `attempt_no > 1`；
 - 内部恢复必须引用 `origin_run_id`、填写原因并写审计；
-- READY 的 task_version_id／decision_profile_id 可以为空；开始后非空且不可改；PAUSED 只恢复原阶段和同一版本，不增加 attempt_no；
+- READY 的 task_version_id 可以为空，普通专业新 Run 的 decision_profile_id 在创建时固定；历史尚未绑定背景的 READY 保留原兼容规则。开始后内容和背景均非空且不可改；PAUSED 只恢复原阶段和同一版本，不增加 attempt_no；
 - 锁定 Student Account 行后统一处理 start／pause／resume／恢复；切换先将旧活动运行置 PAUSED，再激活目标，两者同一事务；revision 不匹配或目标不可开始则全部回滚；
 - 恢复仅允许未完成当前运行：原运行置 REPLACED 释放两个 guard，新建同 Major 的 READY，attempt_no 递增、origin_run_id 必填。只更改原记录状态元数据，不复制／修改学生回答或伪造完成；新恢复运行首次开始默认固定原 Task Version（原记录未开始则取当前发布版）；
 - CLOSED 不回退、不替换，报告问题走新 Report Version；

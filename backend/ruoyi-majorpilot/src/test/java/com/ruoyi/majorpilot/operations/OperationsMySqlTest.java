@@ -53,6 +53,11 @@ class OperationsMySqlTest {
         for(long task:tasks)db.update("DELETE FROM mp_task_version WHERE id=?",task);
         db.update("DELETE FROM sys_role_menu WHERE role_id=?",role);db.update("DELETE FROM sys_user_role WHERE user_id IN (?,?)",operator,other);db.update("DELETE FROM sys_role WHERE role_id=?",role);db.update("DELETE FROM sys_menu WHERE menu_id IN (?,?)",menu,analyticsMenu);db.update("DELETE FROM sys_user WHERE user_id IN (?,?)",operator,other);
     }
+    @Test void internalAbsenceSnapshotIsNotCountedOrListedAsSubmittedBackground(){
+        long student=student(null,Instant.now().minusSeconds(60));db.update("INSERT INTO mp_decision_profile(public_id,student_id,profile_version_no,questionnaire_version,submitted_at,profile_summary_json,status) VALUES(?,?,0,'decision-profile-v1',UTC_TIMESTAMP(3),'{\"source\":\"UNPROVIDED_AT_EXPERIENCE_CREATION\"}','CLAIMED')",PublicIds.next(),student);
+        var detail=mapper.valueToTree(ops.studentDetail(operator,publicStudent(student)));assertEquals(0,detail.at("/summary/profileCount").asInt(-1));assertTrue(detail.at("/details/profiles").isEmpty());
+        journey(student,Instant.now());detail=mapper.valueToTree(ops.studentDetail(operator,publicStudent(student)));assertEquals(1,detail.at("/summary/profileCount").asInt(-1));assertEquals(1,detail.at("/details/profiles").size());assertEquals(1,detail.at("/details/profiles/0/versionNo").asInt());
+    }
     @Test void pagesAreBoundedAndSensitiveReadsAreAuditedBeforeReturning(){
         long first=student(null,Instant.now().minusSeconds(60));student("TEST",Instant.now().minusSeconds(50));var page=ops.students(operator,OperationsQuery.parse(Map.of("pageSize","1","sortBy","createdAt","sortOrder","desc")));assertEquals(1,page.rows().size());assertTrue(page.total()>=2);assertFalse(mapper.valueToTree(page).toString().contains("example.invalid"));
         var sensitive=ops.sensitiveStudent(operator,publicStudent(first),new OperationsDtos.SensitiveView("SUPPORT_REQUEST","Synthetic student requested support"),"synthetic-test");assertTrue(sensitive.email().endsWith("@example.invalid"));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM mp_sensitive_audit WHERE owner_student_id=? AND action_code='STUDENT_SENSITIVE_READ'",Integer.class,first));

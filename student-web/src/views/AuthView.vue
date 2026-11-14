@@ -54,7 +54,7 @@ async function prepare() {
   ready.value = mode.value !== "register";
   if (mode.value === "register") {
     try {
-      await intake.loadRecommendation();
+      await intake.init(true);
       ready.value = true;
     } catch (cause) {
       error.value = errorText(cause);
@@ -105,6 +105,7 @@ async function submit() {
       success.value =
         "如果该邮箱可以恢复账户，你会收到一封邮件。请检查收件箱与垃圾邮件。";
     } else {
+      if (intake.view?.status !== "SUBMITTED" || intake.hasUnsaved || intake.pendingFinish) await intake.finish();
       const consents: Consent[] = [
         { documentType: "TERMS", documentVersion: "v1", decision: "ACCEPTED" },
         {
@@ -183,7 +184,7 @@ async function submit() {
       <p class="muted">
         {{
           mode === "register"
-            ? "问卷不需要重新填写。注册后立即保存建议，再验证邮箱。"
+            ? "背景问卷可以稍后补充。注册会保存已填写的资料，验证邮箱后即可自主选择开放的专业。"
             : mode === "forgot"
               ? "输入你注册时使用的邮箱。"
               : pilotMode ? "使用负责人提供的测试账户和密码登录。无需邮箱验证；忘记密码请联系负责人。" : "使用邮箱和密码登录，继续已保存的进度。"
@@ -269,7 +270,7 @@ async function submit() {
             busy
               ? "正在处理…"
               : mode === "register"
-                ? "注册并保存建议"
+                ? "注册并保存资料"
                 : mode === "forgot"
                   ? "发送重置邮件"
                   : "登录"
