@@ -2,7 +2,7 @@
 
 ## 2026-11-14：资料管理与主页补充
 
-[48 资料管理与主页体验补充](./48-profile-dashboard-and-payment-demo.md) 是本轮四项变更的实施入口：个人背景版本与草稿、同等展示的专业卡片、纯演示支付、问卷跳过与恢复。背景不再是开始体验的前置条件，但条款、隐私、普通注册及邮箱安全要求不变。本轮保留 38–41 的任务和报告设计，不实施 47 的概念改版，不自动部署公网；开发与验收状态在 48 单独记录。
+[48 资料管理与主页体验补充](./48-profile-dashboard-and-payment-demo.md) 是本轮四项变更的设计、实施和验收入口：个人背景版本与草稿、同等展示的专业卡片、纯演示支付、问卷跳过与恢复。功能提交 `369c0283288a780e56ba436f2d4ac28cfb167dd1` 已推送并核对；真实 MySQL 与合成接口浏览器验证分开记录，尚未完成新的真实 HTTP 浏览器整链及真人验收。背景不再是开始体验的前置条件，但条款、隐私、普通注册及邮箱安全要求不变。专业任务和报告继续按 38–41，本轮没有实施 47 的概念改版或更新公网服务。
 
 ## 2026-10-16：外部专家概念设计简报
 
@@ -33,6 +33,8 @@
 
 ## 阅读顺序
 
+了解当前版本先读 [48](./48-profile-dashboard-and-payment-demo.md)（最新资料与主页）、[45](./45-method-led-release-verification.md)（现行专业体验与报告）、[46](./46-invitation-pilot-deployment.md)（既有邀请部署）。再按下列编号查阅设计依据；日期较早的交付记录不作为当前部署状态证明。
+
 1. [项目初始共识与讨论基线](./00-majorpilot-discussion-baseline.md)：历史探索记录，不作为当前实施规范；
 2. [MVP 产品定义](./01-mvp-product-definition.md)：产品目标、范围和验收边界；
 3. [信息架构与页面流程](./02-mvp-information-architecture.md)：学生端和管理端页面范围；
@@ -56,11 +58,11 @@
 
 实施新增记录：[百炼与契约验证](./18-p0-ai-spike.md)、[浏览器执行验证](./19-p0-browser-execution-spike.md)、[P0 实施与验证汇总](./20-p0-implementation-evidence.md)。本地启动入口见 [根 README](../README.md)，固定来源与补丁见 [UPSTREAM](../UPSTREAM.md)。
 
-当前实施：[P1 实施与交付记录](./21-p1-implementation-and-delivery.md)、[P1 视觉方向与截图比对](./22-p1-visual-direction.md)。
+P1 历史交付：[P1 实施与交付记录](./21-p1-implementation-and-delivery.md)、[P1 视觉方向与截图比对](./22-p1-visual-direction.md)。
 
-当前推进：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)、[P3实施接缝](./25-p3-engineering-plan.md)、[P3 AI视觉验收](./26-p3-ai-visual-direction.md)、[P4 DS实施接缝](./27-p4-engineering-plan.md)、[P4 DS视觉合同](./28-p4-ds-visual-direction.md)、[P5 BA实施接缝](./29-p5-engineering-plan.md)、[P5 BA视觉合同](./30-p5-ba-visual-direction.md)、[P6报告工程合同](./31-p6-engineering-plan.md)、[P6报告视觉合同](./32-p6-report-visual-direction.md)。各阶段工程验收和真人门禁分别记录；P6网页、实际打印和重启恢复已通过，Git结果见交付记录。
+P2–P6 历史交付：[P2–P6实施与验收记录](./23-p2-to-p6-delivery-ledger.md)、[P2工作区视觉与真实截图](./24-p2-workspace-visual-direction.md)、[P3实施接缝](./25-p3-engineering-plan.md)、[P3 AI视觉验收](./26-p3-ai-visual-direction.md)、[P4 DS实施接缝](./27-p4-engineering-plan.md)、[P4 DS视觉合同](./28-p4-ds-visual-direction.md)、[P5 BA实施接缝](./29-p5-engineering-plan.md)、[P5 BA视觉合同](./30-p5-ba-visual-direction.md)、[P6报告工程合同](./31-p6-engineering-plan.md)、[P6报告视觉合同](./32-p6-report-visual-direction.md)。各阶段工程验收和真人门禁分别记录；P6网页、实际打印和重启恢复已通过，Git结果见交付记录。
 
-设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。阅读本轮变化可以先看 `17`，再按其中的问题编号进入专题设计。
+设计校验入口：[check-design.mjs](./validation/check-design.mjs)。它检查文档结构与规则示例，不代替应用测试。`17` 是早期设计收尾记录；本轮变化从 `48` 进入。
 
 P7 当前记录：[工程合同](./33-p7-engineering-plan.md)、[视觉合同](./34-p7-visual-contract.md)、[验收与交付台账](./35-p7-delivery-ledger.md)。
 

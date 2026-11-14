@@ -1,5 +1,7 @@
 # MajorPilot MVP 领域模型与数据边界
 
+2026-11-14 更新：背景问卷可跳过，正式资料和未提交草稿分开，普通专业 Run 在创建时固定背景；本轮实现与验证见 [48](./48-profile-dashboard-and-payment-demo.md)。以下主体、任务状态机和报告证据边界继续有效。
+
 > 状态：领域边界修订稿 v0.3  
 > 更新日期：2026-09-20  
 > 适用范围：MVP 数据模型、模块职责、状态设计和后续接口设计  
@@ -28,7 +30,7 @@
 | 领域模块 | 主要责任 | 拥有的核心概念 | 不负责 |
 | --- | --- | --- | --- |
 | 身份与访问 | 学生身份、内部身份、登录恢复和权限边界 | Student、Student Account、Internal Operator、Operator Account | 推荐规则、任务内容、报告生成 |
-| 初始信息 | 匿名信息收集、版本化背景快照、注册后认领 | Visitor、Decision Profile | 判断最适合的专业 |
+| 初始信息 | 匿名信息收集、独立资料草稿、版本化背景快照、注册后认领 | Visitor、Profile Draft、Decision Profile | 判断最适合的专业 |
 | 专业与内容 | 三个专业及经过审核的任务版本 | Major、Task Version | 保存学生作答和报告 |
 | 推荐 | 产生首个和后续体验建议，保存依据与改选 | Initial Recommendation、Next Recommendation、Override | 替学生作最终决定 |
 | 专业体验 | 创建并推进一次任务体验，保存步骤输入和进度 | Major Experience、Experience Run、Step Response | 自由聊天、动态生成整项任务 |
@@ -41,7 +43,7 @@
 ```mermaid
 flowchart TD
     V[Visitor] --> DP[Decision Profile]
-    DP --> IR[Initial Recommendation]
+    DP -->|排序信息足够| IR[Initial Recommendation]
     V -->|注册并认领| S[Student]
     S --> SA[Student Account]
     DP -->|绑定| S
@@ -72,20 +74,19 @@ flowchart TD
 
 ### 5.1 匿名阶段
 
-访客可以在注册前完成信息收集并获得首个推荐。匿名阶段至少需要保存：
+访客可以填写、部分填写或跳过背景问卷；排序信息足够时才生成首个推荐。匿名阶段保存：
 
 - 匿名流程标识；
 - 问卷版本和逐步保存状态；
-- Decision Profile 快照；
-- 推荐规则和解释版本；
-- 推荐结果和生成时间；
+- 主动提交后形成的 Decision Profile 快照，回答可以为空或不完整；
+- 若实际生成推荐，保存推荐规则和解释版本、结果及生成时间；
 - 过期时间。
 
 匿名记录不能依赖浏览器中可修改的数据作为唯一事实来源，也不能包含长期有效的访问凭证。
 
 ### 5.2 注册认领
 
-注册成功后，匿名 Decision Profile 和 Initial Recommendation 只能被一个 Student Account 认领一次。认领操作需要满足：
+注册成功后，匿名 Decision Profile 及实际存在的 Initial Recommendation 只能被一个 Student Account 认领一次。没有推荐不妨碍注册认领，但本人条款、隐私确认与普通模式邮箱验证要求不变。认领操作需要满足：
 
 - 注册失败或邮箱验证中断时不丢失匿名内容；
 - 已认领记录不能被第二个账户再次认领；
@@ -99,7 +100,11 @@ Student Account 和 Operator Account 即使使用相同邮箱，也仍是不同�
 
 ## 6. Decision Profile 与推荐
 
-Decision Profile 是一次完整提交形成的版本化快照，而不是会被持续覆盖的唯一“个人资料”。学生修改基础信息并重新生成建议时，应创建新的 Decision Profile 版本。
+Decision Profile 是一次主动提交形成的版本化快照，可以包含完整、部分或空回答。未填写、主动跳过和不确定分别保留，不用默认答案补齐。每次正式提交追加版本，只有排序输入足够时才生成初始推荐；没有初始推荐仍可自主选择开放专业。
+
+Profile Draft 独立于正式资料，保存草稿、恢复和取消不改变已提交版本。提交同时校验草稿 revision 与所基于的正式版本；冲突不会覆盖另一标签页的更新。已有体验和报告保留原背景，不能回读新资料替换历史。
+
+没有正式背景就创建体验时，系统保留明确为空的内部快照，版本号 0 仅表示创建时未提供背景。它不算正式资料或问卷提交，不计入后台资料数量，原有 base 0 草稿仍可提交为正式版本 1。个人导出会明确这类快照的来源。
 
 每次推荐需要保存：
 
@@ -166,7 +171,7 @@ stateDiagram-v2
 
 只有明确点击“暂停”或确认切换专业才进入 Paused；关闭网页、退出登录或长时间无活动不自动改变领域状态。流失是分析结论，不是完成或不可逆放弃。恢复 Paused 时回到其原阶段，不重新计为开始、不清空输入、不改变 Task Version。
 
-同一学生同一时刻最多一个活动体验（InProgress 或 TaskCompleted），可以保留多个 Ready／Paused 体验。每个 Major 最多一个未被替换的运行，Closed 也占用该专业唯一位置，因此学生不能自行重做。首次开始时固定 Task Version、Decision Profile 和推荐决定；Ready 改选不绑定到另一专业，复用／创建目标专业的 Ready Run。
+同一学生同一时刻最多一个活动体验（InProgress 或 TaskCompleted），可以保留多个 Ready／Paused 体验。每个 Major 最多一个未被替换的运行，Closed 也占用该专业唯一位置，因此学生不能自行重做。普通专业 Run 在创建时固定最新正式背景，未提供背景时绑定明确空快照；首次开始时固定 Task Version。推荐入口保留原推荐与决定，自主选择不制造这些记录。旧 NEXT 推荐仍保留它自己的历史背景依据，新 Run 使用创建时最新背景。复用已有 Ready、开始或恢复均不重新绑定背景；Ready 改选不绑定到另一专业，复用／创建目标专业的 Ready Run。历史未绑定背景的 Ready 兼容规则见 `11`、`12`。
 
 切换专业须原子地暂停当前活动体验并开始／恢复目标体验；失败时两者都保持原状。旧标签页不得继续写入已暂停运行。已关闭运行不可恢复或替换；报告错误走重生成。未完成运行因异常需重新创建时，操作人员在同一事务将旧运行置为 Replaced、创建有来源和原因的新 Ready Run并审计；旧答案、反思、版本及执行记录不改写，不把旧运行标成完成。
 

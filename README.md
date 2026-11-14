@@ -1,10 +1,27 @@
 # MajorPilot
 
+通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
+
+## 当前交付
+
 **2026-11-14 资料管理与主页补充已完成本地开发和测试**：新增“我的资料”、独立草稿和版本管理；背景问卷可跳过，资料不足时仍可自主选择开放专业；三专业入口统一为状态卡片，新增不产生订单或额度变动的支付演示。历史任务与报告保留原背景，新任务使用创建时最新背景。本轮范围、接口及分层验收结果见 [资料与主页补充](docs/48-profile-dashboard-and-payment-demo.md)。新增 V14 仅在测试库及独立空库验证，本轮未部署公网。
 
-**2026-10-14 邀请测试部署**：新增独立 `pilot` 模式，预置五账号、关闭公开注册和邮件流程，每账号限三次单专业报告、两次比较报告。当前实施、验证及剩余门禁见 [五账号测试版](docs/46-invitation-pilot-deployment.md)。本地启动方式不变；服务器访问方式与密码只留在忽略的私有目录。
+功能提交为 [`369c0283288a780e56ba436f2d4ac28cfb167dd1`](https://github.com/powerpan/MajorPilot/commit/369c0283288a780e56ba436f2d4ac28cfb167dd1)，已于 2026-11-14 推送并核对远端。该提交后的文档同步不改变应用行为。
 
-通过短时、基于证据的体验，帮助学生比较 Artificial Intelligence、Data Science 和 Business Analytics。技术栈为 RuoYi Spring Boot 3 + 独立 Vue 3 学生端／管理端 + MySQL + Redis。
+| 层面 | 已验证事实与边界 |
+| --- | --- |
+| 功能 | 我的资料、草稿／版本、问卷跳过、自主选择专业、三专业状态卡片、支付演示已实现；专业任务和报告设计继续按 38–41 |
+| 测试 | MySQL 集成 590 项通过、3 项付费测试跳过；Chrome／Edge 的普通与邀请模式界面通过合成 API 检查；本轮尚未完成新的真实 HTTP 浏览器整链验收 |
+| 数据 | V14 在测试库和独立空库验证；本轮未迁移主开发库或服务器。下次启动新版后端时会执行尚未应用的迁移 |
+| 服务器 | 2026-10-14 的五账号受限发布结果见 [46](docs/46-invitation-pilot-deployment.md)；本轮仅交付代码，没有更新或复查线上运行状态 |
+
+`local` 保留注册、邮箱验证和本人授权；`pilot` 使用五个预置账号，关闭公开注册和邮件流程，仍要求本人确认条款与隐私。报告额度为每账号三次单专业、两次比较；支付演示不改变额度。密钥、登录方法和账号密码只留在忽略的私有目录／环境文件。
+
+本轮测试服务已在验收结束后关闭，数据保留。启动与检查入口见下文；实际运行状态以启动脚本的进程身份检查为准。
+
+## 历史交付记录
+
+以下保留各日期的交付事实；当时的“未发布”或“待实施”不用于判断后续版本的状态。
 
 **2026-09-25 方法主线整轮改版已完成本地工程验收，三专业新版已启用**：新内容采用“先解释一个想法 → 实际操作 → 明确提交／帮助／修改 → 换题验证”的路线，原始数据通过 Excel 下载，关键结果与理由回填。新报告读取完整相关作答及过程证据，并经过独立审阅。15 个合成案例完成核心预期检查；主站 BA 的全新真实模型闭环、桌面／手机阅读与打印也已通过。旧设计、1.0.0 内容和历史体验保留，迁移及测试后 17 张历史表的原有数据哈希一致。电脑打开 `http://localhost:15173/app`，已有旧体验可选择“开始新版体验”；旧报告不会被自动重写。准确结果、Git 交付及已知模型表达局限见 [本轮记录](docs/45-method-led-release-verification.md)。专业审阅、跨专业新手试用、原生 Excel 兼容性和 P8／公网部署仍是独立门禁。
 
@@ -47,6 +64,8 @@ Codex 的 macOS 沙箱可能禁止 MySQL 的 `hw.cachelinesize` 查询以及 `ps
 
 端口的运行脚本配置集中于 `scripts/local-config.mjs`；前端代理及 Cookie Origin 当前固定为这套本地地址。不要只改一处端口来测试 Origin 安全边界。`local` 和 `p0` 不同时运行；默认健康入口为 `/api/public/v1/health`。
 
+本轮验收从 `/app` 开始：主页查看资料摘要和三专业状态；`/app/profile` 查看正式回答；`/app/profile/edit` 修改或恢复草稿；`/app/plans` 查看支付演示。空白重填从完整资料页主动选择。五条人工验收路径见 [48 的复核清单](docs/48-profile-dashboard-and-payment-demo.md#人工复核入口)。
+
 管理员名 `admin`；随机密码位于 `.env.local` 的 `MP_P0_ADMIN_PASSWORD`，使用编辑器在本机查看。学生 P0 探针也只使用生成的本地测试口令；它们不是注册产品。不把这些值粘贴到聊天、截图或工单。
 
 ```sh
@@ -62,7 +81,9 @@ sh scripts/verify-secrets
 sh scripts/stop-local
 ```
 
-`test-integration` 只使用独立 `majorpilot_test` 库；`test-infra.mjs` 会重启本项目的 MySQL／Redis，需在没有其他本项目测试进行时单独执行。停止脚本核对 PID 的启动时间与完整命令，只关闭本项目记录的进程并保留数据。日志位于忽略的 `logs/`；不要发布未经检查的完整日志。
+`test-integration` 只使用独立 `majorpilot_test` 库，需先启动项目 MySQL／Redis；它不会自动启动基础服务，并与 P6 harness 互斥。另一个 `test-infra.mjs` 会重启本项目的 MySQL／Redis，需单独执行。停止脚本核对 PID 的启动时间与完整命令，只关闭本项目记录的进程并保留数据。日志位于忽略的 `logs/`；不要发布未经检查的完整日志。
+
+资料与支付演示的浏览器回归入口为 `tests/e2e/profile-flow.mjs`，普通／pilot 模式的配置与命令见 [48 验收记录](docs/48-profile-dashboard-and-payment-demo.md#验收记录)。这些测试拦截全部 API，不能替代真实 HTTP 联调；截图和日志保留在本机，不上传仓库。
 
 `test-p1-e2e` 依次运行真实 HTTP／事件合同和 Chrome／Edge 完整流程；创建并精确清理本轮合成账户、草稿与捕获邮件。不放宽正式限流：重复运行可能触发本地共享 IP 的每小时注册限制，应等待窗口自然恢复，不清空 Redis 绕过。P0 回归需先停止本项目服务，再 `sh scripts/start-local --profile=p0` 并执行 `sh scripts/test-e2e`；完成后停止并以默认 `local` 重启。两个 profile 都保留原数据。
 
