@@ -136,11 +136,13 @@ export const useWorkspace = defineStore("workspace", () => {
   const baSql = computed(
     () => publicAssets.value["sql-examples"] as BaSql | undefined,
   );
+  const usesLegacyBaAction = computed(
+    () => selectedStep.value === "b6-action" && manifest.value?.schemaVersion !== "task-manifest-v5",
+  );
   const baActionContext = computed(() => step.value?.baActionContext);
   const baActionBlocked = computed(
     () =>
-      selectedStep.value === "b6-action" &&
-      manifest.value?.schemaVersion !== 'task-manifest-v5' &&
+      usesLegacyBaAction.value &&
       (!baActionContext.value ||
         baContextStale.value ||
         !baContextConfirmed.value ||
@@ -408,11 +410,18 @@ export const useWorkspace = defineStore("workspace", () => {
       if (run.value.status === "READY" || run.value.status === "REPLACED")
         return;
       manifest.value = await request<TaskManifest>(`${base}/${id}/task`);
+      const current = run.value;
+      const available = manifest.value.steps.filter(({ dependencies }) =>
+        dependencies.every(key => current.steps.some(step => step.stepKey === key && step.status === "COMPLETED")),
+      );
+      const resume = available.find(step => step.stepKey === current.currentStepKey)
+        || available.find(step => current.steps.some(summary => summary.stepKey === step.stepKey && summary.status !== "COMPLETED"))
+        || available[0];
       await select(
         ["TASK_COMPLETED", "CLOSED"].includes(run.value.status) ||
           run.value.pausedFromStatus === "TASK_COMPLETED"
           ? "reflection"
-          : run.value.currentStepKey || manifest.value.steps[0]!.stepKey,
+          : resume?.stepKey || manifest.value.steps[0]!.stepKey,
       );
     } catch (cause) {
       await handle(cause);
@@ -1102,14 +1111,13 @@ export const useWorkspace = defineStore("workspace", () => {
       error.value = "请重新读取当前依据并确认，方案仍保留。";
       return;
     }
-    const confirmedSources =
-      selectedStep.value === "b6-action"
-        ? clone(orderedSources(baActionContext.value!.sourceRevisions))
-        : undefined;
     busy.value = true;
     const issuedAt = generation;
     error.value = "";
     try {
+      const confirmedSources = usesLegacyBaAction.value && baActionContext.value
+        ? orderedSources(baActionContext.value.sourceRevisions)
+        : undefined;
       if (!(await flush()) || issuedAt !== generation) return;
       if (confirmedSources) {
         if (

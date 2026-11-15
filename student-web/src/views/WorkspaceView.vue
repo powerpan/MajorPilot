@@ -551,7 +551,7 @@ onBeforeUnmount(() => {
               class="workspace-notice"
               role="status"
             >
-              正在核对步骤资料与本机草稿，核对完成后开放编辑。
+              {{ workspace.error ? '本步骤暂未打开。可以重试，或从左侧打开可继续的步骤。' : '正在核对步骤资料与本机草稿，核对完成后开放编辑。' }}
               <button
                 v-if="workspace.error"
                 class="plain-button text-link"

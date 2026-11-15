@@ -807,6 +807,21 @@ test("a failed step hydration stays gated with an explicit error and can be retr
   assert.equal(h.store.error.value, "");
   h.store.clear();
 });
+test("resuming an invalidated step opens its unfinished prerequisite", async () => {
+  const h = harness();
+  const blocked = { ...definition, stepKey: "observe", dependencies: ["prepare"] };
+  h.setApi(async (path) => {
+    if (path.endsWith("/task")) return { steps: [definition, blocked], assets: [] };
+    if (path.endsWith("/steps/prepare")) return clone(step);
+    if (path.endsWith("/steps/observe")) throw new ApiError(409, "STEP_NOT_AVAILABLE");
+    return { ...clone(run), currentStepKey: "observe" };
+  });
+  await h.store.load("owned-run");
+  assert.equal(h.store.selectedStep.value, "prepare");
+  assert.equal(h.store.selectionReady.value, true);
+  assert.equal(h.calls.some(({path}) => path.endsWith("/steps/observe")), false);
+  h.store.clear();
+});
 test("P4 v3 sends source CAS including empty ancestry and uses saved own fields only for local preview", async () => {
   const h = harness();
   await h.store.load("owned-run");

@@ -78,13 +78,74 @@ async function run(){
           await page.goto(p6Origin+'/app');checks.push('real browser: local edit invalidates the displayed check and next-step focuses the recheck action');
         }
         if(definition.operationKey){const execution=expect(await post(client,runPath+'/executions',{operationKey:definition.operationKey,inputRevision:saved.revision,parameters:{}}),200,'actual fixed algorithm');assert.equal(execution.status,'SUCCEEDED');assert.equal(execution.trustLevel,'SERVER_VERIFIED');}
+        if(entry.major==='AI'&&key==='a6-decision'){
+          await page.goto(p6Origin+'/app/runs/'+current.runId);
+          const submitTransfer=page.getByRole('button',{name:'提交新情境回答',exact:true});
+          await submitTransfer.click();
+          await page.getByRole('button',{name:'新情境回答已提交',exact:true}).waitFor();
+          await page.getByRole('button',{name:'完成此步骤',exact:true}).click();
+          await page.getByRole('heading',{name:'回顾这次体验',exact:true}).waitFor();
+          current=expect(await client.call(runPath),200,'AI finished through actual UI');
+          assert.equal(current.status,'TASK_COMPLETED');
+          checks.push('AI: final transfer remains available after two comparison attempts');
+          continue;
+        }
         if(cp||guide.transferCheckpointId){learning=expect(await client.call(runPath+'/learning'),200,'current sequence');const body={expectedSequence:learning.sequence,expectedStepRevision:saved.revision,stepKey:key,kind:'ATTEMPT_SUBMITTED',checkpointId:cp||guide.transferCheckpointId,role:cp?'INITIAL':'TRANSFER'},idem=idempotency();
           const receipt=expect(await post(client,runPath+'/learning/events',body,idem),200,'explicit attempt');assert.deepEqual(expect(await post(client,runPath+'/learning/events',body,idem),200,'exact learning replay'),receipt);
           expect(await post(foreign.client,runPath+'/learning/events',body),404,'foreign learning write denied');
         }
+        if(entry.major==='AI'&&key==='a5-evaluate'){
+          current=expect(await post(client,runPath+'/steps/'+key+'/complete',{expectedRevision:saved.revision}),200,'complete original comparison');
+          await page.goto(p6Origin+'/app/runs/'+current.runId);
+          await page.getByRole('button',{name:/在同一批消息上比较/}).click();
+          const revise=page.getByRole('button',{name:'提交一次修改',exact:true});
+          await revise.waitFor();
+          assert.equal(await revise.isDisabled(),true,'unchanged answers must not create a revision');
+          const field=page.locator('textarea[name=comparison]');
+          const revised=response.comparison+' 复测时也应分别看自动处理比例和人工工作量。';
+          await field.fill(revised);
+          await revise.click();
+          await page.locator('[data-field-path=execution] .workspace-attention-message').waitFor();
+          await page.getByRole('button',{name:'运行当前配置并比较',exact:true}).click();
+          await until(async()=>{
+            const step=expect(await client.call(runPath+'/steps/'+key),200,'revised comparison');
+            return step.response.comparison===revised&&step.executions.some(e=>e.appliedToRevision===step.revision);
+          },'evaluation bound to revised response');
+          await revise.click();
+          await page.getByText('已记录 2 次提交。',{exact:false}).waitFor();
+          await page.getByRole('button',{name:'完成此步骤',exact:true}).click();
+          await page.locator('textarea[name=decision]').waitFor();
+          current=expect(await client.call(runPath),200,'AI moved to final step');
+          assert.equal(current.currentStepKey,'a6-decision');
+          await page.getByTestId('save-status').getByText('已保存',{exact:true}).waitFor();
+          await page.goto(p6Origin+'/app');
+          checks.push('AI: unchanged revision gated, edited comparison re-evaluated, revision submitted and final step reopened');
+          continue;
+        }
+        if(entry.major==='BUSINESS_ANALYTICS'&&key==='b6-action'){
+          // Reproduce a saved draft differing from the immutable submission.
+          expect(await client.call(runPath+'/steps/'+key+'/response',{method:'PUT',body:{
+            expectedRevision:saved.revision,responseSchemaVersion:step.responseSchemaVersion,
+            response:{...response,transferMode:'SKIP',transfer:''},
+          }}),200,'draft diverges from recorded transfer answer');
+          await page.goto(p6Origin+'/app/runs/'+current.runId);
+          await page.getByRole('button',{name:'新情境回答已提交',exact:true}).waitFor();
+          await page.getByRole('button',{name:'完成此步骤',exact:true}).click();
+          await page.locator('.learning-submit .workspace-attention-message').waitFor();
+          await page.getByRole('button',{name:'恢复上次提交',exact:true}).click();
+          await page.getByText('已恢复并保存原先提交的内容。点击「完成此步骤」继续。',{exact:true}).waitFor();
+          assert.equal(await page.locator('textarea[name=transfer]').inputValue(),response.transfer);
+          await page.getByRole('button',{name:'完成此步骤',exact:true}).click();
+          await page.getByRole('heading',{name:'回顾这次体验',exact:true}).waitFor();
+          current=expect(await client.call(runPath),200,'BA finished through actual UI');
+          assert.equal(current.status,'TASK_COMPLETED');
+          checks.push('BA: a previously submitted transfer answer completes the final step and opens reflection');
+          continue;
+        }
         current=expect(await post(client,runPath+'/steps/'+key+'/complete',{expectedRevision:saved.revision}),200,'complete step');
       }
-      current=expect(await client.call(runPath),200,'latest run');current=expect(await post(client,runPath+'/task-completion',{expectedRevision:current.revision}),200,'task completion');
+      current=expect(await client.call(runPath),200,'latest run');
+      if(current.status!=='TASK_COMPLETED')current=expect(await post(client,runPath+'/task-completion',{expectedRevision:current.revision}),200,'task completion');
       const reflection=expect(await client.call(runPath+'/reflection'),200,'reflection');current=expect(await post(client,runPath+'/reflection/submission',{expectedRevision:reflection.revision,questionSetVersion:reflection.questionSetVersion,answers:{interestingStepKeys:[entry.manifest.steps[0].stepKey],difficultySources:['KNOWLEDGE'],continueSimilarWork:'YES',reflectionNote:'这是独立测试环境中的合成体验感受。'}}),200,'close');assert.equal(current.status,'CLOSED');
       const summary=await until(async()=>expect(await client.call('/api/app/v1/reports?limit=50'),200,'report list').items.find(r=>r.sourceRunId===current.runId),'report linked to exact run');
       await until(async()=>{const status=expect(await client.call(`/api/app/v1/reports/${summary.reportId}/status`),200,'report status');assert.notEqual(status.status,'FAILED');return status.currentVersionId;},'reviewed structural report');

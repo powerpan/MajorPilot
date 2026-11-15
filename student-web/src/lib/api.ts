@@ -18,6 +18,7 @@ const messages: Record<string, string> = {
   LOCAL_RESULT_INVALID: "请检查数值、比例单位和计算范围；没有对应数据时请在说明中写清。",
   LOCAL_RESULT_LIMIT: "这次体验的核对次数已用完，请保留现有记录并联系支持。",
   LEARNING_ATTEMPT_LIMIT: "本检查点的明确提交次数已经用完，可恢复最后一次提交继续。",
+  LEARNING_RESPONSE_STALE: "这次提交没有新的已保存修改。请先改动回答并确认已保存，或用上次的回答继续。",
   LEARNING_TRANSFER_REQUIRED: "请填写新情境回答，或明确选择这次不作答。",
   LEARNING_NEW_EDITION_EXISTS: "你已创建新版体验，请回个人主页打开它；原有记录仍保留。",
   LEARNING_SUPPORT_REQUIRED: "请先打开一份提示，再选择带着这份帮助继续。",
