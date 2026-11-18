@@ -4,11 +4,11 @@
 
 ## 当前交付
 
-**2026-11-18 邀请测试易用性修订**。为三专业第 1 步补充操作引导，为 AI 第 4 步补充标签与转人工示例，报告末尾改用五档滑块。 [设计与复核](docs/49-pilot-task-guidance-and-report-feedback.md)
+**2026-11-18 邀请测试站已发布易用性修订**。三专业第 1 步有明确的操作引导，AI 第 4 步有标签与转人工示例，报告末尾改用五档滑块。学生端构建源自 [`786aa7a`](https://github.com/powerpan/MajorPilot/commit/786aa7a01913d3632b59f840b94ae7fe338c502a)。公网资源及真实登录、已有 AI 工作区首步、已有报告的滑块操作已核对。 [设计与复核](docs/49-pilot-task-guidance-and-report-feedback.md) · [部署记录](docs/46-invitation-pilot-deployment.md#2026-11-18-发布结果)
 
 **2026-11-16 邀请测试站已更新**。新增“我的资料”、草稿恢复和背景版本管理，背景问卷可跳过，资料不足时仍可自主选择专业。主页以三张卡片显示体验进度，并提供支付演示。此次还修复了 AI 第 5 步修改提交和 BA 第 6 步完成卡住的问题。历史任务与报告保留原背景，新任务使用创建时最新背景。 [资料与主页补充](docs/48-profile-dashboard-and-payment-demo.md)
 
-线上构建源自 [`af2facd`](https://github.com/powerpan/MajorPilot/commit/af2facd322039dab2cf0c2abc96a9ee4c591ddfa)，包含 [`369c028` 的资料与主页功能](https://github.com/powerpan/MajorPilot/commit/369c0283288a780e56ba436f2d4ac28cfb167dd1) 和之前的自动回顶修复。
+当前线上后端构建源自 [`af2facd`](https://github.com/powerpan/MajorPilot/commit/af2facd322039dab2cf0c2abc96a9ee4c591ddfa)。11 月 16 日的发布包含 [`369c028` 的资料与主页功能](https://github.com/powerpan/MajorPilot/commit/369c0283288a780e56ba436f2d4ac28cfb167dd1) 和之前的自动回顶修复。
 
 | 层面 | 已验证事实与边界 |
 | --- | --- |
