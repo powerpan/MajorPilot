@@ -380,32 +380,38 @@
   font-size: 16px;
   margin-bottom: 14px;
 }
-.report-rating-options {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-.report-rating-options label {
-  min-height: 44px;
-  min-width: 44px;
-  display: flex;
-  flex-direction: column;
+.report-rating-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  cursor: pointer;
-  font-size: 16px;
-  gap: 4px;
+  column-gap: 12px;
 }
-.report-rating-options input {
-  width: 20px;
-  height: 20px;
+.report-rating-slider input {
+  margin: 0;
+  width: 100%;
+  height: 36px;
   accent-color: var(--blue);
+}
+.report-rating-slider input.is-unset {
+  accent-color: var(--muted);
+}
+.report-rating-value {
+  min-width: 3em;
+  color: var(--blue);
+  font-size: 16px;
+  font-weight: 650;
+  text-align: end;
+}
+.report-rating-slider:has(.is-unset) .report-rating-value {
+  color: var(--muted);
 }
 .report-rating-ends {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   color: var(--muted);
   font-size: 14px;
-  margin: 8px 0;
+  margin: 0 0 8px;
 }
 .report-feedback fieldset button {
   font-size: 14px;

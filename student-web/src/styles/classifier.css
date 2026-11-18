@@ -77,6 +77,27 @@
   font-size: 13px;
   line-height: 1.5;
 }
+.classifier-config-help,
+.classifier-change-example {
+  font-size: 16px;
+  line-height: 1.65;
+}
+.classifier-config-help {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.classifier-change-example {
+  margin: 18px 0 6px;
+  padding-inline-start: 14px;
+  border-inline-start: 2px solid var(--line);
+}
+.classifier-change-example p,
+.classifier-change-example ul {
+  margin: 4px 0;
+}
+.classifier-change-example ul {
+  padding-inline-start: 22px;
+}
 .classifier-examples {
   padding: 18px 0;
   border-bottom: 1px solid var(--line);

@@ -2,6 +2,8 @@
 
 > 2026-09-24，当前报告设计基线，已获准实施；实现与 Schema 发布状态见[42 台账](./42-method-led-implementation-ledger.md)。关联：[38 总体设计](./38-method-led-experience-redesign.md)、[39 案例](./39-guided-major-case-specifications.md)、[41 Excel](./41-excel-download-and-local-results.md)。
 
+报告末尾的可选五档反馈见[49 邀请测试反馈](./49-pilot-task-guidance-and-report-feedback.md)。
+
 ## 1. 报告要回答的问题
 
 报告帮助学生理解“我怎样走过这条方法路线”，不是根据最终文本推测脑内过程。报告仍分别说明本次表现、当前需要的支持、本人体验偏好，不输出综合分数或适配结论。

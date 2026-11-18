@@ -10,10 +10,20 @@ import {
 } from "../../lib/feedback-drafts";
 import type { NextAction, ReportFeedback } from "../../types/reports";
 const props = defineProps<{ versionId: string }>();
+type RatingKey = "insightResponse" | "clarityChange";
+const ratingQuestions: { key: RatingKey; label: string; low: string; high: string }[] = [
+  { key: "insightResponse", label: "是否获得新的认识？", low: "完全没有", high: "收获很多" },
+  { key: "clarityChange", label: "选择方向是否更清楚？", low: "没有更清楚", high: "清楚很多" },
+];
+const ratings = ref<Record<RatingKey, number | null>>({
+  insightResponse: null,
+  clarityChange: null,
+});
+function chooseRating(key: RatingKey, event: Event) {
+  ratings.value[key] = (event.target as HTMLInputElement).valueAsNumber;
+}
 const auth = useAuth(),
   comment = ref(""),
-  insight = ref<number | null>(null),
-  clarity = ref<number | null>(null),
   nextAction = ref<NextAction | "">("");
 const busy = ref(false),
   hydrating = ref(true),
@@ -37,8 +47,8 @@ function clear() {
   ready.value = false;
   hydrating.value = true;
   comment.value = "";
-  insight.value = null;
-  clarity.value = null;
+  ratings.value.insightResponse = null;
+  ratings.value.clarityChange = null;
   nextAction.value = "";
   busy.value = false;
   success.value = false;
@@ -87,8 +97,8 @@ async function submit() {
     return;
   }
   const answers = {
-    ...(insight.value === null ? {} : { insightResponse: insight.value }),
-    ...(clarity.value === null ? {} : { clarityChange: clarity.value }),
+    ...(ratings.value.insightResponse === null ? {} : { insightResponse: ratings.value.insightResponse }),
+    ...(ratings.value.clarityChange === null ? {} : { clarityChange: ratings.value.clarityChange }),
     ...(nextAction.value ? { nextAction: nextAction.value } : {}),
   };
   if (!Object.keys(answers).length && !comment.value.trim()) {
@@ -143,55 +153,43 @@ async function submit() {
     <p v-else-if="skipped" role="status">已跳过反馈。你可以继续探索。</p>
     <form v-else @submit.prevent="submit">
       <p v-if="hydrating" role="status">正在核对账户并恢复本版本的评论草稿…</p>
+      <datalist id="report-rating-values">
+        <option v-for="value in 5" :key="value" :value="value"></option>
+      </datalist>
       <div class="report-feedback-ratings">
-        <fieldset>
-          <legend>是否获得新的认识？（可选）</legend>
-          <div class="report-rating-options">
-            <label v-for="value in 5" :key="value"
-              ><input
-                v-model="insight"
-                type="radio"
-                name="insightResponse"
-                :value="value"
-                :disabled="busy || hydrating"
-                :aria-label="`获得新的认识：${value}分`"
-              /><span>{{ value }}</span></label
-            >
+        <fieldset v-for="question in ratingQuestions" :key="question.key">
+          <legend :id="`${question.key}-label`">{{ question.label }}（可选）</legend>
+          <div class="report-rating-slider">
+            <input
+              type="range"
+              :name="question.key"
+              min="1"
+              max="5"
+              step="1"
+              list="report-rating-values"
+              :value="ratings[question.key] ?? 3"
+              :class="{ 'is-unset': ratings[question.key] === null }"
+              :disabled="busy || hydrating"
+              :aria-labelledby="`${question.key}-label`"
+              :aria-describedby="`${question.key}-ends`"
+              :aria-valuetext="ratings[question.key] === null ? '未选择' : `${ratings[question.key]} 分`"
+              @input="chooseRating(question.key, $event)"
+              @click="chooseRating(question.key, $event)"
+              @keydown.enter.prevent="chooseRating(question.key, $event)"
+              @keydown.space.prevent="chooseRating(question.key, $event)"
+            />
+            <span class="report-rating-value">
+              {{ ratings[question.key] === null ? "未选择" : `${ratings[question.key]} 分` }}
+            </span>
+            <p :id="`${question.key}-ends`" class="report-rating-ends">
+              <span>1 {{ question.low }}</span><span>5 {{ question.high }}</span>
+            </p>
           </div>
-          <p class="report-rating-ends">
-            <span>1 完全没有</span><span>5 很有帮助</span>
-          </p>
           <button
             type="button"
             class="plain-button text-link"
-            :disabled="busy || insight === null"
-            @click="insight = null"
-          >
-            清除此题
-          </button>
-        </fieldset>
-        <fieldset>
-          <legend>选择方向是否更清楚？（可选）</legend>
-          <div class="report-rating-options">
-            <label v-for="value in 5" :key="value"
-              ><input
-                v-model="clarity"
-                type="radio"
-                name="clarityChange"
-                :value="value"
-                :disabled="busy || hydrating"
-                :aria-label="`选择方向更清楚：${value}分`"
-              /><span>{{ value }}</span></label
-            >
-          </div>
-          <p class="report-rating-ends">
-            <span>1 完全没有</span><span>5 清楚很多</span>
-          </p>
-          <button
-            type="button"
-            class="plain-button text-link"
-            :disabled="busy || clarity === null"
-            @click="clarity = null"
+            :disabled="busy || hydrating || ratings[question.key] === null"
+            @click="ratings[question.key] = null"
           >
             清除此题
           </button>

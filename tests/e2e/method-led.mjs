@@ -40,8 +40,10 @@ async function run(){
       assert.equal(current.taskVersionId,entry.id);assert.equal(current.experienceEdition,2);const runPath=`${root}/${current.runId}`;
       expect(await foreign.client.call(runPath+'/learning'),404,'foreign learning denied');
       const metadata=expect(await client.call(runPath+'/workbooks'),200,'bound workbook')[0];assert.equal(metadata.taskVersionId,entry.id);
+      const opening = page.locator('.workspace-first-step');
       if(entry.major==='BUSINESS_ANALYTICS'){
         await login('/app/runs/'+current.runId);await page.locator('textarea[name=enrollmentRate]').waitFor();
+        assert.match(await opening.innerText(), /正式体验已开始[\s\S]*20 ÷ 30[\s\S]*提交这一小步/);
         await page.getByRole('button',{name:'完成此步骤',exact:true}).click();await page.locator('.workspace-attention-message').waitFor();
         assert.equal(await page.locator('textarea[name=enrollmentRate]').evaluate(el=>document.activeElement===el),true);
         const downloadPromise=page.waitForEvent('download');await page.locator('.workbook-download a').click();const download=await downloadPromise;
@@ -53,12 +55,63 @@ async function run(){
         await page.screenshot({path:output+'/ba-explicit-revision-desktop.png',fullPage:true});
         await page.getByRole('button',{name:'完成此步骤',exact:true}).click();await until(async()=>expect(await client.call(runPath+'/steps/b1-context'),200,'browser completion').status==='COMPLETED','browser step completion');
         await page.goto(p6Origin+'/app');checks.push('real browser: validation focus, authorized XLSX download, initial/help/revision and completion');
+      } else {
+        await page.goto(p6Origin+'/app/runs/'+current.runId);
+        const isAi = entry.major === 'AI';
+        await page.locator(isAi ? 'textarea[name=taskUnderstanding]' : 'textarea[name=unit]').waitFor();
+        assert.match(await opening.innerText(), isAi ? /正式体验已开始[\s\S]*错分问题[\s\S]*举个例子[\s\S]*完成此步骤/ : /正式体验已开始[\s\S]*字段说明[\s\S]*举个例子[\s\S]*完成此步骤/);
+        await page.screenshot({ path: `${output}/${isAi ? 'ai' : 'ds'}-opening-desktop.png` });
+        if (isAi) {
+          await page.setViewportSize({ width: 1024, height: 844 });
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+          await page.screenshot({ path: `${output}/ai-opening-compact.png` });
+          await page.locator('textarea[name=taskUnderstanding]').fill(entry.responses['a1-task'].taskUnderstanding);
+          await page.getByRole('button', { name: '完成此步骤', exact: true }).click();
+          await page.locator('textarea[name=accuracyMeaning]').waitFor();
+          assert.equal(await opening.count(), 0);
+          await page.setViewportSize({ width: 1440, height: 1000 });
+        }
+        await page.goto(p6Origin+'/app');
       }
       for(const definition of entry.manifest.steps){
         const key=definition.stepKey,step=expect(await client.call(runPath+'/steps/'+key),200,'step');if(step.status==='COMPLETED')continue;
         let learning=expect(await client.call(runPath+'/learning'),200,'learning');const guide=entry.guide.steps.find(s=>s.stepKey===key),cp=guide.checkpointId;
         if(cp&&!learning.events.some(e=>e.payload.supportId===cp.toLowerCase()+'-basic'))learning=expect(await post(client,runPath+'/learning/events',{expectedSequence:learning.sequence,stepKey:key,kind:'SUPPORT_PROVIDED',checkpointId:cp,supportId:cp.toLowerCase()+'-basic'}),200,'basic explanation');
         const response=structuredClone(entry.responses[key]);if(response.local){response.local.workbookVersion=metadata.workbookVersion;response.local.workbookSha256=metadata.sha256;}
+        if (entry.major === 'AI' && key === 'a4-configure') {
+          await page.goto(p6Origin+'/app/runs/'+current.runId);
+          const labels = page.locator('.classifier-definition');
+          await labels.first().waitFor();
+          assert.equal(await labels.getByText(/^例子 · /).count(), 4);
+          assert.match(await page.locator('.classifier-change-example').innerText(), /改前[\s\S]*0\.38[\s\S]*改后[\s\S]*0\.80/);
+          const technical = page.locator('select[name=definition-technical_issue]');
+          await technical.selectOption({ label: '补充措辞' });
+          assert.match(await labels.first().innerText(), /关注.*一直转圈/);
+          await page.getByRole('radio', { name: '0.70', exact: true }).check();
+          await page.getByRole('radio', { name: '自动分派', exact: true }).check();
+          await page.getByText('当前低分也自动分派，门槛不会改变消息去向。', { exact: true }).waitFor();
+          await page.locator('textarea[name=changeReason]').fill('比较补充故障措辞后是否能更好地区分技术问题。');
+          await page.locator('textarea[name=expectedTradeoff]').fill('自动分派可能减少人工工作，也可能增加错分。');
+          await until(async () => {
+            const { response: config } = expect(await client.call(runPath+'/steps/'+key), 200, 'read saved classifier config');
+            return config?.definitionVariantIds?.technical_issue === 'technical-clarified' && config.confidenceThreshold === 0.7 && config.lowConfidencePolicy === 'AUTO_ROUTE';
+          }, 'config changes persist through actual HTTP', 10000);
+          await page.setViewportSize({ width: 1024, height: 844 });
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+          await page.locator('.classifier-change-example').screenshot({ path: `${output}/ai-config-example-compact.png` });
+          await technical.selectOption(response.definitionVariantIds.technical_issue);
+          await page.getByRole('radio', { name: response.confidenceThreshold.toFixed(2), exact: true }).check();
+          await page.getByRole('radio', { name: '转人工复核', exact: true }).check();
+          await page.locator('textarea[name=changeReason]').fill(response.changeReason);
+          await page.locator('textarea[name=expectedTradeoff]').fill(response.expectedTradeoff);
+          await page.getByRole('button', { name: '保存并进入评估', exact: true }).click();
+          await page.locator('textarea[name=comparison]').waitFor();
+          assert.deepEqual(expect(await client.call(runPath+'/steps/'+key), 200, 'completed config').response, response);
+          await page.setViewportSize({ width: 1440, height: 1000 });
+          await page.goto(p6Origin+'/app');
+          checks.push('AI: labels, variant and threshold explanations, config persistence, navigation into evaluation');
+          continue;
+        }
         let saved=expect(await client.call(runPath+'/steps/'+key+'/response',{method:'PUT',body:{expectedRevision:step.revision,responseSchemaVersion:step.responseSchemaVersion,response}}),200,'save');
         if(response.local){const checked=expect(await post(client,runPath+'/learning/local-results',{stepKey:key,expectedStepRevision:saved.revision,assistance:false}),200,'local result check');assert.ok(['MATCHED','MISMATCHED'].includes(checked.record.result.status));}
         if(entry.major==='BUSINESS_ANALYTICS'&&key==='b2-metric'){

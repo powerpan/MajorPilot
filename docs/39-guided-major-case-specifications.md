@@ -1,6 +1,8 @@
 # 三专业：方法引导、具体任务与理解检查
 
 > 2026-09-24，当前案例设计基线，已获准实施；内容发布与验收状态见[42 台账](./42-method-led-implementation-ledger.md)。适用边界见[38 总体设计](./38-method-led-experience-redesign.md)。
+
+三专业第 1 步的操作引导和 AI 第 4 步的分类设置说明见[49 邀请测试反馈](./49-pilot-task-guidance-and-report-feedback.md)。
 > 下文的新阶段编号仅是设计定位符，不是已存在的 API／任务步骤。正式材料需作为新的不可变 Task Version 发布。
 
 ## 1. 共同制作规则

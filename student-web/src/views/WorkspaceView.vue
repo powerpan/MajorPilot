@@ -29,6 +29,28 @@ const help = ref<HTMLDialogElement | null>(null),
   copy = ref<HTMLDialogElement | null>(null),
   copied = ref(false);
 const guided = computed(() => !!workspace.manifest?.assets.some(a => a.assetKey === 'method-guide'));
+const firstStepGuidance: Record<string, { task: string; example: string; finish: string }> = {
+  'a1-task': {
+    task: '先看下面四类求助分别指什么，再在「你认为这次需要检查什么？」写一句你想检查的错分问题。',
+    example: '如果「页面打不开」被分成知识问题，求助可能会发给答疑老师。我想检查这种错分。',
+    finish: '写完后，点「完成此步骤」。',
+  },
+  'd1-context': {
+    task: '下载这页的 Excel，打开「字段说明」。在两处回答框里写下每行记了什么、用什么认出同一名学员，以及你想比较什么。',
+    example: '同一个学员编号出现两次时，我会先看看这两行是不是重复记录。',
+    finish: '这一步先读表和写想法。写完后，点「完成此步骤」。',
+  },
+  'b1-context': {
+    task: '看下面的比例小例子，用自己的话填三处：两个比例各在说哪群人，以及为什么不能根据两批人判断同一个人变差了。',
+    example: '30 人交作业，20 人通过。20 ÷ 30 是在说「交了作业的人里，有多少人通过」。',
+    finish: '写完先点「提交这一小步」，再点「完成此步骤」。',
+  },
+};
+const firstStep = computed(() =>
+  guided.value && workspace.run?.startedAt && isProductRun(workspace.run) && !workspace.reflectionMode
+    ? firstStepGuidance[workspace.selectedStep]
+    : undefined,
+);
 const guidedWorkspace = ref<InstanceType<typeof GuidedWorkspace> | null>(null);
 const wide = ref(window.innerWidth >= 1024);
 const observationCore = ref<HTMLElement | null>(null);
@@ -524,6 +546,12 @@ onBeforeUnmount(() => {
                 需要提示？
               </button>
             </div>
+            <div v-if="firstStep" class="workspace-first-step">
+              <p class="workspace-first-step-title">正式体验已开始</p>
+              <p>{{ firstStep.task }}</p>
+              <p><strong>举个例子</strong> {{ firstStep.example }}</p>
+              <p>{{ firstStep.finish }}</p>
+            </div>
             <p ref="observationCore" class="workspace-instructions">
               {{
                 workspace.reflectionMode
@@ -532,7 +560,7 @@ onBeforeUnmount(() => {
               }}
             </p>
             <WorkbookDownload
-              v-if="isMajor && !workspace.reflectionMode && workspace.run?.taskVersionId"
+              v-if="isMajor && !workspace.reflectionMode && workspace.run?.taskVersionId && !(firstStep && workspace.selectedStep === 'a1-task')"
               :run-id="workspace.run.runId"
               :task-version-id="workspace.run.taskVersionId"
             />
@@ -807,6 +835,11 @@ onBeforeUnmount(() => {
                 workspace.readOnly || workspace.executing || workspace.busy
               "
               @update:model-value="workspace.edit"
+            />
+            <WorkbookDownload
+              v-if="firstStep && workspace.selectedStep === 'a1-task' && workspace.run?.taskVersionId"
+              :run-id="workspace.run.runId"
+              :task-version-id="workspace.run.taskVersionId"
             />
             <section
               v-if="!pilotMode && workspace.reflectionMode && isMajor && workspace.reflection"

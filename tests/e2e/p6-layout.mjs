@@ -294,14 +294,29 @@ for (const channel of ["chrome", "msedge"]) {
           const feedbackForm = page.locator(".report-feedback");
           await feedbackForm.scrollIntoViewIfNeeded();
           await page.screenshot({ path: `${out}/${channel}-feedback-form-1536.png` });
-          assert.equal(
-            await feedbackForm.locator("input[type=radio]:checked").count(),
-            0,
-          );
-          assert.equal(
-            await feedbackForm.locator("input[type=radio]").count(),
-            10,
-          );
+          const sliders = feedbackForm.getByRole("slider");
+          assert.equal(await sliders.count(), 2);
+          const [insight, clarity] = await sliders.all();
+          for (const slider of [insight, clarity]) {
+            assert.equal(await slider.getAttribute("aria-valuetext"), "未选择");
+            assert.equal(await slider.getAttribute("min"), "1");
+            assert.equal(await slider.getAttribute("max"), "5");
+            assert.equal(await slider.getAttribute("step"), "1");
+          }
+          await insight.press("End");
+          await feedbackForm.getByText("5 分", { exact: true }).waitFor();
+          await feedbackForm.getByRole("button", { name: "清除此题" }).first().click();
+          assert.equal(await insight.getAttribute("aria-valuetext"), "未选择");
+          assert.equal(await insight.inputValue(), "3");
+          await page.setViewportSize({ width: 390, height: 844 });
+          await clarity.scrollIntoViewIfNeeded();
+          const track = await clarity.boundingBox();
+          await clarity.click({ position: { x: track.width / 2, y: track.height / 2 } });
+          await feedbackForm.getByText("3 分", { exact: true }).waitFor();
+          await clarity.press("ArrowRight");
+          await feedbackForm.getByText("4 分", { exact: true }).waitFor();
+          await page.locator(".report-feedback-ratings").screenshot({ path: `${out}/${channel}-feedback-ratings-390.png` });
+          await page.setViewportSize({ width: 1536, height: 1024 });
           assert.equal(
             await feedbackForm.locator("select[name=nextAction]").inputValue(),
             "",
@@ -326,6 +341,8 @@ for (const channel of ["chrome", "msedge"]) {
             .waitFor();
           assert.equal(feedback.length, 2);
           assert.deepEqual(feedback[0], feedback[1]);
+          assert.equal(feedback[0].surveyVersion, "report-value-v1");
+          assert.deepEqual(feedback[0].answers, { clarityChange: 4 });
           await page
             .locator("#section-NEXT_EXPERIENCE")
             .scrollIntoViewIfNeeded();
@@ -334,6 +351,7 @@ for (const channel of ["chrome", "msedge"]) {
           });
           await page.getByRole("button", { name: "打印", exact: true }).click();
           await page.waitForURL("**/print?expectedVersion=*");
+          assert.equal(await feedbackForm.count(), 0);
           await page
             .getByRole("button", { name: "打印此版本", exact: true })
             .waitFor();
@@ -360,6 +378,11 @@ for (const channel of ["chrome", "msedge"]) {
               format: "A4",
               printBackground: true,
             });
+        }
+        if (scenario === "fallback") {
+          await page.getByRole("button", { name: "跳过，继续探索" }).click();
+          await page.getByText("已跳过反馈。你可以继续探索。", { exact: true }).waitFor();
+          assert.deepEqual(feedback, []);
         }
       }
       assert.deepEqual(unknown, []);
