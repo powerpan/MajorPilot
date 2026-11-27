@@ -29,7 +29,20 @@ Useful URL parameters (they are applied once, then removed from the address bar)
 | `?ai=instant` | Show every AI surface already finished (slow projectors, screenshots); stays on for this tab until `?ai=fresh` or `?ai=live` |
 | `?ai=live` | Stream normally, without replaying surfaces already seen |
 
-Progress is saved in `localStorage` (`mp-redesign-v1`) on this device only. "Reset demo" in the footer clears it.
+Guest progress is saved in this browser. With the account service connected, a short-lived sign-in link is
+sent to the user's email. Signing in syncs the existing demo state across browsers. When the local draft and
+account progress differ, the student chooses which to keep. "Reset demo" clears progress after confirmation.
+
+The static preview works without credentials. For email sign-in, run the separate Spring Boot service in
+`backend/redesign-auth/` against its own MySQL schema and proxy `/api/demo/` on the demo origin. The live
+configuration uses `MP_DEMO_ORIGIN=https://major.erichz.tech`, `MP_DEMO_DB_URL`, `MP_DEMO_DB_USER`,
+`MP_DEMO_DB_PASSWORD`, `MP_DEMO_RESEND_API_KEY` and the default sender `MajorPilot <login@mail.erichz.site>`.
+The API key lives in the service environment. The demo sends a plain-text sign-in link, valid for 15 minutes
+and consumed once when the recipient confirms in the browser. The AI feedback continues to run in the browser.
+
+With project MySQL running, validate with `backend/mvnw -f backend/redesign-auth/pom.xml package` and
+`data/tools/node/bin/node tests/e2e/redesign-auth.mjs`. The browser test uses an isolated schema and simulated
+Resend endpoint. A deployment uses the same HTTPS origin for the static demo and its account service.
 
 ## What changed compared with the current product
 

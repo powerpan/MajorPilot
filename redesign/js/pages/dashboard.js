@@ -97,9 +97,9 @@
     mClear: { en: "Clear all", zh: "全部清除" },
 
     saveTitle: { en: "Your work is saved on this device.", zh: "你的进度已经保存在这台设备上。" },
-    saveBody: { en: "Want to pick it up somewhere else? Add an email. No password, and it's completely optional.", zh: "想在别的设备上继续？留个邮箱就行，不用设密码，完全可选。" },
+    saveBody: { en: "Sign in with your email to pick up where you left off on another device.", zh: "用邮箱登录后，可以换一台设备接着体验。" },
     notNow: { en: "Not now", zh: "暂不" },
-    savedTo: { en: "Saved to your account", zh: "已保存到账户" },
+    savedTo: { en: "Account progress", zh: "账户进度" },
 
     h1New: { en: "Your three lenses, *all in one place.*", zh: "三个视角，都在这里。" },
     h1Partway: { en: "You're partway into {name}.", zh: "你已经开始体验\u200b{name}了。" },
@@ -862,8 +862,7 @@
   }
   const PIN = '<svg class="pin" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14.5s4.5-4.2 4.5-7.8a4.5 4.5 0 0 0-9 0c0 3.6 4.5 7.8 4.5 7.8z"/><circle cx="8" cy="6.6" r="1.6"/></svg>';
   function savePrompt() {
-    const acc = MP.state.account;
-    if (acc) return `<div class="dsh-save is-saved"><span class="dsh-save-i" aria-hidden="true">${CLOUD}</span><div><b>${c("savedTo")}</b><span class="s">${esc(acc.email)}</span></div></div>`;
+    if (MP.cloud?.email) return `<div class="dsh-save is-saved"><span class="dsh-save-i" aria-hidden="true">${CLOUD}</span><div><b>${c("savedTo")}</b><span class="s">${esc(MP.cloud.status())}</span></div></div>`;
     if (MP.state.ui && MP.state.ui.dashSaveHidden) return "";
     return `<div class="dsh-save">
       <span class="dsh-save-i" aria-hidden="true">${DEVICE}</span>
@@ -906,7 +905,7 @@
       const all = MP.lensOrder.map((id) => models[id]);
       const k = all.filter((m) => m.status === "complete").length;
       const prog = all.find((m) => m.status === "progress") || all.find((m) => m.status === "skimmed");
-      const lede = c(k || prog ? (MP.state.account ? "ledeMidAcct" : "ledeMid") : "ledeNew");
+      const lede = c(k || prog ? (MP.cloud?.email ? "ledeMidAcct" : "ledeMid") : "ledeNew");
       // the headline's one italic accent (en): the count, the lens, or "done"
       const it = (x) => (zh() ? esc(x) : `<span class="it">${esc(x)}</span>`);
       let h1;

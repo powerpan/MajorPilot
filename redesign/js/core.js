@@ -12,7 +12,6 @@
       qs: { fields: [], ask: "" },          // quick start
       profile: { stage: "", background: "", regions: [] }, // optional "tell us more"
       recommended: "",                        // lens id suggested by quick start
-      account: null,                          // {email} once the student chooses to save
       lenses: {},                             // id -> lens state (see MP.ls)
       brief: { removed: [], notes: [], ai: { left: [], regen: 0, hidden: [] } },
       // AI layer (AI-LAYER.md §3): what has been shown (fp per key), regenerate counters, feedback, tone/length,
@@ -24,6 +23,7 @@
   /** Fill nested defaults that a shallow merge of an older saved state would miss. */
   function normalize(s) {
     const f = fresh();
+    delete s.account; // Earlier prototypes stored a simulated email here.
     s.brief = Object.assign({}, f.brief, s.brief || {}); s.brief.ai = Object.assign({}, f.brief.ai, s.brief.ai || {});
     s.ai = Object.assign({}, f.ai, s.ai || {}); s.ai.prefs = Object.assign({}, f.ai.prefs, s.ai.prefs || {}); s.ai.dash = Object.assign({}, f.ai.dash, s.ai.dash || {});
     s.ui = Object.assign({}, f.ui, s.ui || {});
@@ -31,8 +31,16 @@
   }
   function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); return s && s.v === 1 ? normalize(Object.assign(fresh(), s)) : null; } catch (e) { return null; } }
   MP.state = load() || fresh();
+  MP.deviceProgress = {
+    load: () => load() || fresh(),
+    replace: (progress) => { MP.state = normalize(Object.assign(fresh(), progress)); },
+  };
   MP.saveOk = true;
-  MP.save = function () { try { localStorage.setItem(KEY, JSON.stringify(MP.state)); MP.saveOk = true; } catch (e) { MP.saveOk = false; } MP.savedAt = Date.now(); };
+  MP.save = function () {
+    if (MP.cloud?.email) { MP.cloud.queue(); return; }
+    try { localStorage.setItem(KEY, JSON.stringify(MP.state)); MP.saveOk = true; } catch (e) { MP.saveOk = false; }
+    MP.savedAt = Date.now();
+  };
   MP.commit = function (opts) { MP.save(); MP.render(opts); };
   MP.resetState = function (keepLang) { const l = MP.state && MP.state.lang; MP.state = fresh(); if (keepLang && l) MP.state.lang = l; MP.save(); };
 
@@ -70,8 +78,8 @@
     savedAcct: { en: "Saved to your account", zh: "已保存到账户" },
     backToSkipped: { en: "Back to a skipped step", zh: "回到跳过的步骤" },
     notSaved: { en: "Not saved", zh: "未保存" },
-    saveProgress: { en: "Use on another device", zh: "在其他设备继续" },
-    saveShort: { en: "Sync", zh: "同步" },
+    saveProgress: { en: "Sign in by email", zh: "用邮箱登录" },
+    saveShort: { en: "Sign in", zh: "登录" },
     back: { en: "Back", zh: "上一步" },
     cont: { en: "Continue", zh: "继续" },
     skip: { en: "Skip for now", zh: "先跳过" },
@@ -864,25 +872,20 @@
   MP.on("reset", () => {
     if (!hasWork()) return doReset();
     confirmModal(MP.t({ en: "Start over?", zh: "重新开始？" }),
-      MP.t({ en: "This clears your answers on this device. It can't be undone.", zh: "这会清除本设备上的所有回答，清除后无法恢复。" }),
+      MP.cloud?.email
+        ? MP.t({ en: "This clears the saved progress for your account. It can't be undone.", zh: "这会清除账户里保存的体验进度，清除后无法恢复。" })
+        : MP.t({ en: "This clears your answers in this browser. It can't be undone.", zh: "这会清除当前浏览器里的回答，清除后无法恢复。" }),
       MP.t({ en: "Clear and start over", zh: "清除并重新开始" }), "reset-confirm");
   });
   MP.on("reset-confirm", doReset);
   MP.on("sample", () => {
+    if (MP.cloud?.email) return MP.toast(MP.t({ en: "Sign out to try the sample student.", zh: "退出账户后即可载入示例学生。" }));
     if (!hasWork()) return doSample();
     confirmModal(MP.t({ en: "Replace your progress with a sample student?", zh: "用示例学生替换你的进度？" }),
       MP.t({ en: "Your answers on this device will be replaced by a sample student's, so you can see finished lenses and a full Brief. It can't be undone.", zh: "本设备上的回答会被示例学生的内容替换，方便你查看已完成的视角和完整的小结。替换后无法恢复。" }),
       MP.t({ en: "Load the sample", zh: "载入示例" }), "sample-confirm");
   });
   MP.on("sample-confirm", doSample);
-  MP.on("account", () => {
-    MP.modal(`<div class="stack"><div class="h2">${MP.t({ en: "Keep your progress on any device", zh: "在任何设备上保留进度" })}</div>
-      <p class="muted">${MP.t({ en: "Optional. Everything already saves on this device. An account just lets you come back from another one. We only ask for an email.", zh: "可选。所有内容已保存在本设备上。账户只是让你能从其他设备回来，我们只需要邮箱。" })}</p>
-      <div class="field"><label for="acc-email">${MP.t({ en: "Email", zh: "邮箱" })}</label><input class="input" id="acc-email" type="email" placeholder="you@example.com"></div>
-      <div class="modal-actions">${MP.h.quiet(MP.t({ en: "Not now", zh: "暂不" }), "modal-close")}${MP.h.primary(MP.t({ en: "Send me a sign-in link", zh: "发送登录链接" }), "account-save", "", { sm: true })}</div>
-      <p class="tiny faint">${MP.t({ en: "Prototype: no email is sent.", zh: "原型：不会真正发送邮件。" })}</p></div>`);
-  });
-  MP.on("account-save", () => { const v = (document.getElementById("acc-email") || {}).value || ""; if (!/.+@.+\..+/.test(v)) { MP.toast(MP.t({ en: "Please enter a valid email.", zh: "请输入有效邮箱。" })); return; } MP.state.account = { email: v }; MP.closeModal(); MP.commit(); MP.toast(MP.t({ en: "Saved to your account.", zh: "已保存到账户。" })); });
 
   /* ================= sample preset ================= */
   MP.applySample = function () {
@@ -903,9 +906,11 @@
       <a class="brand" href="#/home" aria-label="MajorPilot">${LOGO}<span>MajorPilot</span></a>
       <nav class="nav" aria-label="${esc(MP.ui("mainNav"))}">${navItem("#/explore", "explore", ["explore"])}${navItem("#/dashboard", "progress", ["dashboard", "lens"])}${navItem("#/brief", "brief", ["brief", "compare"])}</nav>
       <div class="header-tools">
-        ${hasWork() || !MP.saveOk ? `<span class="save-state" role="status" title="${esc(MP.state.account ? MP.t({ en: "Your work saves automatically to your account", zh: "进度自动保存到你的账户" }) : MP.t({ en: "Your work saves automatically on this device", zh: "进度自动保存在本设备" }))}"><i style="${MP.saveOk ? "" : "background:var(--warn)"}" aria-hidden="true"></i><span class="txt">${MP.saveOk ? MP.ui(MP.state.account ? "savedAcct" : "saved") : MP.ui("notSaved")}</span></span>` : ""}
+        ${hasWork() || !MP.saveOk || MP.cloud?.email ? `<span class="save-state" role="status"><i style="${MP.saveOk ? "" : "background:var(--warn)"}" aria-hidden="true"></i><span class="txt">${MP.cloud?.email ? esc(MP.cloud.status()) : MP.ui(MP.saveOk ? "saved" : "notSaved")}</span></span>` : ""}
         <div class="lang-toggle" role="group" aria-label="${esc(MP.ui("language"))}">${[["en", "EN"], ["zh", "中文"]].map(([v, l]) => `<button aria-pressed="${MP.lang() === v}" data-action="lang" data-arg="${v}" data-fk="lang:${v}">${l}</button>`).join("")}</div>
-        ${MP.state.account ? `<span class="icon-link" title="${esc(MP.state.account.email)}"><i class="acct-dot" aria-hidden="true"></i><span class="long">${esc(MP.state.account.email.split("@")[0])}</span><span class="short">${MP.t({ en: "Saved", zh: "已登录" })}</span></span>` : `<button class="icon-link" data-action="account" aria-label="${esc(MP.ui("saveProgress"))}"><span class="long">${MP.ui("saveProgress")}</span><span class="short">${MP.ui("saveShort")}</span></button>`}
+        <button class="icon-link" data-action="account" aria-label="${esc(MP.cloud?.email ? MP.t({ en: "Account", zh: "账户" }) : MP.ui("saveProgress"))}">${MP.cloud?.email
+          ? `<i class="acct-dot" aria-hidden="true"></i>${MP.t({ en: "Account", zh: "账户" })}`
+          : `<span class="long">${MP.ui("saveProgress")}</span><span class="short">${MP.ui("saveShort")}</span>`}</button>
       </div></div></header>`;
   }
   /** Ink colophon: the big wordmark, the data's own mark (the 12-cohort line splitting into three beams) and the
@@ -1027,10 +1032,17 @@
     // language first, then the preset: the lenses' sample() writes the student's notes in the current language
     const lq = q.get("lang");
     if (lq === "zh" || lq === "en") MP.state.lang = lq;
-    if (q.get("preset") === "sample") MP.applySample();          // keeps MP.state.lang
-    if (q.get("preset") === "fresh") MP.resetState(true);        // keeps MP.state.lang
-    if (MP.ai) MP.ai.boot(q);                                    // ?ai=instant | fresh | live (after the preset, which resets MP.state.ai)
-    if (q.has("preset") || q.has("lang") || q.has("ai")) { MP.save(); history.replaceState(null, "", location.pathname + location.hash); }
+    MP.cloud?.prepareLink();
     MP.render({ top: true });
+    const preflight = MP.cloud?.boot() || Promise.resolve(false);
+    void preflight.then((signedIn) => {
+      if (lq === "zh" || lq === "en") MP.state.lang = lq;
+      if (!signedIn && q.get("preset") === "sample") MP.applySample();
+      if (!signedIn && q.get("preset") === "fresh") MP.resetState(true);
+      if (MP.ai) MP.ai.boot(q);
+      if (q.has("lang")) MP.save();
+      if (q.has("preset") || q.has("lang") || q.has("ai")) history.replaceState(null, "", location.pathname + location.hash);
+      MP.render();
+    });
   };
 })();

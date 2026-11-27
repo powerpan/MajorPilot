@@ -1,0 +1,31 @@
+server:
+  address: 127.0.0.1
+  port: ${MP_DEMO_PORT:18231}
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  main:
+    banner-mode: "off"
+  datasource:
+    url: ${MP_DEMO_DB_URL}
+    username: ${MP_DEMO_DB_USER}
+    password: ${MP_DEMO_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 1
+      connection-timeout: 3000
+  flyway:
+    enabled: true
+  mvc:
+    log-request-details: false
+demo:
+  origin: ${MP_DEMO_ORIGIN:https://major.erichz.tech}
+  resend-key: ${MP_DEMO_RESEND_API_KEY}
+  sender: ${MP_DEMO_MAIL_FROM:MajorPilot <login@mail.erichz.site>}
+  mail-endpoint: ${MP_DEMO_MAIL_ENDPOINT:https://api.resend.com/emails}
+  recipient: ${MP_DEMO_TEST_RECIPIENT:}
