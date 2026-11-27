@@ -3,6 +3,7 @@
 // requires a NEW version directory/id; this REVIEW bundle is not a human approval.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { LABELS, features, predict, evaluateComparison } from '../shared/classifier/classifier-v1.mjs';
@@ -100,5 +101,5 @@ assert.equal(practice.length, 24); assert.equal(evaluation.length, 48);
 for (const label of LABELS) assert.equal(evaluation.filter(s => s.goldLabel === label).length, 12);
 assert.equal(new Set([...training, ...practice, ...evaluation].map(s => s.sampleId)).size, training.length + 72);
 let checked = 0;
-for (const [path, text] of files) { const url = new URL(path, root); if (process.argv.includes('--check')) assert.equal(readFileSync(url, 'utf8'), text, `Generated artifact drift: ${path}`); else { mkdirSync(dirname(url.pathname), { recursive: true }); writeFileSync(url, text); } checked++; }
+for (const [path, text] of files) { const url = new URL(path, root); if (process.argv.includes('--check')) assert.equal(readFileSync(url, 'utf8'), text, `Generated artifact drift: ${path}`); else { mkdirSync(dirname(fileURLToPath(url)), { recursive: true }); writeFileSync(url, text); } checked++; }
 console.log(JSON.stringify({ result: 'PASS', mode: process.argv.includes('--check') ? 'check' : 'generate-review-only', artifacts: checked, practice: practice.length, evaluation: evaluation.length, practiceNonCorrect: publicPractice.filter(r => r.baseline.routedLabel !== r.goldLabel).length, paidModelCalls: 0 }));

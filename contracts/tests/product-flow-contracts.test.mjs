@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { checkProductFlow, loadProductFlowContracts } from '../check-product-flow.mjs';
 const { schemas, original, operations } = await loadProductFlowContracts();
 const id = '01JF1000000000000000000001', sha = 'a'.repeat(64);
@@ -15,7 +16,7 @@ const invalid = (name, value) => assert.equal(schemas[name](value), false, name 
 
 test('post-P7 overlay compiles, is reproducible and matches exact local controller routes/permission conjunction', async () => {
   assert.equal((await checkProductFlow()).result, 'PASS');
-  const result = spawnSync(process.execPath, [new URL('../sync-product-flow.mjs', import.meta.url).pathname], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../sync-product-flow.mjs', import.meta.url))], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(Object.keys(original.paths).length, 2);
   assert.match(original.info.description, /not P8 or public deployment/);

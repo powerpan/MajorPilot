@@ -1,6 +1,7 @@
 // Deterministic REVIEW-only derivative. Never touches the frozen AI/DS bundles.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { calculateBa, validateRows, STAGES, TRANSITIONS, GROUPS, WINDOW_KEYS, SUCCESS_METRICS } from '../shared/ba/ba-metrics-v1.mjs';
@@ -99,5 +100,5 @@ const schema = JSON.parse(readFileSync(new URL('contracts/schemas/task-manifest-
 schema.$id = 'https://majorpilot.invalid/schemas/task-manifest-v4.json'; schema.properties.schemaVersion.const = 'task-manifest-v4'; schema.properties.contentKind = { const: 'MAJOR' }; schema.properties.majorCode = { const: 'BUSINESS_ANALYTICS' }; schema.properties.demoKey = { const: null };
 schema.properties.operations.items.properties.engineType = { const: 'BUSINESS_ANALYSIS' }; schema.properties.operations.items.properties.engineVersion = { const: 'ba-metrics-v1' };
 artifact('contracts/schemas/task-manifest-v4.json', schema);
-for (const [path, text] of files) { const url = new URL(path, root); if (process.argv.includes('--check')) assert.equal(readFileSync(url, 'utf8'), text, `Generated artifact drift: ${path}`); else { mkdirSync(dirname(url.pathname), { recursive: true }); writeFileSync(url, text); } }
+for (const [path, text] of files) { const url = new URL(path, root); if (process.argv.includes('--check')) assert.equal(readFileSync(url, 'utf8'), text, `Generated artifact drift: ${path}`); else { mkdirSync(dirname(fileURLToPath(url)), { recursive: true }); writeFileSync(url, text); } }
 console.log(JSON.stringify({ result: 'PASS', mode: process.argv.includes('--check') ? 'check' : 'generate-review-only', artifacts: files.size, aggregateRows: rows.length, canonicalLearners: 359, sourceSha256: sourceSha, datasetSha256, goldenCases: goldens.length, paidModelCalls: 0 }));

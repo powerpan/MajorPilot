@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -6,8 +7,8 @@ const require = createRequire(
 );
 const { build } = require("esbuild");
 const result = await build({
-  absWorkingDir: new URL("../", import.meta.url).pathname,
-  entryPoints: [new URL("./ds-worker-entry.mjs", import.meta.url).pathname],
+  absWorkingDir: fileURLToPath(new URL("../", import.meta.url)),
+  entryPoints: [fileURLToPath(new URL("./ds-worker-entry.mjs", import.meta.url))],
   bundle: true,
   format: "iife",
   platform: "browser",
