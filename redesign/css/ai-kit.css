@@ -1,0 +1,280 @@
+/* MajorPilot redesign — the shared AI kit's visual language (core-owned; spec AI-LAYER.md §3.1–3.3).
+   Prefix .rd- ("reading"), never .ai- (that belongs to the AI lens). The AI is the product reading your work:
+   graphite chrome, serif prose, the student's own words in sans with the soft colour of the lens they came from,
+   a dashed trace rule while it reads/streams that turns solid when done. No persona, no sparkle, no red/green.
+   MOTION RULE: base styles are the FINAL state. Streaming is CSS-delayed token spans (animated FROM hidden, only under
+   html.ld-live .rd-anim); the live trace row, caret, skip button and height growth exist only while after() runs a
+   stream, so a static capture, print, reduced motion or ?ai=instant always shows finished text. */
+
+:root {
+  --rd-rule: rgba(23, 26, 29, .55);
+  --rd-text: var(--ink-2);          /* 11.6:1 on --paper-2 */
+  --rd-kick: var(--muted);          /* 4.6:1 on --paper-2, 13px mono */
+}
+
+/* ---------- the reading ring ---------- */
+.rd-mark { flex: none; display: inline-block; vertical-align: -2px; overflow: visible; }
+.rd-mark .rg { fill: var(--card); stroke: var(--ink); stroke-width: 1.5; }
+.rd-mark .a { fill: none; stroke-width: 1.7; stroke-linecap: round; }
+.rd-mark .a.ba { stroke: var(--ba); } .rd-mark .a.ds { stroke: var(--ds); } .rd-mark .a.ai { stroke: var(--ai); }
+.rd-mark .arcs { transform-box: view-box; transform-origin: 8px 8px; }
+.rd-mark.unsure .rg { stroke-dasharray: 2.2 1.9; stroke: var(--muted); }
+.on-ink .rd-mark .rg, .ink-band .rd-mark .rg, .rd-k-ink .rd-mark .rg { fill: var(--ink); stroke: var(--on-ink); }
+.on-ink .rd-mark .a.ba, .ink-band .rd-mark .a.ba, .rd-k-ink .rd-mark .a.ba { stroke: var(--ba-on-ink); }
+.on-ink .rd-mark .a.ds, .ink-band .rd-mark .a.ds, .rd-k-ink .rd-mark .a.ds { stroke: var(--ds-on-ink); }
+.on-ink .rd-mark .a.ai, .ink-band .rd-mark .a.ai, .rd-k-ink .rd-mark .a.ai { stroke: var(--ai-on-ink); }
+.on-ink .rd-mark.unsure .rg, .ink-band .rd-mark.unsure .rg { stroke: var(--on-ink-2); }
+@keyframes rd-turn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+html.ld-live .rd-block.is-reading .rd-head .rd-mark .arcs,
+html.ld-live .rd-mark.busy .arcs { animation: rd-turn 1.2s linear 2; }
+
+/* ---------- kicker + trace ---------- */
+.rd-kick { display: inline-flex; align-items: center; gap: 8px; font-family: var(--label-font); font-size: var(--fs-label); font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--rd-kick); line-height: 1.4; }
+html[lang="zh-CN"] .rd-kick { letter-spacing: .06em; font-size: 13.5px; }
+.rd-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-height: 22px; }
+.rd-head .rd-kick + .rd-trace::before { content: "·"; margin-right: 10px; color: var(--rd-kick); }
+.rd-trace { display: inline-flex; min-width: 0; max-width: 100%; font-family: var(--label-font); font-size: var(--fs-label); letter-spacing: .08em; text-transform: uppercase; color: var(--rd-kick); line-height: 1.45; }
+html[lang="zh-CN"] .rd-trace { letter-spacing: .04em; font-size: 13.5px; }
+.rd-tl { font-weight: 500; }
+/* the collapsed, expandable "READ 4 THINGS ▸" — the final state */
+.rd-trace-done { display: inline-block; min-width: 0; }
+.rd-trace-done > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 2px; padding: 2px 0; }
+.rd-trace-done > summary::-webkit-details-marker { display: none; }
+.rd-trace-done > summary:hover { color: var(--ink); }
+.rd-trace-done .rd-car { display: inline-block; font-size: 11px; transition: transform var(--t-fast) var(--ease); }
+.rd-trace-done[open] .rd-car { transform: rotate(90deg); }
+.rd-trace-done ul { list-style: none; margin: 6px 0 2px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; text-transform: none; letter-spacing: .02em; font-family: var(--sans); font-size: 13.5px; color: var(--muted); }
+.rd-trace-done li { display: inline-flex; align-items: center; gap: 6px; }
+.rd-trace-done li i, .rd-ti i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-2); flex: none; }
+/* the live row: "READING · Recommendation · Why · your step 2 pick" with hollow dots that fill as each is read */
+.rd-trace-live { display: none; flex-wrap: wrap; align-items: center; gap: 3px 12px; }
+.rd-ti { display: inline-flex; align-items: center; gap: 6px; text-transform: none; letter-spacing: .02em; font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); }
+.rd-block.is-streaming .rd-trace-live { display: inline-flex; }
+.rd-block.is-streaming .rd-trace-done { display: none; }
+.rd-block.is-streaming .rd-trace-live .rd-tl::after { content: " ·"; }
+@keyframes rd-dot { from { background: transparent; box-shadow: inset 0 0 0 1.2px var(--muted); } 60% { transform: scale(1.35); } to { background: var(--ink-2); box-shadow: inset 0 0 0 1.2px transparent; } }
+@keyframes rd-item { from { opacity: .38; } to { opacity: 1; } }
+html.ld-live .rd-anim .rd-ti { animation: rd-item .22s var(--ease-out) var(--d, 0ms) both; }
+html.ld-live .rd-anim .rd-ti i { animation: rd-dot .3s var(--ease-out) var(--d, 0ms) both; }
+/* skip control: exists only while streaming */
+.rd-skip { display: none; margin-left: auto; font-family: var(--sans); font-size: 13.5px; font-weight: 500; color: var(--ink-2); padding: 4px 2px; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.rd-skip:hover { color: var(--ink); }
+.rd-block.is-streaming > .rd-head > .rd-skip { display: inline-flex; }
+/* while reading, a kicker keeps its own line ("A READER MIGHT ASK ……… Show it all") and the live trace runs below it */
+.rd-block.rd-has-kick.is-streaming > .rd-head > .rd-skip { order: 1; }
+.rd-block.rd-has-kick.is-streaming > .rd-head > .rd-trace { order: 2; flex-basis: 100%; }
+.rd-block.rd-has-kick.is-streaming > .rd-head > .rd-trace::before { content: none; }
+
+/* ---------- the surface: margin note ---------- */
+.rd-block { position: relative; background: var(--paper-2); border: 1px solid var(--hair); border-left: 0; border-radius: var(--r-panel); padding: 14px 18px 14px 20px; color: var(--rd-text); box-shadow: inset 2px 0 0 var(--rd-rule); }
+.rd-block.is-streaming { box-shadow: none; background-image: linear-gradient(var(--rd-rule) 55%, transparent 55%); background-size: 2px 7px; background-repeat: repeat-y; background-position: 0 0; }
+.rd-block.is-streaming { background-color: var(--paper-2); }
+.rd-block > .rd-head + .rd-flow { margin-top: 10px; }
+.rd-flow { position: relative; }
+.rd-block.rd-growing > .rd-flow { overflow: hidden; transition: height .2s var(--ease-out); }
+.rd-body { font-family: var(--serif); font-size: 16px; line-height: 25px; color: var(--rd-text); }
+/* zh prose wraps normally (keep-all is for headings; in a paragraph it strands half-empty lines) */
+html[lang="zh-CN"] .rd-body { font-size: 15.5px; line-height: 26px; font-weight: 500; word-break: normal; overflow-wrap: anywhere; line-break: strict; }
+.rd-p { margin: 0; }
+.rd-p + .rd-p { margin-top: 10px; }
+.rd-body b, .rd-b { font-weight: 600; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
+.rd-body .nowrap { white-space: nowrap; }
+.rd-k-line { padding: 10px 16px 10px 18px; }
+.rd-k-line .rd-body { font-size: 16px; }
+.rd-k-answer .rd-body { font-size: 16.5px; line-height: 26px; }
+html[lang="zh-CN"] .rd-k-answer .rd-body { font-size: 15.5px; line-height: 27px; }
+/* on ink (Brief In short, Compare band, dashboard hero, Program digest): no box, just ring + kicker + text */
+.rd-k-ink, .on-ink .rd-block.rd-k-ink, .ink-band .rd-block.rd-k-ink { background: none; border: 0; box-shadow: none; padding: 0; color: var(--on-ink); }
+.rd-k-ink .rd-body { color: var(--on-ink); }
+.rd-k-ink .rd-kick, .rd-k-ink .rd-trace, .on-ink .rd-kick, .on-ink .rd-trace, .ink-band .rd-kick, .ink-band .rd-trace { color: var(--on-ink-2); }
+.rd-k-ink .rd-ti, .on-ink .rd-ti, .ink-band .rd-ti { color: var(--on-ink); }
+.rd-k-ink .rd-ti i, .rd-k-ink .rd-trace-done li i, .on-ink .rd-ti i { background: var(--on-ink); }
+.rd-k-ink .rd-trace-done ul, .on-ink .rd-trace-done ul { color: var(--on-ink-2); }
+.rd-k-ink .rd-trace-done > summary:hover, .on-ink .rd-trace-done > summary:hover { color: var(--on-ink); }
+.rd-k-ink.is-streaming { background: none; }
+.rd-k-ink .rd-skip, .on-ink .rd-skip { color: var(--on-ink); text-decoration-color: var(--on-ink-line); }
+.rd-k-ink .rd-body b, .on-ink .rd-body b { color: #fff; }
+
+/* ---------- tokens: the stream (CSS-delayed spans; the DOM always holds the final text) ---------- */
+@keyframes rd-tok { from { opacity: 0; filter: blur(1.4px); } 60% { filter: none; } to { opacity: 1; filter: none; } }
+@keyframes rd-tok-c { from { opacity: 0; transform: scale(.6); } 70% { opacity: 1; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+html.ld-live .rd-anim .rd-tok { animation: rd-tok .2s var(--ease-out) var(--d, 0ms) both; }
+html.ld-live .rd-anim .rd-tok-c { display: inline-block; animation-name: rd-tok-c; animation-duration: .28s; }
+/* o.wait: the stream holds at its first frame (reading) until the response scrolls into view */
+html.ld-live .rd-waiting .rd-tok, html.ld-live .rd-waiting .rd-q, html.ld-live .rd-waiting .rd-ti, html.ld-live .rd-waiting .rd-ti i, html.ld-live .rd-waiting .rd-cite, html.ld-live .rd-waiting .rd-acts { animation-play-state: paused !important; }
+/* caret: a real element created by after(), moved to the newest visible token */
+.rd-caret { position: absolute; left: 0; top: 0; width: 2px; height: 16px; background: var(--ink); border-radius: 1px; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 2; }
+.rd-k-ink .rd-caret, .on-ink .rd-caret { background: var(--on-ink); }
+/* the closing blink: base (final) state is hidden, so a frozen capture never shows a stray caret */
+@keyframes rd-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.rd-caret.blink { opacity: 0; animation: rd-blink .5s steps(1) 2 both; }
+
+/* ---------- the student's own words ---------- */
+.rd-q { font-family: var(--sans); font-size: .93em; font-weight: 450; color: var(--ink); background: linear-gradient(var(--lens-soft, var(--paper-3)), var(--lens-soft, var(--paper-3))) no-repeat 0 0 / 100% 100%; padding: 1px 2px; margin: 0; border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+html[lang="zh-CN"] .rd-q { font-size: .95em; font-weight: 400; }
+.rd-q:not([class*="lens-"]) { --lens-soft: var(--paper-3); }
+@keyframes rd-wash { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
+html.ld-live .rd-anim .rd-q { animation: rd-wash .24s var(--ease-out) var(--qd, 0ms) both; }
+/* on ink: a 2px underline in the source lens's on-ink colour, drawn as a background so it runs unbroken across token spans */
+.on-ink .rd-q, .ink-band .rd-q, .rd-k-ink .rd-q { color: var(--on-ink); padding: 0 0 3px; background: linear-gradient(var(--lens-on-ink, var(--on-ink-2)), var(--lens-on-ink, var(--on-ink-2))) no-repeat 0 100% / 100% 2px; }
+@keyframes rd-uline { from { background-size: 0% 2px; } to { background-size: 100% 2px; } }
+html.ld-live .rd-anim.rd-k-ink .rd-q, html.ld-live .on-ink .rd-anim .rd-q, html.ld-live .ink-band .rd-anim .rd-q { animation-name: rd-uline; }
+
+/* ---------- evidence chips ---------- */
+.rd-cites { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 12px; }
+.rd-cite { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 11px 5px 10px; border: 1px solid var(--hair); border-radius: 999px; background: var(--card); font-family: var(--label-font); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); line-height: 1.2; text-align: left; transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast); }
+html[lang="zh-CN"] .rd-cite { letter-spacing: .03em; font-size: 13px; }
+.rd-cite .rd-cd { width: 7px; height: 7px; border-radius: 50%; background: var(--lens, var(--ink)); flex: none; }
+.rd-cite .rd-ct { color: var(--muted); }
+.rd-cite .rd-ca { display: inline-block; width: 0; overflow: hidden; opacity: 0; transition: width var(--t-fast), opacity var(--t-fast); }
+.rd-cite:hover, .rd-cite:focus-visible { border-color: var(--ink-2); color: var(--ink); }
+.rd-cite:hover .rd-ca, .rd-cite:focus-visible .rd-ca { width: 1em; opacity: 1; }
+/* superscript variant, inline in prose ([BA·4]) */
+.rd-cite.sup { min-height: 0; padding: 1px 7px 1px 6px; gap: 5px; font-size: 12.5px; vertical-align: 2px; margin: 0 1px; letter-spacing: .06em; position: relative; }
+.rd-cite.sup::after { content: ""; position: absolute; inset: -8px -2px; }   /* ≥ 32px hit area without moving the line */
+.rd-cite.sup .rd-cd { width: 6px; height: 6px; }
+.rd-cite.sup .rd-ca { display: none; }
+.on-ink .rd-cite, .ink-band .rd-cite, .rd-k-ink .rd-cite { background: transparent; border-color: var(--on-ink-line); color: var(--on-ink-2); }
+.on-ink .rd-cite .rd-ct, .ink-band .rd-cite .rd-ct, .rd-k-ink .rd-cite .rd-ct { color: var(--on-ink-2); }
+.on-ink .rd-cite .rd-cd, .ink-band .rd-cite .rd-cd { background: var(--lens-on-ink, var(--on-ink)); }
+.on-ink .rd-cite:hover, .on-ink .rd-cite:focus-visible, .ink-band .rd-cite:hover, .rd-k-ink .rd-cite:hover { border-color: var(--on-ink-2); color: var(--on-ink); }
+html.ld-live .rd-anim .rd-cites .rd-cite { animation: ld-pop .3s var(--ease-out) calc(var(--rd-end, 0ms) + var(--i, 0) * 60ms) both; }
+
+/* ---------- controls under a response ---------- */
+.rd-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; margin-top: 10px; }
+.rd-act { display: inline-flex; align-items: center; gap: 6px; font-family: var(--sans); font-size: 14px; font-weight: 500; color: var(--ink-2); padding: 6px 2px; min-height: 32px; }
+.rd-act:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line-2); }
+.rd-act-regen i { font-style: normal; display: inline-block; font-size: 15px; }
+.rd-act-fb[aria-pressed="true"] { color: var(--ink); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.rd-count { font-family: var(--label-font); font-size: 13px; color: var(--muted); letter-spacing: .06em; margin-left: -8px; }
+.on-ink .rd-act, .ink-band .rd-act, .rd-k-ink .rd-act { color: var(--on-ink); }
+.rd-regen-g { display: inline-flex; align-items: center; gap: 0 16px; white-space: nowrap; }   /* "↻ Another way · 1 of 3" wraps as one unit */
+.on-ink .rd-count, .ink-band .rd-count { color: var(--on-ink-2); }
+html.ld-live .rd-anim .rd-acts { animation: ld-fade .3s ease calc(var(--rd-end, 0ms) + 120ms) both; }
+html.ld-live .rd-regen .rd-act-regen i { animation: rd-half .5s var(--ease-out) both; }
+@keyframes rd-half { from { transform: rotate(-180deg); } to { transform: none; } }
+@keyframes rd-dim { from { opacity: .4; } to { opacity: 1; } }
+html.ld-live .rd-regen .rd-body { animation: rd-dim .12s linear both; }
+
+/* tone / length segs */
+.rd-seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; padding: 2px; background: var(--card); }
+.rd-seg button { padding: 4px 11px; border-radius: 999px; font-size: 13.5px; font-weight: 500; color: var(--muted); min-height: 28px; transition: background var(--t-fast), color var(--t-fast); }
+.rd-seg button:hover { color: var(--ink); }
+.rd-seg button[aria-pressed="true"] { background: var(--ink-2); color: var(--paper); }
+
+/* suggested follow-up questions */
+.rd-sugg { display: flex; flex-wrap: wrap; gap: 8px; }
+.rd-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 14px 7px 12px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--card); font-size: 14.5px; color: var(--ink); text-align: left; line-height: 1.35; transition: border-color var(--t-fast), background var(--t-fast); }
+.rd-chip:hover { border-color: var(--ink-2); background: var(--paper); }
+.rd-chip-i { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+html[lang="zh-CN"] .rd-chip { font-size: 14.5px; }
+
+/* the honest "I'm not sure" */
+.rd-unsure { display: flex; align-items: flex-start; gap: 10px; margin: 0; font-family: var(--serif); font-style: italic; font-size: 16px; line-height: 1.55; color: var(--muted); }
+html[lang="zh-CN"] .rd-unsure { font-style: normal; font-size: 15.5px; }
+.rd-unsure > .rd-mark { margin-top: 5px; }
+.rd-unsure-t { font-style: italic; color: var(--muted); }
+html[lang="zh-CN"] .rd-unsure-t { font-style: normal; }
+.rd-unsure-b { box-shadow: inset 2px 0 0 transparent; background-image: linear-gradient(var(--line-2) 55%, transparent 55%); background-size: 2px 7px; background-repeat: repeat-y; }
+.on-ink .rd-unsure, .ink-band .rd-unsure { color: var(--on-ink-2); }
+
+/* ---------- lights: a source on the page, pointed at by a chip or named in a trace ---------- */
+@keyframes rd-lit { 0% { box-shadow: 0 0 0 0 var(--lens-glow); } 35% { box-shadow: 0 0 0 7px var(--lens-glow); } 100% { box-shadow: 0 0 0 2px transparent; } }
+@keyframes rd-lit-svg { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 5px var(--lens, var(--blue))) drop-shadow(0 0 1px var(--lens, var(--blue))); } }
+.rd-lit, .rd-lit1 { box-shadow: 0 0 0 3px var(--lens-glow); border-radius: 3px; }
+html.ld-live .rd-lit { animation: rd-lit .9s var(--ease-out) 3 both; }
+html.ld-live .rd-lit1 { animation: rd-lit 1s var(--ease-out) 1 both; }
+svg .rd-lit, svg .rd-lit1 { box-shadow: none; filter: drop-shadow(0 0 4px var(--lens, var(--blue))); }
+html.ld-live svg .rd-lit { animation: rd-lit-svg .9s ease 3 both; }
+html.ld-live svg .rd-lit1 { animation: rd-lit-svg 1s ease 1 both; }
+
+/* scan line (AI-1 reading the boxes): a real element, removed after one pass */
+.rd-scan { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: rgba(23, 26, 29, .25); pointer-events: none; z-index: 3; opacity: 0; }
+@keyframes rd-scan { from { transform: translateY(0); opacity: 1; } 92% { opacity: 1; } to { transform: translateY(var(--rd-scan-h, 260px)); opacity: 0; } }
+html.ld-live .rd-scan { animation: rd-scan .9s var(--ease-draw) both; }
+
+/* ---------- mirror highlights behind a textarea ---------- */
+.rd-hl { position: relative; background: var(--rd-hl-bg, var(--card)); }
+.rd-hl > .rd-hl-m { position: absolute; z-index: 0; margin: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; color: transparent; pointer-events: none; }
+.rd-hl > textarea.rd-hl-ta { position: relative; z-index: 1; display: block; vertical-align: top; background: transparent !important; }
+.rd-m { color: transparent; background: transparent; border-radius: 2px; text-decoration: underline dotted 2px var(--lens-ink, var(--ink-2)); text-underline-offset: 4px; text-decoration-skip-ink: none; transition: background var(--t-fast); }
+.rd-m.k-keep { text-decoration: underline solid 2px var(--lens, var(--ink-2)); }
+.rd-m.k-unsure { text-decoration-style: dashed; text-decoration-color: var(--muted); }
+.rd-m.resolved { text-decoration-style: dotted; text-decoration-color: var(--line-2); }
+.rd-m.stale { text-decoration: underline dashed 1.5px var(--line-2); }
+.rd-m.is-on { background: var(--lens-soft, var(--paper-3)); }
+.rd-pin-at { display: inline; }
+.rd-pin { position: absolute; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 1px solid var(--ink); color: var(--ink); font-family: var(--mono); font-style: normal; font-size: 12px; font-weight: 500; line-height: 1; letter-spacing: 0; text-decoration: none; }
+.rd-pin.stale { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+.rd-pin.resolved { border-color: var(--line-2); color: var(--muted); }
+@keyframes rd-mark-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+html.ld-live .rd-hl.rd-hl-new .rd-m { animation: rd-mark-in .26s var(--ease-out) var(--d, 0ms) both; }
+
+/* ---------- AI-2: Ask about this step (core, lens shell) ---------- */
+.step-head .ask-link .btn-quiet { gap: 8px; font-size: 14.5px; padding: 4px 2px; }
+.step-head .ask-link { margin-left: auto; }
+.rd-ask { position: relative; border: 1px solid var(--hair); border-radius: var(--r-panel); background: var(--paper-2); padding: 16px 20px 18px; box-shadow: inset 2px 0 0 var(--rd-rule); }
+#view.enter .rd-ask, .rd-ask.rd-ask-new { animation: ld-rise .32s var(--ease-out) both; }
+.rd-ask-h { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--hair); }
+.rd-ask-h .rd-kick { color: var(--ink-2); }
+.rd-ask-x { margin-left: auto; font-size: 14px; font-weight: 500; color: var(--ink-2); padding: 4px 2px; }
+.rd-ask-x:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line-2); }
+.rd-ask .rd-block { background: none; border: 0; box-shadow: none; padding: 0; }
+.rd-ask .rd-block.is-streaming { background-image: none; }
+.rd-ask-ctx { margin-top: 14px; }
+.rd-turn { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--hair); }
+.rd-tq { display: flex; align-items: baseline; gap: 8px; font-family: var(--label-font); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 8px; line-height: 1.45; }
+html[lang="zh-CN"] .rd-tq { letter-spacing: .02em; font-size: 14px; text-transform: none; }
+.rd-tq .rd-tq-i { color: var(--muted); }
+.rd-tq .lv { color: var(--lens-ink, var(--muted)); }
+.rd-ask .rd-sugg { margin-top: 16px; }
+.rd-ask-note { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+@media (max-width: 760px) {
+  .rd-ask { padding: 14px 16px 16px; }
+  .rd-block { padding: 12px 14px 12px 16px; }
+  .rd-chip { font-size: 14px; }
+}
+
+/* ---------- AI-3: Reflect follow-up (core, reflect step) ---------- */
+.rd-follow { margin-top: 18px; }
+.rd-follow .rd-sugg { margin-top: 12px; }
+.rd-follow .rd-ans { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.rd-follow .rd-more { margin-top: 12px; display: grid; gap: 6px; }
+.rd-follow .rd-more label { font-size: 14px; font-weight: 600; }
+.rd-follow .rd-ack { margin-top: 12px; }
+
+/* ---------- done screen: revision trace + the thread across lenses ---------- */
+.rd-rev { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; font-family: var(--label-font); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); line-height: 1.5; }
+html[lang="zh-CN"] .rd-rev { letter-spacing: .03em; font-size: 13.5px; }
+.rd-rev .rd-mark { margin-top: 2px; }
+.lens-done .ld-thread { margin: 0 0 28px; max-width: 760px; }
+
+/* ---------- footer disclosure (the ONE "simulated" line) ---------- */
+.ft-ai { margin: 0; font-size: 15px; line-height: 1.5; color: var(--on-ink-2); display: flex; align-items: center; gap: 9px; }
+.ft-ai .rd-mark { flex: none; }
+.site-footer .ft-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; }
+.site-footer.compact .ft-ai { font-size: 14px; }
+.site-footer .ft-sub { display: flex; flex-direction: column; gap: 6px; }
+
+/* ---------- reduced motion / print ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .rd-caret, .rd-scan, .rd-skip { display: none !important; }
+  .rd-block.is-streaming .rd-trace-live { display: none; }
+  .rd-block.is-streaming .rd-trace-done { display: inline-block; }
+}
+@media print {
+  .rd-tok, .rd-q, .rd-cite, .rd-acts { animation: none !important; }
+  .rd-caret, .rd-scan, .rd-skip, .rd-trace-live, .rd-acts, .rd-sugg, .rd-hl-m { display: none !important; }
+  .rd-trace-done { display: inline-block !important; }
+  .rd-block { background: #fff; box-shadow: inset 2px 0 0 var(--ink); }
+  .rd-cite { border: 0; padding: 0; min-height: 0; background: none; color: var(--ink); }
+  .rd-cite .rd-cd, .rd-cite .rd-ct, .rd-cite .rd-ca { display: none; }
+  .rd-cite::before { content: "["; } .rd-cite::after { content: "]"; position: static; }
+}
+.rd-done .rd-tok, .rd-done .rd-q, .rd-done .rd-cite, .rd-done .rd-acts, .rd-done .rd-ti, .rd-done .rd-ti i, .rd-done .rd-body { animation: none !important; }
+.site-footer .ft-ai svg.rd-mark, .site-footer .ld-colophon .ft-ai svg.rd-mark { width: 13px; height: 13px; margin: 0; overflow: visible; }
+.rd-head .rd-kick-m + .rd-trace::before { content: none; }
+/* the reflect acknowledgement is one calm line, not another card */
+.rd-follow .rd-block.rd-ack { background: none; border: 0; box-shadow: none; padding: 2px 0 0 2px; }
+.rd-follow .rd-block.rd-ack.is-streaming { background-image: none; }
+.rd-follow .rd-ack .rd-body { font-size: 15px; color: var(--muted); }
