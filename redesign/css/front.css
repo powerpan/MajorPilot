@@ -52,8 +52,8 @@ html[lang="zh-CN"] .hf-replay { letter-spacing: .04em; }
 html.ld-live .hf-bm .pulse { animation: hf-pulse 4.8s cubic-bezier(.45, 0, .25, 1) calc(var(--pt, 0s) + 2.4s + var(--k) * 1.3s) 3; }
 @keyframes hf-pulse { from { stroke-dashoffset: .1; } to { stroke-dashoffset: -1.02; } }
 
-/* text in the figure is HTML (stays ≥ 13px whatever the figure's width) */
-.hf-t { position: absolute; z-index: 1; font-family: var(--label-font); font-size: 13px; font-weight: 500; line-height: 1.2; letter-spacing: .06em; color: var(--muted); white-space: nowrap; pointer-events: none; }
+/* HTML labels stay at least 13px and use dark ink where the skyline shows through. */
+.hf-t { position: absolute; z-index: 1; font-family: var(--label-font); font-size: 13px; font-weight: 500; line-height: 1.2; letter-spacing: .06em; color: var(--ink-2); white-space: nowrap; pointer-events: none; }
 html[lang="zh-CN"] .hf-t { letter-spacing: .04em; }
 .hf-t.gt { transform: translateY(calc(-100% - 5px)); }
 .hf-t.ax { text-transform: uppercase; letter-spacing: .1em; }
@@ -64,18 +64,18 @@ html[lang="zh-CN"] .hf-t { letter-spacing: .04em; }
 .hf-node { position: absolute; right: 0; z-index: 2; display: grid; gap: 4px; justify-items: start; transform: translateY(-50%); }
 .hf-node-k { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .12em; }
 .hf-node-k i { width: 16px; height: 2px; border-radius: 1px; }
-.hf-node.ba .hf-node-k { color: var(--ba-ink); } .hf-node.ba .hf-node-k i { background: var(--ba); }
-.hf-node.ds .hf-node-k { color: var(--ds-ink); } .hf-node.ds .hf-node-k i { background: var(--ds); }
-.hf-node.ai .hf-node-k { color: var(--ai-ink); } .hf-node.ai .hf-node-k i { background: var(--ai); }
+.hf-node.ba .hf-node-k { color: color-mix(in srgb, var(--ba-ink) 64%, var(--ink)); } .hf-node.ba .hf-node-k i { background: var(--ba); }
+.hf-node.ds .hf-node-k { color: color-mix(in srgb, var(--ds-ink) 64%, var(--ink)); } .hf-node.ds .hf-node-k i { background: var(--ds); }
+.hf-node.ai .hf-node-k { color: color-mix(in srgb, var(--ai-ink) 64%, var(--ink)); } .hf-node.ai .hf-node-k i { background: var(--ai); }
 .hf-node-q { font-family: var(--serif); font-size: clamp(18px, 1.5vw, 22px); line-height: 1.16; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; }
 html[lang="zh-CN"] .hf-node-q { font-weight: 600; font-size: clamp(16px, 1.32vw, 19px); line-height: 1.4; letter-spacing: 0; }
-.hf-node-d { font-size: 14px; line-height: 1.35; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hf-node-d { font-size: 14px; line-height: 1.35; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .hf-node-n { font-family: var(--serif); font-size: clamp(17px, 1.4vw, 20px); line-height: 1.2; color: var(--ink); }
 html[lang="zh-CN"] .hf-node-n { font-weight: 600; font-size: 16px; }
 
 /* Quick Start ↔ figure: a pick lights its beam; the others step back (beams only; label text stays ≥ 4.5:1) */
 .hf.has-pick .hf-bm:not(.on) { opacity: .22; }
-.hf.has-pick .hf-node:not(.on) .hf-node-q, .hf.has-pick .hf-node:not(.on) .hf-node-n { color: var(--muted); }
+.hf.has-pick .hf-node:not(.on) .hf-node-q, .hf.has-pick .hf-node:not(.on) .hf-node-n { color: var(--ink-2); }
 .hf.has-pick .hf-node:not(.on) .hf-node-k i { opacity: .3; }
 .hf.has-pick .hf-bm.on .halo { stroke-opacity: .9; stroke-width: 1.5; }
 .hf.has-pick .hf-bm.rec .beam { stroke-width: 3.8; }
