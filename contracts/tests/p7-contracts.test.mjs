@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {checkP7,loadP7Contracts} from '../check-p7.mjs';
 const{schemas,original,operations}=await loadP7Contracts();
 const id='01JF1000000000000000000001',time='2026-09-21T00:00:00.000Z';
@@ -15,7 +16,7 @@ const invalid=(name,value)=>assert.equal(schemas[name](value),false,name+' unexp
 
 test('P7 composition is reproducible and every route/permission matches real Spring annotations',async()=>{
   assert.equal((await checkP7()).result,'PASS');
-  const composed=spawnSync(process.execPath,[new URL('../sync-p7.mjs',import.meta.url).pathname],{encoding:'utf8'});
+  const composed=spawnSync(process.execPath,[fileURLToPath(new URL('../sync-p7.mjs',import.meta.url))],{encoding:'utf8'});
   assert.equal(composed.status,0,composed.stderr);
 });
 test('settings secrets are not idempotent response data, and success clears sessions with empty 204',()=>{

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ROOT, TOOL, PORTS } from './local-config.mjs';
 import { readLocalEnv, runtimeEnv } from './env.mjs';
 import { start, stop, waitFor, record } from './processes.mjs';
@@ -43,8 +44,9 @@ export async function startInfra({ bootstrap = false } = {}) {
   await waitFor(() => { try { return mysqlCommand('SELECT 1;').trim() === '1'; } catch { return false; } });
   mkdirSync(path.join(ROOT, 'data/redis'), { recursive: true, mode: 0o700 });
   const redisConfig = path.join(ROOT, 'data/redis.conf');
-  writeFileSync(redisConfig, `bind 127.0.0.1\nport ${PORTS.redis}\nprotected-mode yes\nrequirepass ${vars.MP_REDIS_PASSWORD}\ndir ${ROOT}/data/redis\nappendonly yes\nappendfsync everysec\n`, { mode: 0o600 });
+  const redisDir = path.join(ROOT, 'data/redis').replace(/[\\"]/g, '\\$&');
+  writeFileSync(redisConfig, `bind 127.0.0.1\nport ${PORTS.redis}\nprotected-mode yes\nrequirepass ${vars.MP_REDIS_PASSWORD}\ndir "${redisDir}"\nappendonly yes\nappendfsync everysec\n`, { mode: 0o600 });
   await start('redis', `${TOOL}/redis/src/redis-server`, [redisConfig], env, { port: PORTS.redis });
   await start('mailpit', `${TOOL}/mailpit/mailpit`, ['--listen', `127.0.0.1:${PORTS.mail}`, '--smtp', `127.0.0.1:${PORTS.smtp}`, '--database', path.join(ROOT, 'data/mailpit.db')], env, { port: PORTS.mail });
 }
-if (process.argv[1] === new URL(import.meta.url).pathname) await startInfra({ bootstrap: process.argv.includes('--bootstrap') });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await startInfra({ bootstrap: process.argv.includes('--bootstrap') });

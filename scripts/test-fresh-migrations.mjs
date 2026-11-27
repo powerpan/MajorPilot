@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes, createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { JAVA_HOME, ROOT } from './local-config.mjs';
 import { mysqlCommand } from './infra.mjs';
 
@@ -89,4 +90,4 @@ console.log(JSON.stringify({ ...evidence, evidenceFile }));
 if (failure) throw failure;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === new URL(import.meta.url).pathname) main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

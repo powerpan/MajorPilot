@@ -2,6 +2,7 @@
 // --check verifies committed bytes. Published content needs a new version/id.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { calculateDs, validateRows, NUMERIC_FIELDS, GROUPS, BINS } from '../shared/ds/ds-stats-v1.mjs';
@@ -172,5 +173,5 @@ artifact('contracts/examples/p4-ds-run.json', { purpose: 'Synthetic engineering 
   'd6-conclusion': { findings: [{ statement: '会话时长分布的有效记录数不同于完成率分母，需要分别说明。', evidenceStepKey: 'd3-profile', verdict: 'SUPPORTED' }, { statement: '当前成对数据与分层关系仍不足以识别缩短等待时间的因果效果。', evidenceStepKey: 'd5-stratify', verdict: 'INSUFFICIENT_EVIDENCE' }], unsupportedCausalClaim: '不能仅凭相关就说缩短首次学习等待时间一定会提高完成率。', limitations: '合成样本、缺失与重复处理以及课程构成都限制了对真实学生的推广。', nextQuestion: '在相同课程和批次中开展小范围随机提醒试验，能否观察到首课启动和完成的变化？' },
 }, groupAlternative: { relationshipMode: 'GROUP_COMPLETION', groupBy: 'device_group', observation: '比较设备组的完成比例和各自分母，观察差异但不把设备解释为原因。' }, reflection: { questionSetVersion: 'ds-reflection-v1', answers: { interestingStepKeys: ['d2-quality', 'd5-stratify'], difficultySources: ['KNOWLEDGE'], continueSimilarWork: 'YES', nextWorkStyle: 'DATA_REASONING', aiFollowUp: 'SKIPPED' } } });
 let checked = 0;
-for (const [path, text] of files) { const url = new URL(path, root); if (process.argv.includes('--check')) assert.equal(readFileSync(url, 'utf8'), text, `Generated artifact drift: ${path}`); else { mkdirSync(dirname(url.pathname), { recursive: true }); writeFileSync(url, text); } checked++; }
+for (const [path, text] of files) { const url = new URL(path, root); if (process.argv.includes('--check')) assert.equal(readFileSync(url, 'utf8'), text, `Generated artifact drift: ${path}`); else { mkdirSync(dirname(fileURLToPath(url)), { recursive: true }); writeFileSync(url, text); } checked++; }
 console.log(JSON.stringify({ result: 'PASS', mode: process.argv.includes('--check') ? 'check' : 'generate-review-only', artifacts: checked, rawRows: 360, uniqueLearners: 359, injectedMissing: 24, goldenCases: goldens.length, paidModelCalls: 0 }));

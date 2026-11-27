@@ -4,7 +4,8 @@ import {readFileSync,writeFileSync,mkdirSync,existsSync,cpSync,renameSync,openSy
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
-const directory=path.dirname(new URL(import.meta.url).pathname);
+import {fileURLToPath} from 'node:url';
+const directory=path.dirname(fileURLToPath(import.meta.url));
 const manifest=JSON.parse(readFileSync(`${directory}/transport.json`));
 assert.match(manifest.release,/^[a-f0-9]{64}$/);const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const core=readFileSync(`${directory}/core.bin`);assert.equal(hash(core),manifest.coreSha256);
