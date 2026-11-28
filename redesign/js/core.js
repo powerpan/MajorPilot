@@ -1027,6 +1027,15 @@
   window.addEventListener("hashchange", () => MP.render());
 
   /* ================= boot ================= */
+  function loadWebFonts() {
+    const stylesheet = document.createElement("link");
+    stylesheet.rel = "stylesheet";
+    stylesheet.media = "print";
+    stylesheet.href = "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Noto+Serif+SC:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap";
+    stylesheet.addEventListener("load", () => { stylesheet.media = "all"; }, { once: true });
+    document.head.append(stylesheet);
+  }
+
   MP.boot = function () {
     const q = new URLSearchParams(location.search);
     // language first, then the preset: the lenses' sample() writes the student's notes in the current language
@@ -1034,6 +1043,8 @@
     if (lq === "zh" || lq === "en") MP.state.lang = lq;
     MP.cloud?.prepareLink();
     MP.render({ top: true });
+    // Let the browser paint with system fonts even if the font service is unreachable.
+    window.addEventListener("load", loadWebFonts, { once: true });
     const preflight = MP.cloud?.boot() || Promise.resolve(false);
     void preflight.then((signedIn) => {
       if (lq === "zh" || lq === "en") MP.state.lang = lq;
